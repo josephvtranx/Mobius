@@ -4,7 +4,7 @@
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
 }
-
+/* header styles */
 .header {
     display: flex;
     align-items: flex-start;
@@ -13,6 +13,7 @@
     padding: 10px 20px;
     background-color: #fff;
     border-bottom: 1px solid #ddd;
+    border: none;
   }
   
   .header-div {
@@ -28,23 +29,35 @@
   .logo {
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 10px;
+    width: 245px;
+    height: 60px;
     padding: 10px;
   }
   
   .logo-img {
-    width: 50px; /* Adjust width as needed */
-    height: auto; /* Maintain aspect ratio */
+    width: 123px; /* Adjust width as needed */
+    height: 44.9; /* Maintain aspect ratio */
+
   }
   
   .title {
-    font-size: 20px;
-    font-weight: bold;
-    color: #333;
+    color: var(--mobius-secondary, #FFAB45);
+    font-family: Inter;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 140%;
   }
   
   .search-bar {
-    flex: 1; /* Makes the search bar take up available space */
-    margin: 0 20px;
+    margin-left: auto; /* Pushes the search bar to the far right */
+     /* Adds spacing from the edge */
+    display: flex;
+    justify-content: flex-end; /* Align content inside the search bar */
+    width: 250px;
+    height: 35px;
   }
   
   .search-bar input {
@@ -58,7 +71,7 @@
   
   .icons {
     display: flex;
-    gap: 15px;
+    padding: 40px;
     list-style: none; /* Remove bullet points */
   }
   
@@ -68,6 +81,7 @@
     justify-content: center;
     width: 40px;
     height: 40px;
+    padding: 40px;
     border: none;
     background-color: transparent;
     cursor: pointer;
