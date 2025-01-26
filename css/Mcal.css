@@ -1,0 +1,85 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    width: 100vw;
+    height: 7.8125vh;
+    padding: 10px 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .header-div {
+    display: flex;
+    width: 18.4vw;
+    height: 5.86vh;
+    padding: 10px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .logo {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+  }
+  
+  .logo-img {
+    width: 50px; /* Adjust width as needed */
+    height: auto; /* Maintain aspect ratio */
+  }
+  
+  .title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .search-bar {
+    flex: 1; /* Makes the search bar take up available space */
+    margin: 0 20px;
+  }
+  
+  .search-bar input {
+    width: 100%;
+    max-width: 300px; /* Adjust size of search bar */
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    font-size: 14px;
+  }
+  
+  .icons {
+    display: flex;
+    gap: 15px;
+    list-style: none; /* Remove bullet points */
+  }
+  
+  .icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+  }
+  
+  .icon-button:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .icon-button i {
+    font-size: 18px;
+    color: #333;
+  }

@@ -1,0 +1,30 @@
+{
+  "name": "mobius",
+  "version": "1.0.0",
+  "description": "A repository containing the front end for mobius",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",                     
+    "build": "vite build",           
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/josephvtranx/Mobius.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/josephvtranx/Mobius/issues"
+  },
+  "homepage": "https://github.com/josephvtranx/Mobius#readme",
+  "dependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.11"
+  }
+}
+
