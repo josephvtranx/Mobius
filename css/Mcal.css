@@ -9,40 +9,41 @@
     display: flex;
     align-items: flex-start;
     width: 100vw;
-    height: 7.8125vh;
+    height: 7.81vh;
     padding: 10px 20px;
     background-color: #fff;
     border-bottom: 1px solid #ddd;
     border: none;
   }
   
-  .header-div {
-    display: flex;
-    width: 18.4vw;
-    height: 5.86vh;
-    padding: 10px;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-  }
   
   .logo {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 10px;
-    width: 245px;
-    height: 60px;
-    padding: 10px;
+    width: 18.4%;
+    padding: 1vh;
+    gap: 1vh;
+    flex-shrink: 0; /* Prevent the container from shrinking */
+    align-self: stretch;
   }
-  
   .logo-img {
     width: 123px; /* Adjust width as needed */
     height: 44.9; /* Maintain aspect ratio */
 
   }
-  
-  .title {
+  .title-section{
+    display: flex;
+    width: 81.6vw; /* Dynamically calculate remaining space after the logo container */
+    justify-content: space-between; /* Ensure space is distributed between child elements */
+    align-items: center; /* Vertically align items in the center */
+    flex-shrink: 1; /* Allow shrinking if needed to fit smaller viewports */
+    align-self: stretch;
+  }
+
+  .title{
+    padding: 1% 0 1% 4.6%;
     color: var(--mobius-secondary, #FFAB45);
     font-family: Inter;
     font-size: 24px;
@@ -56,13 +57,12 @@
      /* Adds spacing from the edge */
     display: flex;
     justify-content: flex-end; /* Align content inside the search bar */
-    width: 250px;
-    height: 35px;
+    width: 23.3%;
+    height: 58%;
   }
   
   .search-bar input {
-    width: 100%;
-    max-width: 300px; /* Adjust size of search bar */
+    width: 100%; 
     padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 20px;
@@ -97,3 +97,4 @@
     font-size: 18px;
     color: #333;
   }
+  
