@@ -9,7 +9,7 @@
     display: flex;
     align-items: flex-start;
     width: 100vw;
-    height: 7.81vh;
+    height: 8vh;
     padding: 10px 20px;
     background-color: #fff;
     border-bottom: 1px solid #ddd;
@@ -99,19 +99,119 @@
     font-size: 18px;
     color: #333;
   }
-  /* Side nav bar */
 
+  /* Side nav bar */
   .side-nav-container {
   width: 17.36vw;
-  height: 91.41vh; /* Full width of the container */
+  height: 78vh; /* Full width of the container */
   background-color: #444;
   display: flex;
-  flex-direction: column;
-  padding: 2%;
+  flex-direction: row;
   box-sizing: border-box;
 }
 .navbar {
   width: 24%;
   height: 74.79%;
-  background-color: #f0f0f0;
+  background-color: #FFC06E;
+  border-radius: 0 13px 13px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 1rem;
+  gap: 1.2rem;
+}
+
+/* Apply the same style to all buttons */
+/* Base styles for all buttons */
+.toggle-btn {
+  width: 66%;
+  height: 9.5%;
+  background-color: #ffe0b7;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.5em;
+  padding: 1px;
+}
+
+.nav-btn {
+  border-radius: 40%;
+  width: 2.6vw;;
+  height: 5vh;
+  font-size: 1.3vh;
+  background-color: #ffe0b7;
+  border: none;
+}
+.nav-btn.active {
+  border: 2px solid white;
+}
+
+
+
+/* Container that holds the buttons (STACKS THEM VERTICALLY) */
+.button-box {
+  width: 2.6vw; /* Adjust width to fit buttons */
+  height: 9.5vh; /* Ensures the button-box scales with viewport */
+  margin-top: 10px;
+  position: relative;
+  border-radius: 30px;
+  background-color: #ffe0b7;
+  display: flex;
+  flex-direction: column; /* Stack buttons vertically */
+  align-items: center;
+  justify-content: space-between; /* Distribute buttons evenly */
+  padding: 5px;
+}
+
+.toggle-btn {
+  width: 100%; /* Make buttons fit inside .button-box */
+  height: 45%; /* Adjust button height dynamically */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3em;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative; /* Ensures it stays above */
+  z-index: 2; /* Higher than #btn */
+}
+
+/* Remove manual margins */
+.toggle-btn:first-of-type {
+  margin: 0;
+}
+
+
+/* Moving Slider (Highlight Active Button) */
+#btn {
+ /* Adjust for centering */
+  top: 5%;
+  position: absolute;
+  width: 83%; /* Match button size */
+  height: 40%;
+  background: white;
+  border-radius: 30px;
+  transition: transform 0.2s ease-in-out; /* Smooth movement */
+}
+
+
+/* Moves slider down when the second toggle is active */
+.button-box.active #btn {
+  transform: translateY(10px); /* Moves down to next button */
+}
+
+.operations {
+  padding: 10px 15px;;
+  width: 75%;
+  height: 74.79%; 
+  background-color: aquamarine;
+}
+
+.profile-card {
+  width: 17.36vw;
+  height: 14vh;
+  background-color:beige;
 }

@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="css/Mcal.css">
     <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
+    
   </head>
   <body>
     <header class="header">
@@ -47,14 +48,31 @@
         </div>
     </header>
 
-    <!--Side nave bar here -->
+    <!--Side navbar here -->
     <nav class="side-nav-container">
       <div class="navbar">
+        <!-- Independent Navigation Button -->
+        <button class="nav-btn" id="btn-compass"><i class="fa-regular fa-compass"></i></button>
+        <!-- Toggle Navigation Buttons (2 & 3) -->
+        <div class="button-box">
+          <div id="btn"></div>
+          <button type="button" class="toggle-btn" onclick="moveToTop()"><i class="fa-solid fa-graduation-cap"></i></button>
+          <button type="button" class="toggle-btn" onclick="moveToBottom()"><i class="fa-solid fa-wrench"></i></button>
+        </div>
+      </div>
+        
+    </div>
+      <div class="operations">
       </div>
     </nav>
+    <!--profle card-->
+    <div class="profile-card">
+    </div>
     
 
     </div>
+
+    <script src="script.js"></script>
   </body>
 
 </html>
