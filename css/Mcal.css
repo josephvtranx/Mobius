@@ -46,7 +46,7 @@
     padding: 1% 0 1% 4.6%;
     color: var(--mobius-secondary, #FFAB45);
     font-family: Inter;
-    font-size: 24px;
+    font-size: 1.5rem;
     font-style: normal;
     font-weight: 700;
     line-height: 140%;
@@ -202,13 +202,90 @@
 .button-box.active #btn {
   transform: translateY(10px); /* Moves down to next button */
 }
-
+/* Operations */
 .operations {
+    width: 250px;
+    background: white;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: orange;
+    margin-bottom: 20px;
+}
+
+.nav-item {
+    margin-bottom: 10px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+.nav-link:hover {
+    background: #f0f0f0;
+}
+
+.nav-link span {
+    margin-right: 10px;
+}
+
+.submenu {
+    margin-left: 20px;
+    display: none;
+}
+
+.submenu-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.submenu-item {
+    font-size: 14px;
+    color: #555;
+    padding: 5px 0;
+    cursor: pointer;
+}
+
+.submenu-item:hover {
+    text-decoration: underline;
+}
+/* Operations */
+.navbar-extended {
   padding: 10px 15px;;
   width: 75%;
   height: 74.79%; 
+  display: flex;
+  flex-direction: column;
   background-color: aquamarine;
 }
+ .menu-head {
+  display: flex;
+  gap: 20px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  font-size: 0.875rem;
+}
+.menu-title {
+  font-size: 0.875rem;
+  color: #FFAB45;
+}
+
+
+
+
+
 
 .profile-card {
   width: 17.36vw;

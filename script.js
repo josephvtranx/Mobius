@@ -26,5 +26,10 @@ function moveToTop() {
 function moveToBottom() {
     btn.style.transform = 'translateY(125%)'; // Moves slider to second button
 }
+function toggleRoster() {
+  let submenu = document.getElementById("roster-menu");
+  submenu.style.display = submenu.style.display === "block" ? "none" : "block";
+}
+
 
   
