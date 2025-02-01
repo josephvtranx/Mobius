@@ -428,7 +428,188 @@ body {
 /* Main */
 .main {
   margin-left: 280px; /* Sidebar width */
-  padding: 2rem;
+  padding: 1rem;
   min-height: 100vh;  /* Full viewport height minus header */
   background-color: #EAEAEA; /* Light background */
+}
+.main-sidebar {
+  width: 240px;
+  background: #FFFFFF;
+  border-right: 1px solid #EAECF0;
+  padding: 1.5rem 0rem;
+  height: calc(100vh - 90px); /* Full height minus header */
+  overflow-y: auto;
+  position: sticky;
+  top: 90px; /* Match header height */
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  
+}
+.events-section {
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  margin-bottom: 2rem; /* Fixed space after events */
+  height:130px;
+}
+.events-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #FFFFFF;
+  border: 1px solid #EAECF0;
+  transition: all 0.2s ease;
+  margin-bottom: 0.75rem;
+}
+
+.event-item:last-child {
+  margin-bottom: 0;
+}
+
+.event-item:hover {
+  border-color: #D1D5DB;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+/* Blocks Section */
+.blocks-section {
+  margin-bottom: 2rem; /* Space before buttons */
+  align-items: flex-end;
+}
+
+.pending-blocks {
+  background: #F9FAFB;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid #EAECF0;
+}
+
+.pending-title {
+  font-size: 0.9rem;
+  color: #374151;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: #FFFFFF;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #EAECF0;
+  transition: all 0.2s ease;
+}
+
+.pending-item:last-child {
+  margin-bottom: 0;
+}
+
+.pending-item:hover {
+  border-color: #D1D5DB;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.pending-item span {
+  font-size: 0.85rem;
+  color: #4B5563;
+}
+
+/* Optional: Add status indicator */
+.pending-item::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #F59E0B; /* Orange for pending */
+  margin-right: 0.75rem;
+}
+/* Action Buttons Container */
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #EAECF0;
+  align-items: flex-end;
+}
+
+/* Individual Buttons */
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #FFFFFF;
+  color: #1F2937;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #EAECF0;
+}
+
+.action-button:hover {
+  background: #F9FAFB;
+  border-color: #D1D5DB;
+  transform: translateY(-1px);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+/* Button Icons */
+.action-button i {
+  font-size: 1rem;
+  color: #6B7280;
+  width: 20px; /* Fixed width for alignment */
+  text-align: center;
+}
+
+/* Specific Button Styles */
+.action-button.reschedule {
+  color: #3B82F6; /* Blue */
+  border-color: #BFDBFE;
+}
+
+.action-button.reschedule:hover {
+  background: #EFF6FF;
+}
+
+.action-button.add-event {
+  color: #10B981; /* Green */
+  border-color: #A7F3D0;
+}
+
+.action-button.add-event:hover {
+  background: #ECFDF5;
+}
+
+.action-button.import-export {
+  color: #F59E0B; /* Orange */
+  border-color: #FDE68A;
+}
+
+.action-button.import-export:hover {
+  background: #FFFBEB;
 }
