@@ -515,7 +515,7 @@ h4 {
   text-align: center;
 }
 .pending-item-container {
-  border: 0.5px solid #A3A3A3;
+  border: px solid #A3A3A3;
   border-radius: 6px;
   height: 200px;
 
@@ -633,4 +633,107 @@ h4 {
 
 .action-button.import-export:hover {
   background: #FFFBEB;
+}
+/* Main home*/
+
+.dashboard-main {
+  /* A white background, padding, etc. */
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 1000px;   /* Adjust based on your layout */
+  margin: 2rem;      /* Center horizontally */
+  align-self: center;
+}
+
+/* Header with title + search input side by side (or stacked on mobile) */
+.dashboard-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+/* Heading styling */
+.dashboard-header h1 {
+  font-size: 1.8rem;
+  margin: 0 0 1rem 0;  /* Some spacing */
+  flex: 1 1 auto;
+}
+
+/* Search bar styling */
+.search-bar {
+  flex: 0 1 300px;
+  text-align: right; /* or left, depending on preference */
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* --- Main Content Grid (Recently, Upcoming, Calendar) --- */
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2rem;
+}
+
+/* Section headings (e.g. "Recently Visited", "Upcoming") */
+.dashboard-content h2 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+/* Cards within each section */
+.card {
+  background: #f7f7f7;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card p {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.card small {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.timestamp {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #999;
+}
+
+/* --- Calendar Widget --- */
+.calendar-widget {
+  background: #f9f9f9;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.calendar-header {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-widget table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.calendar-widget th,
+.calendar-widget td {
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid #e0e0e0; /* subtle border for a basic grid */
 }
