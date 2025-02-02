@@ -432,6 +432,7 @@ body {
   min-height: 100vh;  /* Full viewport height minus header */
   background-color: #EAEAEA; /* Light background */
 }
+
 .main-sidebar {
   width: 240px;
   background: #FFFFFF;
@@ -444,14 +445,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  
 }
+
 .events-section {
   overflow-y: auto;
   padding-right: 0.5rem;
   margin-bottom: 2rem; /* Fixed space after events */
   height:130px;
 }
+
 .events-list {
   list-style: none;
   padding: 0;

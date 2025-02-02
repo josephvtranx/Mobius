@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="Mcal" content="Calander page for Mobius">
+    <title>Mcal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="css/index.css">
+    <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
+    
+  </head>
+  <body>
+      <!--Side navbar here -->
+      <nav class="side-nav-container">
+        <div class="navbar">
+            <!-- Independent Navigation Button compass-->
+            <a href="Home.html">
+              <button class="nav-btn" id="btn-compass"><i class="fa-regular fa-compass"></i></button>
+            </a>
+            <!-- Toggle Navigation Buttons (2 & 3) grad and wrench-->
+            <div class="button-box">
+              <div id="btn"></div>
+              <a href="InstructorHome.html">
+                <button type="button" class="toggle-btn" onclick="moveToTop()"><i class="fa-solid fa-graduation-cap"></i></button>
+              </a>
+              <a href="Mcal.html">
+                <button type="button" class="toggle-btn" onclick="moveToBottom()"><i class="fa-solid fa-wrench"></i></button>
+              </a>
+            </div>
+          </div>
+          
+      </div>
+      </nav>
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <div class="profile-header">
+            <!-- Profile Picture -->
+            <img src="\images\me.jpg" alt="Profile Picture" class="profile-pic">
+            
+            <!-- User Info -->
+            <div class="profile-info">
+                <h2 class="profile-name">Yvonne An</h2>
+                <p class="profile-role">Instructor @ Møbius Academy</p>
+            </div>
+            
+            <!-- Online Indicator -->
+            <div class="online-indicator"></div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="profile-buttons">
+            <button class="btn setting-btn">
+              <i class="fa-solid fa-gear"></i>
+              <span>Settings</span>
+            </button>
+            <button class="btn logout-btn">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+              <span>Logout</span>
+            </button>
+        </div>
+      </div>
+
+
+    <script src="script.js"></script>
+  </body>
+
+</html>
