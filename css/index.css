@@ -10,6 +10,12 @@ body {
   font-family: 'Inter', sans-serif; /* Single font definition */
   background-color: #F9FAFD;
 }
+.page-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Header Styles */
 .header {
