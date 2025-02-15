@@ -111,7 +111,7 @@ body {
 
   /* Side nav bar */
 .side-nav-container {
-  background-color: #F9FAFD;
+  background-color: transparent;
   position: fixed;
   top: 90px; /* Header height */
   left: 0;
@@ -480,7 +480,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-top: 70px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -785,15 +785,35 @@ h4 {
   background: #FFFBEB;
 }
 /* Main home*/
+main-dashboard {
+  margin: 0 180px 0 180px;
+  display: flex;
+  justify-content: center;  /* Centers content horizontally */
+  align-items: center;  /* Centers content vertically */
+  min-height: 75vh;  
+  min-width: 80vw;;
+  background-color: #fff;  /* Light background to distinguish the dashboard */
+  padding: 2rem;  /* Adds some spacing */
+  border-radius: 20px;
+}
 
+.dashboard-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;  /* Full viewport height */
+  padding: 2rem; /* Prevent edge clipping */
+}
+
+/* Dashboard Main Section */
 .dashboard-main {
-  /* A white background, padding, etc. */
   background-color: #fff;
   padding: 2rem;
   border-radius: 8px;
-  max-width: 1000px;   /* Adjust based on your layout */
-  margin: 2rem;      /* Center horizontally */
-  align-self: center;
+  max-width: 2000px;
+  width: 90%;
+  min-height: 60vh; /* Ensures enough height */
+  margin: auto; /* Center horizontally */
 }
 
 /* Header with title + search input side by side (or stacked on mobile) */
