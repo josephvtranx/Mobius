@@ -786,7 +786,7 @@ h4 {
 }
 /* Main home*/
 main-dashboard {
-  margin: 0 180px 0 180px;
+  margin: 0 180px 0 220px;
   display: flex;
   justify-content: center;  /* Centers content horizontally */
   align-items: center;  /* Centers content vertically */
