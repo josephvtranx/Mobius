@@ -786,15 +786,16 @@ h4 {
 }
 /* Main home*/
 main-dashboard {
-  margin: 0 180px 0 220px;
+  margin: 0 180px 50px 220px;
   display: flex;
   justify-content: center;  /* Centers content horizontally */
   align-items: center;  /* Centers content vertically */
-  min-height: 75vh;  
+  min-height: 50vh;  
   min-width: 80vw;;
   background-color: #fff;  /* Light background to distinguish the dashboard */
   padding: 2rem;  /* Adds some spacing */
   border-radius: 20px;
+  box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-container {
