@@ -480,19 +480,21 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 70px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  margin-top: 50px;
 }
 
 th, td {
   padding: 18px;
-  
   border-bottom: 1px solid #ddd;
   font-size: .8rem;
 }
+td.class-list {
+  text-align: left;
+}
 
 td {
-  text-align: left;
+  text-align: center;
+  
 }
 
 th {
