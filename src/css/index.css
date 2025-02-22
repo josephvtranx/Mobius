@@ -155,6 +155,8 @@ body {
   cursor: pointer;
   font-size: 6.5em;
   padding: 1px;
+  text-decoration: none;
+
 }
 
 .nav-btn {
@@ -168,6 +170,7 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   border-color: transparent;
+  text-decoration: none;
 }
 
 .nav-btn2 {
@@ -191,6 +194,10 @@ body {
 }
 .toggle-btn i {
   font-size: .7em;
+  
+}
+a {
+  text-decoration: none;
 }
 
 .nav-btn.active {
@@ -316,6 +323,8 @@ body {
   color: #000;
   background-color: #f6f6f6;
 }
+
+
 .menu ul li .fa-solid{
   font-size: 0.75rem;
 }
@@ -327,7 +336,6 @@ body {
   flex:1;
 }
 .menu .sub-menu{
-  display:none;
   margin-left: 15px;
   padding: 10px;
   padding-top: 5px;
