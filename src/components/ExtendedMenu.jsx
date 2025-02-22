@@ -1,5 +1,6 @@
- // src/components/ExtendedMenu.jsx
+// src/components/ExtendedMenu.jsx
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function ExtendedMenu() {
   // Define your menu structure.
@@ -49,9 +50,9 @@ function ExtendedMenu() {
 
   // Handle main menu item clicks.
   const handleMainClick = (index, hasSubmenu, e) => {
-    e.preventDefault(); // Prevent the default anchor navigation
-    // If clicking the same item that has a submenu, toggle its open state.
+    e.preventDefault(); // Prevent default anchor navigation
     if (activeMain === index && hasSubmenu) {
+      // Toggle submenu if clicking the same item
       setSubmenuOpen(!submenuOpen);
     } else {
       setActiveMain(index);
@@ -64,7 +65,6 @@ function ExtendedMenu() {
   const handleSubClick = (subIndex, e) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent the main item handler from firing
-    console.log("Submenu item clicked:", subIndex);
     setActiveSub(subIndex);
   };
 
@@ -82,22 +82,36 @@ function ExtendedMenu() {
                 <i className={item.icon}></i>
                 <span className="text">{item.label}</span>
               </a>
-              {item.submenu && activeMain === index && submenuOpen && (
-                <ul className="sub-menu">
-                  {item.submenu.map((subItem, subIndex) => (
-                    <li
-                      key={subIndex}
-                      className={activeSub === subIndex ? 'active' : ''}
+              {item.submenu && (
+                <AnimatePresence>
+                  {activeMain === index && submenuOpen && (
+                    <motion.div
+                      className="sub-menu-wrapper"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
                     >
-                      <a
-                        href={subItem.link}
-                        onClick={(e) => handleSubClick(subIndex, e)}
-                      >
-                        <span className="text">{subItem.label}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+                      <div className="submenu-content">
+                        <ul>
+                          {item.submenu.map((subItem, subIndex) => (
+                            <li
+                              key={subIndex}
+                              className={activeSub === subIndex ? 'active' : ''}
+                            >
+                              <a
+                                href={subItem.link}
+                                onClick={(e) => handleSubClick(subIndex, e)}
+                              >
+                                <span className="text">{subItem.label}</span>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               )}
             </li>
           ))}
@@ -108,4 +122,3 @@ function ExtendedMenu() {
 }
 
 export default ExtendedMenu;
-

@@ -307,7 +307,7 @@ a {
   display: flex;
   align-items: center;
   gap:7px;
-  font-size: 0.850rem;
+  font-size: 0.750rem;
   font-weight: 500;
   color:#757575;
   text-decoration: none;
@@ -337,19 +337,28 @@ a {
 }
 .menu .sub-menu{
   margin-left: 15px;
-  padding: 10px;
-  padding-top: 5px;
-  border-left: 2px solid #D5D5D5; 
+  border-left: 2px solid #D5D5D5;
+}
+.menu .sub-menu-wrapper {
+  margin-left: 15px;
+  position: relative; /* necessary for the pseudo-element positioning */
+}
+.menu .submenu-content {
+  padding: 15px;
+  padding-top: 10px;
+}
 
-}
-.menu .sub-menu li a{
-  padding: 0.40rem .5rem;
-  font-size: 0.750rem;
-  
-}
 .sub-menu li a {
   padding: 0.75rem 1rem; /* Increased from 0.5rem 0.75rem */
   margin-left: 0.5rem; /* Added indentation */
+}
+.menu .sub-menu-wrapper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;  /* adjust this value to lower the start of the line */
+  bottom: 0;
+  border-left: 2px solid #D5D5D5;
 }
 /* Profile Card */
 .profile-card {
