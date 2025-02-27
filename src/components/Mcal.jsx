@@ -1,75 +1,80 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import { v4 as uuidv4 } from 'uuid';
-import moment from 'moment';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
-import EventBox from './EventBox';
+import React from "react";
+import { Square, Calendar, Download, Plus } from "../icons";
 
-const initialEvents = [
-];
-
-const localizer = momentLocalizer(moment);
 
 function Mcal() {
-  const [events, setEvents] = useState(initialEvents);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      // console.log('Key pressed:', event.key);
-      if (event.key === 'Backspace' && selectedEvent) {
-        deleteEvent();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [selectedEvent]);
-
-  const addEvent = (event) => {
-    const newEvent = {
-      id: uuidv4(),
-      title: event.title,
-      start: new Date(),
-      end: new Date(),
-    };
-    setEvents([...events, newEvent]);
-  };
-
-  const handleDrop = (event) => {
-    const eventData = JSON.parse(event.dataTransfer.getData('eventData'));
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    endDate.setHours(startDate.getHours() + 1);
-    const newEvent = {
-      id: uuidv4(),
-      title: eventData.title,
-      start: startDate,
-      end: endDate,
-    };
-    setEvents([...events, newEvent]);
-  };
-
-  const deleteEvent = () => {
-    if (selectedEvent) {
-      setEvents(events.filter(e => e.id !== selectedEvent.id));
-      setSelectedEvent(null);
-    }
-  };
-
   return (
-    <div className="calendar-page">
-      <EventBox addEvent={addEvent} />
-      <div className="calendar-widget" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          onSelectEvent={event => setSelectedEvent(event)}
-        />
+    <div className="sidebar">
+      <div className="frame">
+        <div className="section">
+          <div className="sidebar-tab">
+            <div className="text-wrapper">Events</div>
+          </div>
+          <div className="lecture">
+            <Square color="#007878" />
+            <div className="div-wrapper">
+              <div className="div">SAT Math: Min</div>
+            </div>
+          </div>
+          <div className="lecture-2">
+            <Square color="#4693F0" />
+            <div className="div-wrapper">
+              <div className="text-wrapper-2">SAT Math: YJ</div>
+            </div>
+          </div>
+          <div className="lecture-3">
+            <Square color="#D57309" />
+            <div className="div-wrapper">
+              <div className="text-wrapper-3">Consultation</div>
+            </div>
+          </div>
+          <div className="lecture-4">
+            <Square color="#323232" />
+            <div className="div-wrapper">
+              <div className="text-wrapper-4">Meetings</div>
+            </div>
+          </div>
+          <div className="lecture-5">
+            <Square color="#961013" />
+            <div className="div-wrapper">
+              <div className="text-wrapper-5">Exams</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="frame-2">
+        <div className="reschedule">
+          <div className="text-wrapper-6">Pending Blocks</div>
+        </div>
+        <div className="frame-wrapper">
+          <div className="frame-3">
+            <div className="station">
+              <div className="peding-block">
+                <div className="text-wrapper-7">No Pending Events</div>
+              </div>
+              <div className="reschedule-2">
+                <Calendar className="icon-instance-node" />
+                <div className="text-wrapper-8">Reschedule</div>
+              </div>
+            </div>
+            <div className="frame-4">
+              <div className="buttons-wrapper">
+                <div className="buttons">
+                  <div className="frame-5">
+                    <div className="frame-6">
+                      <Plus className="icon-instance-node" />
+                      <div className="text-wrapper-9">Add Event</div>
+                    </div>
+                    <div className="frame-6">
+                      <Download className="icon-instance-node" />
+                      <div className="text-wrapper-9">Import/Export</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
