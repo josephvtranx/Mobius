@@ -511,16 +511,17 @@ th {
   padding: 6px 10px;
   border-radius: 15px;
   font-weight: bold;
-  color: white;
   font-size: 9px;
 }
 
-.status.active {
-  background-color: #28a745; /* Green */
+.status.enrolled {
+  background-color: #DFF9EB; /* Green */
+  color: #2E7255; /* Dark Green */
 }
 
-.status.inactive {
-  background-color: #dc3545; /* Red */
+.status.ontrial {
+  background-color: #FFEFD5; /* Yellow */
+  color: #977C00; /* Dark Green */
 }
 
 /* Class Pills */
@@ -953,3 +954,33 @@ main-dashboard {
   padding: 0.5rem;
   border: 1px solid #e0e0e0; /* subtle border for a basic grid */
 }
+
+/* --- Department Pill --- */
+.department {
+  padding: 8px 13px;
+  border-radius: 25px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.department.operations {
+  background-color: #C5F0ED; /* Teal */
+  color: #0E8C83;
+}
+
+.department.consulting {
+  background-color: #FFE8A3; /* Yellow */
+  color: #946F00;
+}
+
+.department.ta {
+  background-color: #B3E3FF; /* Light blue */
+  color: #005F96;
+}
+
+.department.finance {
+  background-color: #DDC5FC; /* Purple */
+  color: #6224B2;
+}
+
+

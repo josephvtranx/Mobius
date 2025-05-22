@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="Mcal" content="Calander page for Mobius">
-    <title>Student Roster</title>
+    <title>Staff Roster</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="css/index.css">
     <link href='https://fonts.googleapis.com/css?family=Inter' rel='stylesheet'>
@@ -19,7 +19,7 @@
         <!-- Title Section-->
         <div class="title-section">
 
-          <h1 class="title">Student Roster</h1>
+          <h1 class="title">Staff Roster</h1>
           
           <!-- Search Bar -->
           <div class="search-bar">
@@ -177,374 +177,317 @@
     </div>
     <!-- Main Content -->
     <div class="main">
-      <div class="main-student-roster">
-        <h2>Student Roster</h2>
+      <div class="main-staff-roster">
+        <h2>Staff Roster</h2>
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Student Contact</th>
-              <th>Parent Contact</th>
-              <th>Instructor</th>
+              <th>Staff Name</th>
+              <th>Staff Contact</th>
+              <th>Department</th>
               <th>Status</th>
-              <th>Enrolled Classes</th>
+              <th>Rate</th>
+              <th>Total Hours</th>
+              <th>Salary</th>
               <th>Schedule</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>John Doe</td>
-              <td>john.doe@example.com</td>
-              <td>parent.doe@example.com</td>
-              <td>Ms. Smith</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M02</span>
-                <span class="class-pill">R10</span>
-              </td>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
               <td>
                 <div class="schedule">
-                  <span class="day filled">S</span>
+                  <span class="day">S</span>
                   <span class="day filled">M</span>
                   <span class="day filled">T</span>
                   <span class="day filled">W</span>
-                  <span class="day filled">T</span>
+                  <span class="day">T</span>
                   <span class="day filled">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Jane Smith</td>
-              <td>jane.smith@example.com</td>
-              <td>parent.smith@example.com</td>
-              <td>Mr. Johnson</td>
-              <td><span class="status ontrial">On Trial</span></td>
-              <td class="class-list">
-                <span class="class-pill">W05</span>
-                <span class="class-pill">R11</span>
-                <span class="class-pill">T07</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Michael Brown</td>
-              <td>michael.brown@example.com</td>
-              <td>parent.brown@example.com</td>
-              <td>Mrs. Lee</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M01</span>
-                <span class="class-pill">T08</span>
-                <span class="class-pill">R15</span>
-                <span class="class-pill">W09</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>John Doe</td>
-              <td>john.doe@example.com</td>
-              <td>parent.doe@example.com</td>
-              <td>Ms. Smith</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M02</span>
-                <span class="class-pill">R10</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day filled">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Jane Smith</td>
-              <td>jane.smith@example.com</td>
-              <td>parent.smith@example.com</td>
-              <td>Mr. Johnson</td>
-              <td><span class="status ontrial">On Trial</span></td>
-              <td class="class-list">
-                <span class="class-pill">W05</span>
-                <span class="class-pill">R11</span>
-                <span class="class-pill">T07</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Michael Brown</td>
-              <td>michael.brown@example.com</td>
-              <td>parent.brown@example.com</td>
-              <td>Mrs. Lee</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M01</span>
-                <span class="class-pill">T08</span>
-                <span class="class-pill">R15</span>
-                <span class="class-pill">W09</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>John Doe</td>
-              <td>john.doe@example.com</td>
-              <td>parent.doe@example.com</td>
-              <td>Ms. Smith</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M02</span>
-                <span class="class-pill">R10</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day filled">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>John Doe</td>
-              <td>john.doe@example.com</td>
-              <td>parent.doe@example.com</td>
-              <td>Ms. Smith</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M02</span>
-                <span class="class-pill">R10</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day filled">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Jane Smith</td>
-              <td>jane.smith@example.com</td>
-              <td>parent.smith@example.com</td>
-              <td>Mr. Johnson</td>
-              <td><span class="status ontrial">On Trial</span></td>
-              <td class="class-list">
-                <span class="class-pill">W05</span>
-                <span class="class-pill">R11</span>
-                <span class="class-pill">T07</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Jane Smith</td>
-              <td>jane.smith@example.com</td>
-              <td>parent.smith@example.com</td>
-              <td>Mr. Johnson</td>
-              <td><span class="status ontrial">On Trial</span></td>
-              <td class="class-list">
-                <span class="class-pill">W05</span>
-                <span class="class-pill">R11</span>
-                <span class="class-pill">T07</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>John Doe</td>
-              <td>john.doe@example.com</td>
-              <td>parent.doe@example.com</td>
-              <td>Ms. Smith</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M02</span>
-                <span class="class-pill">R10</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day filled">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Jane Smith</td>
-              <td>jane.smith@example.com</td>
-              <td>parent.smith@example.com</td>
-              <td>Mr. Johnson</td>
-              <td><span class="status ontrial">On Trial</span></td>
-              <td class="class-list">
-                <span class="class-pill">W05</span>
-                <span class="class-pill">R11</span>
-                <span class="class-pill">T07</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Michael Brown</td>
-              <td>michael.brown@example.com</td>
-              <td>parent.brown@example.com</td>
-              <td>Mrs. Lee</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M01</span>
-                <span class="class-pill">T08</span>
-                <span class="class-pill">R15</span>
-                <span class="class-pill">W09</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td>John Doe</td>
-              <td>john.doe@example.com</td>
-              <td>parent.doe@example.com</td>
-              <td>Ms. Smith</td>
-              <td><span class="status enrolled">Enrolled</span></td>
-              <td class="class-list">
-                <span class="class-pill">M02</span>
-                <span class="class-pill">R10</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day filled">S</span>
-                  <span class="day filled">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day filled">F</span>
-                  <span class="day">S</span>
-                </div>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>Jane Smith</td>
-              <td>jane.smith@example.com</td>
-              <td>parent.smith@example.com</td>
-              <td>Mr. Johnson</td>
-              <td><span class="status ontrial">On Trial</span></td>
-              <td class="class-list">
-                <span class="class-pill">W05</span>
-                <span class="class-pill">R11</span>
-                <span class="class-pill">T07</span>
-              </td>
-              <td>
-                <div class="schedule">
-                  <span class="day">S</span>
-                  <span class="day">M</span>
-                  <span class="day filled">T</span>
-                  <span class="day">W</span>
-                  <span class="day filled">T</span>
-                  <span class="day">F</span>
                   <span class="day">S</span>
                 </div>
               </td>
             </tr>
 
-          </tbody>
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Chris P. Bacon</td>
+              <td>(555) 123-4567</td>
+              <td><span class="department operations">Operations</span></td>
+              <td>Full-time</td>
+              <td>/</td>
+              <td>381</td>
+              <td>$5651/mo</td>
+              <td>
+                <div class="schedule">
+                  <span class="day">S</span>
+                  <span class="day filled">M</span>
+                  <span class="day filled">T</span>
+                  <span class="day filled">W</span>
+                  <span class="day">T</span>
+                  <span class="day filled">F</span>
+                  <span class="day">S</span>
+                </div>
+              </td>
+            </tr>
+
+            
         </table>
       </div>
     </div>
