@@ -1022,20 +1022,6 @@ h4 {
   color: #6224B2;
 }
 
-/* === Financial dashboard === */
-.main-financial-dashboard {
-  padding: 40px;
-  margin-top: 80px;     /* ⬅️ This pushes everything down */
-  margin-bottom: 40px;
-  max-width: 1074px;
-  width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  box-sizing: border-box;
-  background-color: #fff;
-  border-radius: 25px;
-}
-
 /* === DASHBOARD GRID STRUCTURE === */
 .financial-dashboard-grid {
   margin-top: 80px; 
