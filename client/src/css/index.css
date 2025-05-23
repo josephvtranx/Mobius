@@ -522,6 +522,11 @@ body {
     padding: 20px;
 }
 
+/* staff roster */
+.main-staff-roster {
+    padding: 20px;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -1515,4 +1520,65 @@ h4 {
 .department.finance {
   background-color: #DDC5FC; /* Purple */
   color: #6224B2;
+}
+
+/* === Financial dashboard === */
+.main-financial-dashboard {
+  padding: 40px;
+  max-width: 90%;
+  width: 100%;
+  margin: 80px auto 19px auto;
+  box-sizing: border-box;
+  background-color: #F9FAFD;
+  border-radius: 25px;
+}
+
+/* === Total Revenue Widget === */
+.dashboard-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+}
+
+.revenue-card {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  flex: 1 1 250px; /* 👈 This makes it grow/shrink but not go below 250px */
+  min-width: 250px;
+  max-width: 300px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #777;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.year-label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.revenue-amount {
+  font-size: 32px;
+  font-weight: bold;
+  margin-top: 10px;
+  color: #121212;
+}
+
+.growth {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #4CAF50;
+  font-weight: 600;
+}
+
+.growth-rate {
+  margin-right: 4px;
 }
