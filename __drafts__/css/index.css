@@ -993,3 +993,127 @@ h4 {
     padding: 1rem;
   }
 }
+
+/* --- Department Pill --- */
+.department {
+  padding: 8px 13px;
+  border-radius: 25px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.department.operations {
+  background-color: #C5F0ED; /* Teal */
+  color: #0E8C83;
+}
+
+.department.consulting {
+  background-color: #FFE8A3; /* Yellow */
+  color: #946F00;
+}
+
+.department.ta {
+  background-color: #B3E3FF; /* Light blue */
+  color: #005F96;
+}
+
+.department.finance {
+  background-color: #DDC5FC; /* Purple */
+  color: #6224B2;
+}
+
+/* === DASHBOARD GRID STRUCTURE === */
+.financial-dashboard-grid {
+  margin-top: 80px; 
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-areas:
+    "rev sessions students"
+    "sales sales pie"
+    "transactions transactions revenue";
+}
+
+/* Assign specific areas by order */
+.widget:nth-child(1) { grid-area: rev; }
+.widget:nth-child(2) { grid-area: sessions; }
+.widget:nth-child(3) { grid-area: students; }
+.widget:nth-child(4) { grid-area: sales; }
+.widget:nth-child(5) { grid-area: pie; }
+.widget:nth-child(6) { grid-area: transactions; }
+.widget:nth-child(7) { grid-area: revenue; }
+
+/* === COMMON WIDGET STYLING === */
+.widget {
+  background-color: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* === CARD BLOCKS === */
+.widget-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 120px;
+}
+
+/* === WIDE BLOCKS (CHARTS, TABLES) === */
+.widget-wide {
+  min-height: 280px;
+}
+
+/* === TALL BLOCKS (Charts, Lists) === */
+.widget-tall {
+  min-height: 280px;
+}
+
+/* === TEXT & INFO ELEMENTS === */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #777;
+}
+
+.year-label {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.revenue-amount {
+  font-size: 32px;
+  font-weight: bold;
+  color: #121212;
+  margin-top: 8px;
+}
+
+.growth {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4CAF50;
+  margin-top: 6px;
+}
+
+.growth-rate {
+  margin-right: 4px;
+}
+
+/* === TABLE RESET === */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table th,
+table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
