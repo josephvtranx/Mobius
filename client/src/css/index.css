@@ -141,7 +141,6 @@ body {
   }
   .navbar {
     width: 70px;
-    background: #FFC06E;
     padding: 1.5rem 0;
     display: flex;
     flex-direction: column;
@@ -149,17 +148,13 @@ body {
     gap: 1.5rem;
     border-radius: 0 12px 12px 0;
   }
-  .navbar2{
-    width: 70px;
-    background: #229191;
-    padding: 1.5rem 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5rem;
-    border-radius: 0 12px 12px 0;
+  .navbar--orange {
+    background: #FFC06E;
   }
   
+  .navbar--teal {
+    background: #229191;
+  }
   /* Apply the same style to all buttons */
   /* Base styles for all buttons */
   .toggle-btn {
@@ -179,7 +174,6 @@ body {
     width: 50px;
     height: 50px;
     border-radius: 12px;
-    background: #ffe0b7;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -188,17 +182,11 @@ body {
     border-color: transparent;
   }
   
-  .nav-btn2 {
-    width: 50px;
-    height: 50px;
-    border-radius: 12px;
+  .nav-btn--lightteal {
     background: #C5F0ED;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border-color: transparent;
+  }
+  .nav-btn--lightorange {
+    background: #ffe0b7;
   }
   
   .nav-btn i{
@@ -222,17 +210,14 @@ body {
     position: relative;
     width: 50px;
     height: 120px;
-    background: #ffe0b7;
     border-radius: 25px;
     padding: 4px;
   }
-  .button-box2 {
-    position: relative;
-    width: 50px;
-    height: 120px;
+  .button-box--lightteal {
     background: #64B2B2;
-    border-radius: 25px;
-    padding: 4px;
+  }
+  .button-box--lightorange {
+    background: #ffe0b7;
   }
   
   .toggle-btn {
@@ -506,13 +491,12 @@ body {
 /* Main */
 
 .main {
-    margin-left: 280px;
-    /* Sidebar width */
-    padding: 1rem;
-    min-height: 100vh;
-    /* Full viewport height minus header */
-    background-color: #EAEAEA;
-    /* Light background */
+  margin-left: 280px; /* for side nav */
+  padding: 1rem;
+  padding-top: 90px; /* ⬅️ add this! (70px header + 20px breathing room) */
+  min-height: 100vh;
+  background-color: #EAEAEA;
+  overflow: auto; /* or hidden if you’re using .main--instructor-home */
 }
 
 
@@ -1581,4 +1565,123 @@ h4 {
 
 .growth-rate {
   margin-right: 4px;
+}
+
+/* === TABLE RESET === */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table th,
+table td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+
+/* instrutor home */
+.main--instructor-home {
+  overflow: hidden;
+  height: 100%; /* Optional: ensures it doesn’t try to scroll if it overflows */
+}
+.dashboard-grid, .calendar-section, .payment-summary, .notifications {
+  overflow: hidden;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr;
+  grid-template-rows: auto auto;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.calendar-section, .payment-summary {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.section-title {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.payment-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hours {
+  font-size: 2rem;
+  color: #3d5a80;
+}
+
+.subtext {
+  color: #999;
+}
+
+.payment-chart img {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.notifications {
+  grid-column: 1 / span 2;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-all {
+  font-size: 0.9rem;
+  color: #3d5a80;
+  text-decoration: none;
+}
+
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+}
+
+.notification-list li {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.notif-icon {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  color: #3d5a80;
+}
+
+.notif-content h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.notif-content p {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.notif-date {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #aaa;
+  white-space: nowrap;
 }
