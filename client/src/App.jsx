@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import SideNav from './components/SideNav';
 import Home from './pages/Home';
 
 // Academic pages
@@ -23,31 +24,47 @@ import CostBreakdown from './pages/operations/Financial-Dashboard/Cost-Breakdown
 
 import './css/index.css';
 
+// Navigation wrapper component
+function NavigationWrapper() {
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+
+  return (
+    <nav className="side-nav-container">
+      {isHome ? <Navbar variant="teal" /> : <SideNav />}
+    </nav>
+  );
+}
+
 function App() {
   return (
     <Router>
       <div className="app">
+        {/* Navigation */}
+        <NavigationWrapper />
+
+        {/* Main content routes */}
         <Routes>
           {/* Home route */}
-          <Route path="/" element={<><Navbar variant="teal" /><Home /></>} />
+          <Route path="/" element={<Home />} />
           
           {/* Academic routes */}
-          <Route path="/instructor-home" element={<><Navbar variant="teal" /><InstructorHome /></>} />
-          <Route path="/academics/assignments" element={<><Navbar variant="teal" /><Assignments /></>} />
-          <Route path="/academics/red-pen-review" element={<><Navbar variant="teal" /><RedPenReview /></>} />
-          <Route path="/academics/testing" element={<><Navbar variant="teal" /><Testing /></>} />
-          <Route path="/academics/performance" element={<><Navbar variant="teal" /><Performance /></>} />
+          <Route path="/instructor-home" element={<InstructorHome />} />
+          <Route path="/academics/assignments" element={<Assignments />} />
+          <Route path="/academics/red-pen-review" element={<RedPenReview />} />
+          <Route path="/academics/testing" element={<Testing />} />
+          <Route path="/academics/performance" element={<Performance />} />
           
           {/* Operations routes */}
-          <Route path="/operations/scheduling" element={<><Navbar variant="orange" /><Scheduling /></>} />
-          <Route path="/operations/roster/students" element={<><Navbar variant="orange" /><StudentRoster /></>} />
-          <Route path="/operations/roster/instructors" element={<><Navbar variant="orange" /><InstructorRoster /></>} />
-          <Route path="/operations/roster/staff" element={<><Navbar variant="orange" /><StaffRoster /></>} />
+          <Route path="/operations/scheduling" element={<Scheduling />} />
+          <Route path="/operations/roster/students" element={<StudentRoster />} />
+          <Route path="/operations/roster/instructors" element={<InstructorRoster />} />
+          <Route path="/operations/roster/staff" element={<StaffRoster />} />
           
           {/* Financial Dashboard routes */}
-          <Route path="/operations/finance/overview" element={<><Navbar variant="orange" /><Overview /></>} />
-          <Route path="/operations/finance/income" element={<><Navbar variant="orange" /><IncomeBreakdown /></>} />
-          <Route path="/operations/finance/costs" element={<><Navbar variant="orange" /><CostBreakdown /></>} />
+          <Route path="/operations/finance/overview" element={<Overview />} />
+          <Route path="/operations/finance/income" element={<IncomeBreakdown />} />
+          <Route path="/operations/finance/costs" element={<CostBreakdown />} />
         </Routes>
       </div>
     </Router>

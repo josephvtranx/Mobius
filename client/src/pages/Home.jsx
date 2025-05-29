@@ -1,14 +1,10 @@
 import React from 'react';
-import Navbar from '../components/Navbar';
 import ProfileCard from '../components/ProfileCard';
 import CalendarWidget from '../components/CalendarWidget'; 
 
 function Home() {
   return (
     <div className="page-container">
-      {/* Sidebar Nav */}
-      <Navbar />
-
       {/* Profile card (bottom-left) */}
       <ProfileCard />
 

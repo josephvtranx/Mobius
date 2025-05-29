@@ -1,44 +1,91 @@
 // src/components/ExtendedMenu.jsx
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function ExtendedMenu() {
+function ExtendedMenu({ variant = 'operations' }) {
+  console.log('ExtendedMenu rendering with variant:', variant); // Debug log
+
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isVisible, setIsVisible] = useState(true);
   
-  // Define your menu structure with proper routes
-  const menuItems = [
+  // Check if we should show the menu based on the current route
+  useEffect(() => {
+    const path = location.pathname;
+    console.log('Current path:', path); // Debug log
+    if (path === '/') {
+      setIsVisible(false);
+    } else if (path.startsWith('/instructor-home') || path.startsWith('/academics')) {
+      setIsVisible(true);
+    } else if (path.startsWith('/operations')) {
+      setIsVisible(true);
+    }
+  }, [location.pathname]);
+
+  // If we're on the home page, don't render the menu
+  if (!isVisible) {
+    console.log('Menu is not visible'); // Debug log
+    return null;
+  }
+
+  // Define menu structures for both variants
+  const menuStructures = {
+    operations: [
     {
-      label: 'Scheduling',
+        label: 'Scheduling',
       icon: 'fa-regular fa-calendar',
-      path: '/operations/scheduling',
+        path: '/operations/scheduling',
       submenu: null,
     },
     {
       label: 'Roster',
       icon: 'fa-solid fa-user-group',
-      path: '/operations/roster',
+        path: '/operations/roster',
       submenu: [
-        { label: 'Student Roster', path: '/operations/roster/students' },
-        { label: 'Instructor Roster', path: '/operations/roster/instructors' },
-        { label: 'Staff Roster', path: '/operations/roster/staff' },
+          { label: 'Student Roster', path: '/operations/roster/students' },
+          { label: 'Instructor Roster', path: '/operations/roster/instructors' },
+          { label: 'Staff Roster', path: '/operations/roster/staff' },
       ],
     },
     {
       label: 'Financial Dashboard',
       icon: 'fa-solid fa-dollar-sign',
-      path: '/operations/finance',
+        path: '/operations/finance',
+        submenu: [
+          { label: 'Overview', path: '/operations/finance/overview' },
+          { label: 'Income Breakdown', path: '/operations/finance/income' },
+          { label: 'Cost Breakdown', path: '/operations/finance/costs' },
+        ],
+      },
+    ],
+    academic: [
+      {
+        label: 'Academic Hub',
+        icon: 'fa-solid fa-book-open',
+        path: '/academics',
       submenu: [
-        { label: 'Overview', path: '/operations/finance/overview' },
-        { label: 'Income Breakdown', path: '/operations/finance/income' },
-        { label: 'Cost Breakdown', path: '/operations/finance/costs' },
+          { label: 'Assignments', path: '/academics/assignments' },
+          { label: 'Red Pen Review', path: '/academics/red-pen-review' },
+          { label: 'Testing', path: '/academics/testing' },
       ],
     },
-  ];
+    {
+        label: 'Performance',
+        icon: 'fa-solid fa-chart-line',
+        path: '/academics/performance',
+      submenu: null,
+    },
+    ],
+  };
 
-  // State management
+  // Get the current menu items based on variant
+  const menuItems = menuStructures[variant];
+  console.log('Current menu items:', menuItems); // Debug log
+  
+  // State for active items and open submenu
   const [activeMain, setActiveMain] = useState(null);
-  const [submenuOpen, setSubmenuOpen] = useState(false);
+  const [openSubmenu, setOpenSubmenu] = useState(null);
   const [activeSub, setActiveSub] = useState(null);
 
   // Update active states based on current route
@@ -60,87 +107,147 @@ function ExtendedMenu() {
           currentPath === subItem.path
         );
         if (subIndex !== -1) {
-          setSubmenuOpen(true);
+          setOpenSubmenu(mainIndex);
           setActiveSub(subIndex);
         }
       }
     }
-  }, [location.pathname]);
+  }, [location.pathname, menuItems]);
 
   // Handle main menu item clicks
-  const handleMainClick = (index, hasSubmenu, e) => {
-    if (hasSubmenu) {
-      e.preventDefault(); // Prevent navigation for items with submenu
-      if (activeMain === index) {
-        setSubmenuOpen(!submenuOpen); // Toggle submenu
-      } else {
-        setActiveMain(index);
-        setSubmenuOpen(true);
-        setActiveSub(null);
-      }
+  const handleMainClick = (e, index, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (item.submenu) {
+      // Only toggle submenu if it has a submenu
+      setOpenSubmenu(openSubmenu === index ? null : index);
     } else {
+      // Navigate only if it doesn't have a submenu
+      navigate(item.path);
+    }
       setActiveMain(index);
-      setSubmenuOpen(false);
+    if (!item.submenu) {
       setActiveSub(null);
     }
   };
 
   // Handle submenu item clicks
-  const handleSubClick = (mainIndex, subIndex) => {
+  const handleSubClick = (e, mainIndex, subIndex, path) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    navigate(path);
     setActiveMain(mainIndex);
     setActiveSub(subIndex);
-    // Keep submenu open when item is selected
-    setSubmenuOpen(true);
   };
 
   return (
-    <div className="navbar-extended">
-      <div className="menu">
-        <p className="menu-title">Operations</p>
-        <ul>
+    <div 
+      className={`navbar-extended ${variant}-menu ${!isVisible ? 'hidden' : ''}`}
+      onClick={(e) => {
+        console.log('Navbar extended clicked');
+        e.stopPropagation();
+      }}
+    >
+      <div 
+        className="menu"
+        onClick={(e) => {
+          console.log('Menu container clicked');
+          e.stopPropagation();
+        }}
+      >
+        <h3 className="menu-title">{variant === 'operations' ? 'Operations' : 'Academic'}</h3>
+        <div 
+          className="menu-items"
+          onClick={(e) => {
+            console.log('Menu items container clicked');
+            e.stopPropagation();
+          }}
+        >
           {menuItems.map((item, index) => (
-            <li key={index} className={activeMain === index ? 'active' : ''}>
-              <Link
-                to={item.submenu ? '#' : item.path}
-                onClick={(e) => handleMainClick(index, !!item.submenu, e)}
+            <div 
+              key={index} 
+              className={`menu-item ${item.submenu ? 'has-submenu' : ''}`}
+              onClick={(e) => {
+                console.log('Menu item container clicked:', index);
+                e.stopPropagation();
+              }}
+            >
+              <button
+                type="button"
+                onClick={(e) => handleMainClick(e, index, item)}
+                className={`menu-item-btn ${activeMain === index ? 'active' : ''}`}
+                aria-expanded={item.submenu ? openSubmenu === index : undefined}
+              >
+                <div 
+                  className="menu-item-content"
+                  onClick={(e) => {
+                    console.log('Menu item content clicked');
+                    e.stopPropagation();
+                  }}
               >
                 <i className={item.icon}></i>
-                <span className="text">{item.label}</span>
-              </Link>
+                  <span>{item.label}</span>
+                </div>
+                {item.submenu && (
+                  <i 
+                    className={`submenu-arrow fa-solid fa-chevron-${openSubmenu === index ? 'up' : 'down'}`}
+                    onClick={(e) => {
+                      console.log('Submenu arrow clicked');
+                      e.stopPropagation();
+                    }}
+                  />
+                )}
+              </button>
+              
               {item.submenu && (
                 <AnimatePresence>
-                  {activeMain === index && submenuOpen && (
+                  {openSubmenu === index && (
                     <motion.div
                       className="sub-menu-wrapper"
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
+                      onClick={(e) => {
+                        console.log('Submenu wrapper clicked');
+                        e.stopPropagation();
+                      }}
                     >
-                      <div className="submenu-content">
-                        <ul className="sub-menu">
+                      <div 
+                        className="submenu-content"
+                        onClick={(e) => {
+                          console.log('Submenu content clicked');
+                          e.stopPropagation();
+                        }}
+                      >
+                        <div 
+                          className="sub-menu"
+                          onClick={(e) => {
+                            console.log('Sub-menu clicked');
+                            e.stopPropagation();
+                          }}
+                        >
                           {item.submenu.map((subItem, subIndex) => (
-                            <li
+                            <button
                               key={subIndex}
-                              className={activeSub === subIndex ? 'active' : ''}
+                              type="button"
+                              onClick={(e) => handleSubClick(e, index, subIndex, subItem.path)}
+                              className={`menu-item-btn ${activeSub === subIndex && activeMain === index ? 'active' : ''}`}
                             >
-                              <Link
-                                to={subItem.path}
-                                onClick={() => handleSubClick(index, subIndex)}
-                              >
-                                <span className="text">{subItem.label}</span>
-                              </Link>
-                            </li>
+                              <span>{subItem.label}</span>
+                            </button>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );
