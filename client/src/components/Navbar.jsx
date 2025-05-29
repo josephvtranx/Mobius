@@ -4,37 +4,36 @@ import { Link, useLocation } from 'react-router-dom';
 
 function Navbar({ variant = 'teal' }) {
   const location = useLocation();
-  const [sliderTransform, setSliderTransform] = useState('translateY(0px)');
+  const [activeButton, setActiveButton] = useState('none');
   const [compassActive, setCompassActive] = useState(false);
 
   // Update active states based on current route
   useEffect(() => {
     const path = location.pathname;
     if (path === '/') {
+      setActiveButton('none');
       setCompassActive(true);
-      setSliderTransform('translateY(0px)');
     } else if (path.startsWith('/instructor-home')) {
       setCompassActive(false);
-      setSliderTransform('translateY(0px)');
+      setActiveButton('top');
     } else if (path.startsWith('/operations')) {
       setCompassActive(false);
-      setSliderTransform('translateY(125%)');
+      setActiveButton('bottom');
     }
   }, [location.pathname]);
 
   const handleCompassClick = () => {
+    setActiveButton('none');
     setCompassActive(true);
-    setSliderTransform('translateY(0px)');
   };
 
-  const handleToggleClick = (transformValue) => {
-    setSliderTransform(transformValue);
+  const handleToggleClick = (position) => {
     setCompassActive(false);
+    setActiveButton(position);
   };
 
   // Determine classes based on variant
   const navbarClass = `navbar navbar--${variant}`;
-  const navBtnClass = `nav-btn nav-btn--light${variant} ${compassActive ? 'active' : ''}`;
   const buttonBoxClass = `button-box button-box--light${variant}`;
 
   return (
@@ -44,7 +43,7 @@ function Navbar({ variant = 'teal' }) {
           {/* Compass button */}
           <Link to="/">
             <button
-              className={navBtnClass}
+              className={`nav-btn nav-btn--light${variant} ${compassActive ? 'active' : ''}`}
               id="btn-compass"
               onClick={handleCompassClick}
             >
@@ -56,33 +55,34 @@ function Navbar({ variant = 'teal' }) {
             {/* Slider indicator */}
             <div
               id="btn"
+              className={activeButton === 'bottom' ? 'bottom' : ''}
               style={{
-                transform: sliderTransform,
-                background: compassActive ? 'transparent' : 'white',
-                transition: 'transform 0.3s ease, background 0.3s ease',
+                opacity: activeButton === 'none' ? 0 : 1
               }}
-            ></div>
+            />
 
-            {/* Toggle buttons */}
-            <Link to="/instructor-home">
-              <button
-                type="button"
-                className="toggle-btn"
-                onClick={() => handleToggleClick('translateY(0px)')}
-              >
-                <i className="fa-solid fa-graduation-cap"></i>
-              </button>
-            </Link>
-            {/* Operations button */}
-            <Link to="/operations/scheduling">
-              <button
-                type="button"
-                className="toggle-btn"
-                onClick={() => handleToggleClick('translateY(125%)')}
-              >
-                <i className="fa-solid fa-wrench"></i>
-              </button>
-            </Link>
+            {/* Toggle buttons container */}
+            <div className="toggle-buttons-container">
+              <Link to="/instructor-home">
+                <button
+                  type="button"
+                  className={`toggle-btn ${activeButton === 'top' ? 'active' : ''}`}
+                  onClick={() => handleToggleClick('top')}
+                >
+                  <i className="fa-solid fa-graduation-cap"></i>
+                </button>
+              </Link>
+              
+              <Link to="/operations/scheduling">
+                <button
+                  type="button"
+                  className={`toggle-btn ${activeButton === 'bottom' ? 'active' : ''}`}
+                  onClick={() => handleToggleClick('bottom')}
+                >
+                  <i className="fa-solid fa-wrench"></i>
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
