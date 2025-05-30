@@ -8,9 +8,6 @@ function Testing() {
       {/* Header */}
       <h1>Testing</h1>
       
-      {/* Sidebar Nav */}
-      <SideNav />
-
       {/* Profile card */}
       <ProfileCard />
 

@@ -10,7 +10,6 @@ function Scheduling() {
   return (
     <>
       <Header />
-      <SideNav />
       <ProfileCard />
       
       <div className="main">

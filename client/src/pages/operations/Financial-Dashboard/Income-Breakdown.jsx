@@ -8,9 +8,6 @@ function IncomeBreakdown() {
       {/* Header */}
       <h1>Income Breakdown</h1>
       
-      {/* Sidebar Nav */}
-      <SideNav />
-
       {/* Profile card */}
       <ProfileCard />
 

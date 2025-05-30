@@ -7,7 +7,6 @@ function InstructorHome() {
   return (
     <>
       <Header />
-      <SideNav />
       <ProfileCard />
       
       {/* Main Content */}

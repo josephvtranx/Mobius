@@ -7,9 +7,7 @@ function Assignments() {
     <div className="page-container">
       {/* Header */}
       <h1>Assignments</h1>
-      
-      {/* Sidebar Nav */}
-      <SideNav />
+    
 
       {/* Profile card */}
       <ProfileCard />

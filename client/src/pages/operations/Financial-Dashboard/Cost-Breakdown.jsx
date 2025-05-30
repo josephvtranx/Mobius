@@ -8,8 +8,6 @@ function CostBreakdown() {
       {/* Header */}
       <h1>Cost Breakdown</h1>
       
-      {/* Sidebar Nav */}
-      <SideNav />
 
       {/* Profile card */}
       <ProfileCard />

@@ -8,8 +8,6 @@ function Performance() {
       {/* Header */}
       <h1>Performance</h1>
       
-      {/* Sidebar Nav */}
-      <SideNav />
 
       {/* Profile card */}
       <ProfileCard />

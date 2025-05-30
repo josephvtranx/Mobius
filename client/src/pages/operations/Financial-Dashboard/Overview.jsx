@@ -8,8 +8,6 @@ function Overview() {
       {/* Header */}
       <h1>Financial Overview</h1>
       
-      {/* Sidebar Nav */}
-      <SideNav />
 
       {/* Profile card */}
       <ProfileCard />

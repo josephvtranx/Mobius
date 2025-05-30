@@ -8,8 +8,6 @@ function RedPenReview() {
       {/* Header */}
       <h1>Red Pen Review</h1>
       
-      {/* Sidebar Nav */}
-      <SideNav />
 
       {/* Profile card */}
       <ProfileCard />
