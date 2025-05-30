@@ -9,9 +9,9 @@ function ExtendedMenu({ variant = 'operations' }) {
   const [isVisible, setIsVisible] = useState(true);
   const [prevVariant, setPrevVariant] = useState(variant);
   
-  // State for active items and open submenu
+  // State for active items and open submenus (now an array to track multiple open submenus)
   const [activeMain, setActiveMain] = useState(null);
-  const [openSubmenu, setOpenSubmenu] = useState(null);
+  const [openSubmenus, setOpenSubmenus] = useState([]);
   const [activeSub, setActiveSub] = useState(null);
 
   // Check if we should show the menu based on the current route
@@ -29,7 +29,7 @@ function ExtendedMenu({ variant = 'operations' }) {
   // Reset states when switching between operations/academic sections
   useEffect(() => {
     if (variant !== prevVariant) {
-      setOpenSubmenu(null);
+      setOpenSubmenus([]);
       setActiveMain(null);
       setActiveSub(null);
       setPrevVariant(variant);
@@ -99,28 +99,22 @@ function ExtendedMenu({ variant = 'operations' }) {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Clicked menu item:', {
-      label: item.label,
-      index,
-      hasSubmenu: !!item.submenu,
-      currentOpenSubmenu: openSubmenu,
-      currentActiveMain: activeMain
-    });
-    
     if (item.submenu) {
-      // For items with submenu
-      setActiveMain(index);
-      setOpenSubmenu(openSubmenu === index ? null : index);
-      console.log('Setting submenu state:', { 
-        newOpenSubmenu: openSubmenu === index ? null : index,
-        newActiveMain: index 
+      // Toggle this submenu's open state
+      setOpenSubmenus(prev => {
+        const isCurrentlyOpen = prev.includes(index);
+        if (isCurrentlyOpen) {
+          return prev.filter(i => i !== index);
+        } else {
+          return [...prev, index];
+        }
       });
+      setActiveMain(index);
     } else {
       // For items without submenu
       navigate(item.path);
       setActiveMain(index);
-      setOpenSubmenu(null); // Close any open submenu
-      setActiveSub(null);   // Clear active submenu item
+      setActiveSub(null);
     }
   };
 
@@ -132,14 +126,13 @@ function ExtendedMenu({ variant = 'operations' }) {
     navigate(path);
     setActiveSub(subIndex);
     setActiveMain(mainIndex);
-    setOpenSubmenu(mainIndex); // Keep the parent submenu open
   };
 
   // Helper function to determine if a menu item is active
   const isMenuItemActive = (index, item) => {
     if (item.submenu) {
       // Menu item with submenu is active if it's open or has an active submenu item
-      return openSubmenu === index || (activeMain === index && activeSub !== null);
+      return openSubmenus.includes(index) || (activeMain === index && activeSub !== null);
     } else {
       // Menu item without submenu is active if it's the current active main item
       // and there's no active submenu item
@@ -166,20 +159,20 @@ function ExtendedMenu({ variant = 'operations' }) {
                 type="button"
                 onClick={(e) => handleMainClick(e, index, item)}
                 className={`menu-item-btn ${isMenuItemActive(index, item) ? 'active' : ''}`}
-                aria-expanded={item.submenu ? openSubmenu === index : undefined}
+                aria-expanded={item.submenu ? openSubmenus.includes(index) : undefined}
               >
                 <div className="menu-item-content">
                   <i className={item.icon}></i>
                   <span>{item.label}</span>
                 </div>
                 {item.submenu && (
-                  <i className={`submenu-arrow fa-solid fa-chevron-${openSubmenu === index ? 'up' : 'down'}`} />
+                  <i className={`submenu-arrow fa-solid fa-chevron-${openSubmenus.includes(index) ? 'up' : 'down'}`} />
                 )}
               </button>
               
               {item.submenu && (
                 <AnimatePresence>
-                  {openSubmenu === index && (
+                  {openSubmenus.includes(index) && (
                     <motion.div
                       className="sub-menu-wrapper"
                       initial={{ height: 0, opacity: 0 }}
