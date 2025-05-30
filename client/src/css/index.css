@@ -296,7 +296,7 @@ body {
 .menu-item {
   width: 100%;
   position: relative;
-  border: 1px solid red; /* Debug border */
+  border: none;
   margin-bottom: 0.5rem;
   z-index: 1;
 }
@@ -307,12 +307,12 @@ body {
     display: flex;
     align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1.2rem;
   background: transparent;
-  border: 1px solid blue; /* Debug border */
-  border-radius: 6px;
-  color: #333;
-  font-size: 0.9rem;
+  border: none;
+  border-radius: 8px;
+  color: #4A5568;
+  font-size: 0.95rem;
     text-align: left;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -323,9 +323,9 @@ body {
 
 /* Button hover and focus states */
 .menu-item-btn:hover {
-  background-color: rgba(0, 0, 0, 0.1) !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .menu-item-btn:focus-visible {
@@ -334,52 +334,85 @@ body {
 
 /* Active state */
 .menu-item-btn.active {
-  background-color: rgba(0, 0, 0, 0.15) !important;
+  background-color: rgba(0, 0, 0, 0.06) !important;
   font-weight: 500;
+  color: #2D3748;
+}
+
+.menu-item-btn.active i {
+  color: #2D3748;
 }
 
 /* Button content layout */
 .menu-item-content {
     display: flex;
     align-items: center;
-  gap: 0.75rem;
+  gap: 0.9rem;
     flex: 1;
 }
 
 .menu-item-content i {
   width: 1.5rem;
   text-align: center;
-  font-size: 1rem;
-  opacity: 0.8;
+  font-size: 1.1rem;
+  color: #718096;
+  transition: color 0.2s ease;
 }
 
-/* Submenu styles */
-.submenu-arrow {
-    font-size: 0.75rem;
-  transition: transform 0.3s ease;
-}
-
-.submenu-arrow.open {
-  transform: rotate(180deg);
-}
-
+/* Submenu styles - SINGLE CONSOLIDATED SECTION */
 .sub-menu-wrapper {
   position: relative;
   z-index: 1;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  transition: height 0.3s ease;
+}
+
+.submenu-content {
+  position: relative;
+  z-index: 2;
+  background: transparent;
 }
 
 .sub-menu {
-    display: flex;
+  display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  padding: 0.5rem 0 0.5rem 2.25rem;
-  margin-top: 0.25rem;
-  border-left: 1px dashed #e2e8f0;
+  margin: 0.25rem 0 !important;
+  border-left: 2px dashed #E2E8F0;
+  margin-left: 1rem !important;
 }
 
 .sub-menu .menu-item-btn {
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.sub-menu .menu-item-btn:hover {
+  color: #4A5568;
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+.sub-menu .menu-item-btn.active {
+  color: #2D3748;
+  font-weight: 500;
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Submenu Arrow */
+.submenu-arrow {
+  font-size: 0.8rem;
+  color: #A0AEC0;
+  transition: transform 0.3s ease;
+}
+
+.menu-item-btn:hover .submenu-arrow {
+  color: #4A5568;
+}
+
+.menu-item-btn[aria-expanded="true"] .submenu-arrow {
+  transform: rotate(180deg);
 }
 
 /* Variant-specific colors */
@@ -393,25 +426,18 @@ body {
 
 .operations-menu .menu-item-btn.active {
   border-left: 3px solid #FFAB45;
-  padding-left: calc(1rem - 3px);
+  padding-left: calc(1.2rem - 3px);
 }
 
 .academic-menu .menu-item-btn.active {
   border-left: 3px solid #64B2B2;
-  padding-left: calc(1rem - 3px);
+  padding-left: calc(1.2rem - 3px);
 }
 
 /* Active submenu indicator */
 .has-submenu .menu-item-btn[aria-expanded="true"] {
   background-color: rgba(0, 0, 0, 0.03);
     }
-
-/* Animation classes for submenu */
-.submenu-content {
-  position: relative;
-  z-index: 2;
-  will-change: transform, opacity;
-}
 
 /* Main content area */
 .main {
@@ -1640,200 +1666,6 @@ table td {
   background: #ffe0b7;
 }
 
-/* Enhanced Menu Styles */
-.menu ul li.has-submenu > a {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.menu ul li.has-submenu > a .submenu-arrow {
-  font-size: 0.7rem;
-  transition: transform 0.3s ease;
-  margin-left: 0.5rem;
-}
-
-.menu ul li.submenu-open > a .submenu-arrow {
-  transform: rotate(180deg);
-}
-
-.menu ul li > a {
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.menu ul li > a::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 3px;
-  background-color: var(--interface-primary-v2);
-  transform: scaleY(0);
-  transition: transform 0.2s ease;
-}
-
-.menu ul li > a.active::before {
-  transform: scaleY(1);
-}
-
-.menu ul li > a:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-.menu ul li > a.active {
-  background-color: rgba(0, 0, 0, 0.05);
-  font-weight: 500;
-}
-
-.sub-menu-wrapper {
-  overflow: hidden;
-}
-
-.sub-menu {
-  margin-left: 1.5rem !important;
-  padding-left: 1rem !important;
-  border-left: 1px dashed #e2e8f0;
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.sub-menu li a {
-  padding: 0.5rem 1rem;
-  font-size: 0.85em;
-  opacity: 0.85;
-  transition: all 0.2s ease;
-}
-
-.sub-menu li a:hover {
-  opacity: 1;
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-.sub-menu li a.active {
-  opacity: 1;
-  font-weight: 500;
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Variant-specific styles */
-.menu.operations-menu .menu-title {
-  color: #FFAB45;
-}
-
-.menu.academic-menu .menu-title {
-  color: #64B2B2;
-}
-
-.menu.operations-menu ul li > a::before {
-  background-color: #FFAB45;
-}
-
-.menu.academic-menu ul li > a::before {
-  background-color: #64B2B2;
-}
-
-/* Menu variant colors */
-.operations-menu .menu-title {
-  color: #FFAB45;
-}
-
-.academic-menu .menu-title {
-  color: #64B2B2;
-}
-
-/* Menu items */
-.menu ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.menu ul li {
-  margin-bottom: 0.5rem;
-}
-
-.menu ul li a {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: #333;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.menu ul li a:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-.menu ul li a.active {
-  background-color: rgba(0, 0, 0, 0.05);
-  font-weight: 500;
-}
-
-/* Icons */
-.menu ul li a i {
-  font-size: 1rem;
-  width: 1.5rem;
-  text-align: center;
-}
-
-/* Submenu styles */
-.menu ul li.has-submenu > a {
-  justify-content: space-between;
-}
-
-.menu ul li.has-submenu > a .submenu-arrow {
-  font-size: 0.75rem;
-  transition: transform 0.3s ease;
-}
-
-.menu ul li.submenu-open > a .submenu-arrow {
-  transform: rotate(180deg);
-}
-
-.sub-menu-wrapper {
-  overflow: hidden;
-}
-
-.sub-menu {
-  margin: 0.5rem 0 0.5rem 2.25rem !important;
-  padding-left: 1rem !important;
-  border-left: 1px dashed #e2e8f0;
-}
-
-.sub-menu li {
-  margin-bottom: 0.25rem !important;
-}
-
-.sub-menu li a {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.sub-menu li a:hover {
-  color: #333;
-}
-
-.sub-menu li a.active {
-  color: #333;
-  font-weight: 500;
-}
-
-/* Variant-specific active indicators */
-.operations-menu ul li a.active {
-  border-left: 3px solid #FFAB45;
-  padding-left: calc(1rem - 3px);
-}
-
-.academic-menu ul li a.active {
-  border-left: 3px solid #64B2B2;
-  padding-left: calc(1rem - 3px);
-}
 
 /* Profile Card */
 .profile-card {
@@ -1963,169 +1795,4 @@ table td {
   animation: slideUp 0.4s ease-out;
 }
 
-.menu .menu-title {
-  display: flex;
-  padding-bottom: 10px;
-  font-size: 1.2rem;
-  font-weight: 500;
-}
 
-/* Menu variant colors */
-.operations-menu .menu-title {
-  color: #FFAB45;
-}
-
-.academic-menu .menu-title {
-  color: #64B2B2;
-}
-
-/* Menu items */
-.menu ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.menu ul li {
-  margin-bottom: 0.5rem;
-}
-
-.menu ul li a {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: #333;
-  text-decoration: none;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.menu ul li a:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
-.menu ul li a.active {
-  background-color: rgba(0, 0, 0, 0.05);
-  font-weight: 500;
-}
-
-/* Icons */
-.menu ul li a i {
-  font-size: 1rem;
-  width: 1.5rem;
-  text-align: center;
-}
-
-/* Submenu styles */
-.menu ul li.has-submenu > a {
-  justify-content: space-between;
-}
-
-.menu ul li.has-submenu > a .submenu-arrow {
-  font-size: 0.75rem;
-  transition: transform 0.3s ease;
-}
-
-.menu ul li.submenu-open > a .submenu-arrow {
-  transform: rotate(180deg);
-}
-
-.sub-menu-wrapper {
-  overflow: hidden;
-}
-
-.sub-menu {
-  margin: 0.5rem 0 0.5rem 2.25rem !important;
-  padding-left: 1rem !important;
-  border-left: 1px dashed #e2e8f0;
-}
-
-.sub-menu li {
-  margin-bottom: 0.25rem !important;
-}
-
-.sub-menu li a {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.sub-menu li a:hover {
-  color: #333;
-}
-
-.sub-menu li a.active {
-  color: #333;
-  font-weight: 500;
-}
-
-/* Variant-specific active indicators */
-.operations-menu ul li a.active {
-  border-left: 3px solid #FFAB45;
-  padding-left: calc(1rem - 3px);
-}
-
-.academic-menu ul li a.active {
-  border-left: 3px solid #64B2B2;
-  padding-left: calc(1rem - 3px);
-}
-
-/* Debug styles to visualize clickable areas */
-.menu-item {
-  width: 100%;
-  position: relative;
-  border: 1px solid red; /* Debug border */
-  margin-bottom: 0.5rem;
-  z-index: 1;
-}
-
-.menu-item-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: transparent;
-  border: 1px solid blue; /* Debug border */
-  border-radius: 6px;
-  color: #333;
-  font-size: 0.9rem;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  outline: none;
-  position: relative;
-  z-index: 2;
-}
-
-/* Enhanced Hover State */
-.menu-item-btn:hover {
-  background-color: rgba(0, 0, 0, 0.1) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Active State */
-.menu-item-btn.active {
-  background-color: rgba(0, 0, 0, 0.15) !important;
-  font-weight: 500;
-}
-
-/* Ensure submenu content is clickable */
-.sub-menu-wrapper {
-  position: relative;
-  z-index: 1;
-}
-
-.submenu-content {
-  position: relative;
-  z-index: 2;
-}
-
-/* Make sure the menu container allows interaction */
-.navbar-extended {
-  pointer-events: auto !important;
-  position: relative;
-  z-index: 100;
-}
