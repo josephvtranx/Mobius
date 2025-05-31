@@ -1483,6 +1483,14 @@ h4 {
   border-radius: 25px;
 }
 
+.financial-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 2rem;
+  width: 100%;
+}
+
 /* === Total Revenue Widget === */
 .dashboard-header {
   display: flex;
@@ -1533,6 +1541,15 @@ h4 {
   margin-right: 4px;
 }
 
+
+.cost-breakdown-grid {
+  display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 2rem;
+  width: 100%;
+}
+=======
 /* === TABLE RESET === */
 table {
   border-collapse: collapse;
@@ -1811,5 +1828,3 @@ table td {
 .profile-card {
   animation: slideUp 0.4s ease-out;
 }
-
-
