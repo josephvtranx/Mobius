@@ -10,18 +10,22 @@ function Navbar({ variant = 'teal' }) {
 
   // Update active states based on current route
   useEffect(() => {
-    const path = location.pathname;
+    updateActiveStates(location.pathname);
+  }, [location.pathname]);
+
+  // Helper function to update active states based on path
+  const updateActiveStates = (path) => {
     if (path === '/') {
       setActiveButton('none');
       setCompassActive(true);
-    } else if (path.startsWith('/instructor-home')) {
+    } else if (path.startsWith('/academics')) {
       setCompassActive(false);
       setActiveButton('top');
     } else if (path.startsWith('/operations')) {
       setCompassActive(false);
       setActiveButton('bottom');
     }
-  }, [location.pathname]);
+  };
 
   const handleCompassClick = (e) => {
     e.preventDefault();
@@ -32,8 +36,12 @@ function Navbar({ variant = 'teal' }) {
 
   const handleToggleClick = (e, position, path) => {
     e.preventDefault();
+    // Update states before navigation
     setCompassActive(false);
     setActiveButton(position);
+    // Update active states immediately based on the new path
+    updateActiveStates(path);
+    // Then navigate
     navigate(path);
   };
 
@@ -43,42 +51,42 @@ function Navbar({ variant = 'teal' }) {
 
   return (
     <div className={navbarClass}>
-          {/* Compass button */}
-            <button
+      {/* Compass button */}
+      <button
         className={`nav-btn nav-btn--light${variant} ${compassActive ? 'active' : ''}`}
-              id="btn-compass"
-              onClick={handleCompassClick}
-            >
-              <i className="fa-regular fa-compass"></i>
-            </button>
+        id="btn-compass"
+        onClick={handleCompassClick}
+      >
+        <i className="fa-regular fa-compass"></i>
+      </button>
 
       <div className={buttonBoxClass}>
-            {/* Slider indicator */}
-            <div
-              id="btn"
+        {/* Slider indicator */}
+        <div
+          id="btn"
           className={activeButton === 'bottom' ? 'bottom' : ''}
-              style={{
+          style={{
             opacity: activeButton === 'none' ? 0 : 1
-              }}
+          }}
         />
 
         {/* Toggle buttons container */}
         <div className="toggle-buttons-container">
-              <button
-                type="button"
+          <button
+            type="button"
             className={`toggle-btn ${activeButton === 'top' ? 'active' : ''}`}
-            onClick={(e) => handleToggleClick(e, 'top', '/instructor-home')}
-              >
-                <i className="fa-solid fa-graduation-cap"></i>
-              </button>
-          
-              <button
-                type="button"
+            onClick={(e) => handleToggleClick(e, 'top', '/academics/InstructorHome')}
+          >
+            <i className="fa-solid fa-graduation-cap"></i>
+          </button>
+      
+          <button
+            type="button"
             className={`toggle-btn ${activeButton === 'bottom' ? 'active' : ''}`}
             onClick={(e) => handleToggleClick(e, 'bottom', '/operations/scheduling')}
-              >
-                <i className="fa-solid fa-wrench"></i>
-              </button>
+          >
+            <i className="fa-solid fa-wrench"></i>
+          </button>
         </div>
       </div>
     </div>

@@ -73,6 +73,12 @@ function ExtendedMenu({ variant = 'operations' }) {
     ],
     academic: [
       {
+        label: 'Instructor Home',
+        icon: 'fa-solid fa-chart-line',
+        path: '/academics/InstructorHome',
+        submenu: null,
+      },
+      {
         label: 'Academic Hub',
         icon: 'fa-solid fa-book-open',
         path: '/academics',

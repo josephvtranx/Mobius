@@ -57,7 +57,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         
         {/* Academic routes */}
-        <Route path="/instructor-home" element={<InstructorHome />} />
+        <Route path="/academics/InstructorHome" element={<InstructorHome />} />
         <Route path="/academics/assignments" element={<Assignments />} />
         <Route path="/academics/red-pen-review" element={<RedPenReview />} />
         <Route path="/academics/testing" element={<Testing />} />

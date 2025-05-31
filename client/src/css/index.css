@@ -1548,20 +1548,19 @@ table td {
 }
 
 /* instrutor home */
-.main--instructor-home {
-  overflow: hidden;
-  height: 100%; /* Optional: ensures it doesn't try to scroll if it overflows */
-}
 .dashboard-grid, .calendar-section, .payment-summary, .notifications {
   overflow: hidden;
+  width: 100%;
 }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 2fr 1.2fr;
+  grid-template-columns: 1fr 1fr;
   grid-template-rows: auto auto;
   gap: 2rem;
   padding: 2rem;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .calendar-section, .payment-summary {

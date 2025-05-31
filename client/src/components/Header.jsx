@@ -10,8 +10,7 @@ function Header() {
     
     // Map routes to their titles
     const routeTitles = {
-      '/': 'Home',
-      '/instructor-home': 'Instructor Dashboard',
+      '/academics/InstructorHome': 'Instructor Dashboard',
       '/academics/assignments': 'Assignments',
       '/academics/red-pen-review': 'Red Pen Review',
       '/academics/testing': 'Testing',

@@ -10,7 +10,7 @@ function SideNav() {
   // Determine which variant to show based on the current route
   const getVariant = () => {
     if (location.pathname === '/') return null;
-    if (location.pathname.startsWith('/instructor-home') || location.pathname.startsWith('/academics')) {
+    if (location.pathname.startsWith('/academics')) {
       return 'academic';
     }
     if (location.pathname.startsWith('/operations')) {
