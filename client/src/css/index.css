@@ -1533,6 +1533,14 @@ h4 {
   border-radius: 25px;
 }
 
+.financial-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 2rem;
+  width: 100%;
+}
+
 /* === Total Revenue Widget === */
 .dashboard-header {
   display: flex;
@@ -1581,4 +1589,12 @@ h4 {
 
 .growth-rate {
   margin-right: 4px;
+}
+
+.cost-breakdown-grid {
+  display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 2rem;
+  width: 100%;
 }
