@@ -6,7 +6,7 @@ function ProfileCard() {
   return (
     <div className="profile-card">
       <div className="profile-header">
-        <img src="./public/me.jpg" alt="Profile" className="profile-pic" />
+        <img src="/me.jpg" alt="Profile" className="profile-pic" />
         <div className="profile-info">
           <h2 className="profile-name">Yvonne An</h2>
           <p className="profile-role">Instructor @ Møbius Academy</p>
