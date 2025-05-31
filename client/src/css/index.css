@@ -10,7 +10,7 @@ body {
     min-height: 100vh;
     font-family: 'Inter', sans-serif;
     /* Single font definition */
-    background-color: #F9FAFD;
+    background-color: #FFFFFF
 }
 
 .page-container {
@@ -28,18 +28,20 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 70px;
+    height: 90px;
     /* Fixed height */
     display: flex;
     align-items: center;
     padding: 0 2rem;
-    background-color: #F9FAFD;
+    background-color: #FFFFFF;
     z-index: 1000;
     gap: 2rem;
     /* Space between logo and title section */
 }
 
 .logo {
+  margin-left: 50px;
+  margin-right: 40px;
     width: 180px;
     /* Fixed width */
     flex-shrink: 0;
@@ -264,8 +266,8 @@ body {
     padding: 1rem;
     display: flex;
     flex-direction: column;
-    background-color: #F9FAFD;
-    border-left: 1px solid #eceef2;
+    background-color: #FFFFFF;
+    border-left: 1px solid #FFFFFF;
   overflow-y: auto;
   height: 100%;
   pointer-events: auto !important;
@@ -441,12 +443,33 @@ body {
 
 /* Main content area */
 .main {
-  margin-left: 280px; /* navbar (70px) + extendedMenu (210px) */
+  position: fixed;
+  top: 90px; 
+  left: 280px; 
+  right: 0;
+  bottom: 20px;
   padding: 2rem;
-  padding-top: 90px;
-    min-height: 100vh;
-    background-color: #EAEAEA;
+  padding-top: 20px;
+  height: calc(100vh - 110px);
+  background-color: #EAEAEA;
+  border-radius: 25px;
   overflow: auto;
+  display: flex;
+}
+.body--home {
+  background-color: #F9FAFD;
+
+}
+/* Specific style for home page main container */
+.main--home {
+  background-color: #FFFFFF;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%; /* Give it a percentage width instead of stretching to right edge */
+  max-width: 1400px; /* Prevent it from getting too wide */
+  right: auto; 
+  margin: 0 auto; 
+  height: calc(100vh - 250px);
 }
 
 /* student roster */
@@ -612,19 +635,17 @@ th {
     }
 }
 
-.main-sidebar {
+.mcal-sidebar {
     width: 240px;
     background-color: #EAEAEA;
     padding: 1.5rem 0rem;
-    height: calc(100vh - 90px);
-    /* Full height minus header */
+    height: 100%; /* Change to 100% to fit inside main */
     overflow-y: auto;
-    position: sticky;
-    top: 90px;
-    /* Match header height */
+    position: relative; /* Change to relative since it's inside fixed main */
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    border-radius: 15px; /* Add border radius for consistency */
 }
 
 
@@ -837,7 +858,7 @@ h4 {
   
   /* Main home */
 .main-dashboard {
-    margin: 0 5vw 50px 5vw;
+    margin: 0 10vw 50px 10vw;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -861,7 +882,7 @@ h4 {
   
   /* Dashboard Main Section */
   .dashboard-main {
-    background-color: #fff;
+    background-color: #FFFFFF;
     padding: 2rem;
     border-radius: 8px;
     max-width: 1400px;
@@ -1008,16 +1029,13 @@ h4 {
     align-items: center;
     display: flex;
     flex-direction: column;
-    height: 761px;
-    /*851px - 90px (header height)*/
+    height: 100%; /* Changed from fixed height to 100% */
     justify-content: space-between;
     padding: 54px 5px 0px;
-    position: relative;
+    position: relative; /* Changed from relative to absolute */
     width: 149px;
-    margin-left: 280px;
-    /*side nav width*/
-    margin-top: 90px;
-    /*header height*/
+    margin-left: 0; /* Remove margin-left since it will be positioned inside main */
+    margin-top: 0; /* Remove margin-top since it will be positioned inside main */
 }
 
 .sidebar .frame {

@@ -9,8 +9,6 @@ function Performance() {
       <h1>Performance</h1>
       
 
-      {/* Profile card */}
-      <ProfileCard />
 
       {/* Main Content */}
       <div className="main-content">

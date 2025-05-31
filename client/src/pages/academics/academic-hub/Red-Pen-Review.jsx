@@ -9,9 +9,6 @@ function RedPenReview() {
       <h1>Red Pen Review</h1>
       
 
-      {/* Profile card */}
-      <ProfileCard />
-
       {/* Main Content */}
       <div className="main-content">
         <p>Red Pen Review page content will go here</p>

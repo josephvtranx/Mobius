@@ -7,9 +7,6 @@ function Testing() {
     <div className="page-container">
       {/* Header */}
       <h1>Testing</h1>
-      
-      {/* Profile card */}
-      <ProfileCard />
 
       {/* Main Content */}
       <div className="main-content">

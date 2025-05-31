@@ -9,9 +9,6 @@ function CostBreakdown() {
       <h1>Cost Breakdown</h1>
       
 
-      {/* Profile card */}
-      <ProfileCard />
-
       {/* Main Content */}
       <div className="main-content">
         <p>Cost Breakdown dashboard content will go here</p>

@@ -9,9 +9,6 @@ function Overview() {
       <h1>Financial Overview</h1>
       
 
-      {/* Profile card */}
-      <ProfileCard />
-
       {/* Main Content */}
       <div className="main-content">
         <p>Financial Overview dashboard content will go here</p>

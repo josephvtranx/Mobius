@@ -8,8 +8,6 @@ function IncomeBreakdown() {
       {/* Header */}
       <h1>Income Breakdown</h1>
       
-      {/* Profile card */}
-      <ProfileCard />
 
       {/* Main Content */}
       <div className="main-content">
