@@ -1,5 +1,4 @@
 import React from 'react';
-import ProfileCard from '../components/ProfileCard';
 import CalendarWidget from '../components/CalendarWidget'; 
 
 function Home() {

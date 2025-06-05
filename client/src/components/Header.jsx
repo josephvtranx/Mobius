@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 
 function Header() {
   const location = useLocation();
+  const isLoginPage = location.pathname === '/login';
 
   // Function to get the title based on the current path
   const getPageTitle = () => {
@@ -10,6 +11,7 @@ function Header() {
     
     // Map routes to their titles
     const routeTitles = {
+      '/home': 'Home',
       '/academics/InstructorHome': 'Instructor Dashboard',
       '/academics/assignments': 'Assignments',
       '/academics/red-pen-review': 'Red Pen Review',
@@ -24,12 +26,12 @@ function Header() {
       '/operations/finance/costs': 'Cost Breakdown'
     };
 
-    return routeTitles[path] || 'Møbius Academy'; // Default title if route not found
+    return routeTitles[path] || 'Møbius Academy';
   };
 
   return (
-    <header className="header">
-      {/* Logo */}
+    <header className={`header ${isLoginPage ? 'header--login' : ''}`}>
+      {/* Logo - Always show */}
       <div className="logo">
         <img
           src="/logo.png"
@@ -38,36 +40,36 @@ function Header() {
         />
       </div>
 
-      {/* Title Section */}
-      <div className="title-section">
-        <h1 className="title">{getPageTitle()}</h1>
+      {/* Title Section - Only show if not on login page */}
+      {!isLoginPage && (
+        <div className="title-section">
+          <h1 className="title">{getPageTitle()}</h1>
 
-        {/* Search Bar */}
-        <div className="search-bar">
-          <input type="text" placeholder="Search" />
-        </div>
+          <div className="search-bar">
+            <input type="text" placeholder="Search" />
+          </div>
 
-        {/* Icon Section */}
-        <div className="icon-section">
-          <ul className="icons">
-            <li>
-              <button className="icon-button">
-                <i className="fa-regular fa-message"></i>
-              </button>
-            </li>
-            <li>
-              <button className="icon-button">
-                <i className="fa-regular fa-bell"></i>
-              </button>
-            </li>
-            <li>
-              <button className="icon-button">
-                <i className="fas fa-shopping-cart"></i>
-              </button>
-            </li>
-          </ul>
+          <div className="icon-section">
+            <ul className="icons">
+              <li>
+                <button className="icon-button">
+                  <i className="fa-regular fa-message"></i>
+                </button>
+              </li>
+              <li>
+                <button className="icon-button">
+                  <i className="fa-regular fa-bell"></i>
+                </button>
+              </li>
+              <li>
+                <button className="icon-button">
+                  <i className="fas fa-shopping-cart"></i>
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
-      </div>
+      )}
     </header>
   );
 }
