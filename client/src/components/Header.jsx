@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 
 function Header() {
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
+  const isAuthRoute = location.pathname.startsWith('/auth/');
 
   // Function to get the title based on the current path
   const getPageTitle = () => {
@@ -23,14 +23,14 @@ function Header() {
       '/operations/roster/staff': 'Staff Roster',
       '/operations/finance/overview': 'Financial Overview',
       '/operations/finance/income': 'Income Breakdown',
-      '/operations/finance/costs': 'Cost Breakdown'
+      '/operations/finance/costs': 'Cost Breakdown',
     };
 
     return routeTitles[path] || 'Møbius Academy';
   };
 
   return (
-    <header className={`header ${isLoginPage ? 'header--login' : ''}`}>
+    <header className={`header ${isAuthRoute ? 'header--auth' : ''}`}>
       {/* Logo - Always show */}
       <div className="logo">
         <img
@@ -40,8 +40,12 @@ function Header() {
         />
       </div>
 
-      {/* Title Section - Only show if not on login page */}
-      {!isLoginPage && (
+      {/* Title Section - Show differently based on route type */}
+      {isAuthRoute ? (
+        <div className="auth-title">
+          <h1>{getPageTitle()}</h1>
+        </div>
+      ) : (
         <div className="title-section">
           <h1 className="title">{getPageTitle()}</h1>
 

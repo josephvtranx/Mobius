@@ -4,10 +4,18 @@ const authService = {
     // Login user
     login: async (credentials) => {
         try {
-            const response = await api.post('/auth/login', credentials);
-            if (response.data.token) {
-                localStorage.setItem('token', response.data.token);
+            const response = await api.post('/auth/login', {
+                email: credentials.email,
+                password: credentials.password
+            });
+            
+            if (response.data.accessToken) {
+                localStorage.setItem('token', response.data.accessToken);
+                localStorage.setItem('refreshToken', response.data.refreshToken);
                 localStorage.setItem('user', JSON.stringify(response.data.user));
+                
+                // Set the token in the default headers
+                api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
             }
             return response.data;
         } catch (error) {
@@ -16,24 +24,24 @@ const authService = {
         }
     },
 
-    // Register based on role
-    register: async (userData, role) => {
+    // Register user with all data in one request
+    register: async (userData) => {
         try {
-            // First create the base user
-            const requestData = {
-                ...userData,
-                role: role
-            };
-            console.log('Registration request data:', requestData);
-
-            const userResponse = await api.post('/auth/register', requestData);
-
-            if (userResponse.data.token) {
-                localStorage.setItem('token', userResponse.data.token);
-                localStorage.setItem('user', JSON.stringify(userResponse.data.user));
+            // Ensure guardians array exists and has required fields
+            if (userData.role === 'student' && userData.guardians) {
+                userData.guardians = userData.guardians.map(guardian => ({
+                    name: guardian.name || '',
+                    phone: guardian.phone || '',
+                    email: guardian.email || '',
+                    relationship: guardian.relationship || ''
+                }));
             }
 
-            return userResponse.data;
+            console.log('Registration request data:', userData);
+            const response = await api.post('/auth/register', userData);
+
+            // Registration successful - no need to store tokens since we redirect to login
+            return response.data;
         } catch (error) {
             console.error('Registration error details:', {
                 message: error.message,
@@ -51,72 +59,13 @@ const authService = {
         }
     },
 
-    // Complete role-specific registration
-    completeRoleRegistration: async (roleData, role) => {
-        try {
-            let endpoint = '';
-            let response;
-
-            switch (role) {
-                case 'student':
-                    // Create the student record with all details
-                    const studentData = {
-                        ...roleData,
-                        status: roleData.status || 'enrolled'
-                    };
-                    const guardianInfo = studentData.guardian;
-                    delete studentData.guardian; // Remove guardian info as it goes in separate table
-
-                    // Create student profile
-                    response = await api.post('/students', studentData);
-                    const student_id = response.data.student_id;
-
-                    // Then create the guardian
-                    const guardianResponse = await api.post('/guardians', {
-                        name: guardianInfo.name,
-                        phone: guardianInfo.phone,
-                        email: guardianInfo.email,
-                        relationship: guardianInfo.relationship
-                    });
-                    const guardian_id = guardianResponse.data.guardian_id;
-
-                    // Finally create the student-guardian relationship
-                    await api.post('/student-guardian', {
-                        student_id,
-                        guardian_id
-                    });
-                    break;
-
-                case 'instructor':
-                    endpoint = '/instructors';
-                    response = await api.post(endpoint, roleData);
-                    break;
-
-                case 'staff':
-                    endpoint = '/staff';
-                    response = await api.post(endpoint, roleData);
-                    break;
-
-                default:
-                    throw new Error('Invalid role');
-            }
-
-            return response.data;
-        } catch (error) {
-            console.error('Role registration error:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                config: error.config
-            });
-            throw error;
-        }
-    },
-
     // Logout user
     logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        // Remove the token from default headers
+        delete api.defaults.headers.common['Authorization'];
     },
 
     // Get current user
@@ -133,6 +82,28 @@ const authService = {
     getCurrentUserRole: () => {
         const user = authService.getCurrentUser();
         return user ? user.role : null;
+    },
+
+    // Refresh token
+    refreshToken: async () => {
+        try {
+            const refreshToken = localStorage.getItem('refreshToken');
+            if (!refreshToken) {
+                throw new Error('No refresh token found');
+            }
+
+            const response = await api.post('/auth/refresh-token', { refreshToken });
+            if (response.data.accessToken) {
+                localStorage.setItem('token', response.data.accessToken);
+                localStorage.setItem('refreshToken', response.data.refreshToken);
+                api.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
+            }
+            return response.data;
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            authService.logout();
+            throw error;
+        }
     }
 };
 

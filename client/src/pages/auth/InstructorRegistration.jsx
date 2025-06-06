@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import authService from '../../services/authService';
 
 function InstructorRegistration() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    // Basic user info
     email: '',
     password: '',
     confirmPassword: '',
     name: '',
+    phone: '',
+    role: 'instructor',
+
+    // Instructor specific info
     age: '',
     gender: '',
-    collegeAttended: '',
-    major: '',
-    subjectTeaching: ''
+    college_attended: '',
+    major: ''
   });
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,14 +43,25 @@ function InstructorRegistration() {
     }
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/register/instructor', {
-        ...formData,
-        role: 'instructor'
-      });
+      const registrationData = {
+        // Basic user info
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        phone: formData.phone,
+        role: 'instructor',
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/academics/InstructorHome');
+        // Instructor specific info
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        college_attended: formData.college_attended,
+        major: formData.major
+      };
+
+      await authService.register(registrationData);
+      // Show success message and redirect to login
+      alert('Registration successful! Please login to continue.');
+      navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred during registration');
     } finally {
@@ -55,7 +71,7 @@ function InstructorRegistration() {
 
   return (
     <div className="login-container">
-      <div className="login-card" style={{ maxWidth: '600px' }}>
+      <div className="login-card" style={{ maxWidth: '800px' }}>
         <div className="login-header">
           <h1>Instructor Registration</h1>
           <p>Create your instructor account</p>
@@ -68,163 +84,148 @@ function InstructorRegistration() {
         )}
 
         <form className="login-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email address</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your email"
-            />
+          <div className="form-section">
+            <h2>Basic Information</h2>
+            <div className="form-group">
+              <label htmlFor="email">Email address*</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password">Password*</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Create a password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmPassword">Confirm Password*</label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Confirm your password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="name">Full Name*</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phone">Phone Number</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your phone number"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Create a password"
-            />
+          <div className="form-section">
+            <h2>Professional Information</h2>
+            <div className="form-group">
+              <label htmlFor="age">Age*</label>
+              <input
+                id="age"
+                name="age"
+                type="number"
+                required
+                min="18"
+                value={formData.age}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your age"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="gender">Gender*</label>
+              <select
+                id="gender"
+                name="gender"
+                required
+                value={formData.gender}
+                onChange={handleChange}
+                className="form-input"
+              >
+                <option value="">Select your gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="college_attended">College/University*</label>
+              <input
+                id="college_attended"
+                name="college_attended"
+                type="text"
+                required
+                value={formData.college_attended}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your college or university name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="major">Major/Field of Study*</label>
+              <input
+                id="major"
+                name="major"
+                type="text"
+                required
+                value={formData.major}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your major or field of study"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your full name"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="age">Age</label>
-            <input
-              id="age"
-              name="age"
-              type="number"
-              required
-              value={formData.age}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your age"
-              min="21"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="gender">Gender</label>
-            <select
-              id="gender"
-              name="gender"
-              required
-              value={formData.gender}
-              onChange={handleChange}
-              className="form-input"
+          <div className="form-actions">
+            <button 
+              type="submit" 
+              className="submit-button" 
+              disabled={isLoading}
             >
-              <option value="">Select your gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="collegeAttended">College/University Attended</label>
-            <input
-              id="collegeAttended"
-              name="collegeAttended"
-              type="text"
-              required
-              value={formData.collegeAttended}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your college/university name"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="major">Major</label>
-            <input
-              id="major"
-              name="major"
-              type="text"
-              required
-              value={formData.major}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your major"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="subjectTeaching">Subject Teaching</label>
-            <select
-              id="subjectTeaching"
-              name="subjectTeaching"
-              required
-              value={formData.subjectTeaching}
-              onChange={handleChange}
-              className="form-input"
-            >
-              <option value="">Select subject</option>
-              <option value="mathematics">Mathematics</option>
-              <option value="science">Science</option>
-              <option value="english">English</option>
-              <option value="history">History</option>
-              <option value="computer-science">Computer Science</option>
-              <option value="foreign-language">Foreign Language</option>
-              <option value="art">Art</option>
-              <option value="music">Music</option>
-              <option value="physical-education">Physical Education</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="login-button"
-          >
-            {isLoading ? 'Creating account...' : 'Create Account'}
-          </button>
-
-          <div className="form-switch">
-            Already have an account?{' '}
-            <button
-              type="button"
-              onClick={() => navigate('/auth/login')}
-              className="switch-button"
-            >
-              Sign in
+              {isLoading ? 'Registering...' : 'Register'}
             </button>
           </div>
         </form>

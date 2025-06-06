@@ -15,7 +15,7 @@ function Navbar({ variant = 'teal' }) {
 
   // Helper function to update active states based on path
   const updateActiveStates = (path) => {
-    if (path === '/') {
+    if (path === '/home') {
       setActiveButton('none');
       setCompassActive(true);
     } else if (path.startsWith('/academics')) {
@@ -31,7 +31,7 @@ function Navbar({ variant = 'teal' }) {
     e.preventDefault();
     setActiveButton('none');
     setCompassActive(true);
-    navigate('/');
+    navigate('/home');
   };
 
   const handleToggleClick = (e, position, path) => {

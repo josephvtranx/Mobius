@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import authService from '../../services/authService';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function Login() {
   const navigate = useNavigate();
@@ -10,6 +11,7 @@ function Login() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,6 +19,8 @@ function Login() {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -25,33 +29,28 @@ function Login() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', {
+      const response = await authService.login({
         email: formData.email,
         password: formData.password
       });
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Navigate based on user's role
-      switch (response.data.user.role) {
-        case 'student':
-          navigate('/home');
-          break;
-        case 'instructor':
-          navigate('/academics/InstructorHome');
-          break;
-        case 'staff':
-          navigate('/operations/scheduling');
-          break;
-        default:
-          navigate('/home');
-      }
+      // Always navigate to home after successful login
+      navigate('/home');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+      if (err.response?.status === 401) {
+        setError('Invalid email or password');
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('An error occurred during login. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -80,21 +79,33 @@ function Login() {
               onChange={handleChange}
               className="form-input"
               placeholder="Enter your email"
+              autoComplete="email"
             />
           </div>
 
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your password"
-            />
+            <div className="password-input-container">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="password-toggle-button"
+                onClick={togglePasswordVisibility}
+                tabIndex="-1"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           <button
@@ -105,11 +116,16 @@ function Login() {
             {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
 
-          <div className="form-switch">
-            Don't have an account?{' '}
-            <Link to="/auth/role-select" className="switch-button">
-              Sign up
+          <div className="form-links">
+            <Link to="/auth/forgot-password" className="forgot-password-link">
+              Forgot password?
             </Link>
+            <div className="form-switch">
+              Don't have an account?{' '}
+              <Link to="/auth/role-select" className="switch-button">
+                Sign up
+              </Link>
+            </div>
           </div>
         </form>
       </div>

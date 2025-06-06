@@ -1,5 +1,5 @@
 import React from 'react';
-import CalendarWidget from '../components/CalendarWidget'; 
+import CalendarWidget from '../components/CalendarWidget';
 
 function Home() {
   return (

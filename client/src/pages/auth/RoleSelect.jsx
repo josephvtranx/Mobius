@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserIcon, AcademicCapIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { FaUserGraduate, FaChalkboardTeacher, FaUserTie } from 'react-icons/fa';
 
 function RoleSelect() {
   const navigate = useNavigate();
@@ -10,21 +10,21 @@ function RoleSelect() {
       id: 'student',
       name: 'Student',
       description: 'Join as a student to access courses and track your progress',
-      icon: UserIcon,
+      icon: FaUserGraduate,
       path: '/auth/register/student'
     },
     {
       id: 'instructor',
       name: 'Instructor',
       description: 'Join as an instructor to teach and manage courses',
-      icon: AcademicCapIcon,
+      icon: FaChalkboardTeacher,
       path: '/auth/register/instructor'
     },
     {
       id: 'staff',
       name: 'Staff',
       description: 'Join as staff to manage operations and scheduling',
-      icon: BriefcaseIcon,
+      icon: FaUserTie,
       path: '/auth/register/staff'
     }
   ];
@@ -34,45 +34,26 @@ function RoleSelect() {
       <div className="login-card">
         <div className="login-header">
           <h1>Choose Your Role</h1>
-          <p>Select how you'll be using Mobius</p>
+          <p>Select how you'll be using Møbius Academy</p>
         </div>
 
-        <div className="login-form">
+        <div className="role-selection">
           {roles.map((role) => (
             <button
               key={role.id}
               onClick={() => navigate(role.path)}
               className="role-select-button"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                width: '100%',
-                padding: '16px',
-                marginBottom: '12px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                backgroundColor: 'white',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = '#007bff';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = '#ddd';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
             >
-              <role.icon className="h-6 w-6 text-blue-600 mr-3" aria-hidden="true" />
-              <div>
-                <div className="font-medium text-gray-900">{role.name}</div>
-                <div className="text-sm text-gray-500">{role.description}</div>
+              <role.icon className="role-icon" aria-hidden="true" />
+              <div className="role-text">
+                <div className="role-name">{role.name}</div>
+                <div className="role-description">{role.description}</div>
               </div>
             </button>
           ))}
+        </div>
 
+        <div className="form-links">
           <div className="form-switch">
             Already have an account?{' '}
             <button
@@ -84,6 +65,64 @@ function RoleSelect() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .role-selection {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .role-select-button {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          padding: 20px;
+          border: 2px solid #e2e8f0;
+          border-radius: 12px;
+          background-color: white;
+          text-align: left;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .role-select-button:hover {
+          border-color: #4299e1;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
+        }
+
+        .role-icon {
+          width: 32px;
+          height: 32px;
+          margin-right: 20px;
+          color: #4299e1;
+          flex-shrink: 0;
+        }
+
+        .role-text {
+          flex: 1;
+        }
+
+        .role-name {
+          font-weight: 600;
+          font-size: 18px;
+          color: #2d3748;
+          margin-bottom: 4px;
+        }
+
+        .role-description {
+          font-size: 14px;
+          color: #718096;
+          line-height: 1.4;
+        }
+
+        .form-links {
+          margin-top: 24px;
+          text-align: center;
+        }
+      `}</style>
     </div>
   );
 }

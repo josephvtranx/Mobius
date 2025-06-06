@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     const location = useLocation();
@@ -17,10 +17,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
                     throw new Error('No token or user found');
                 }
 
-                // Verify token with backend
-                const response = await axios.get('http://localhost:3000/api/auth/verify', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                // Verify token with backend using our api instance
+                const response = await api.get('/auth/verify');
 
                 if (response.data.valid) {
                     setIsAuthenticated(true);

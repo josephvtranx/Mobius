@@ -1,15 +1,16 @@
 // This is our base API setup
 import axios from 'axios';
 
-// Use relative URL since we're using Vite's proxy
-const API_URL = '/api';
+// Use Vite's proxy configuration
+const API_URL = import.meta.env.DEV ? '/api' : 'http://localhost:5001/api';
 
 // Create an axios instance with default settings
 const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
-    }
+    },
+    withCredentials: true // Important for CORS
 });
 
 // Add token to requests if it exists

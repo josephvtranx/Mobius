@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import authService from '../../services/authService';
 
 function StaffRegistration() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    // Basic user info
     email: '',
     password: '',
     confirmPassword: '',
     name: '',
+    phone: '',
+    role: 'staff',
+
+    // Staff specific info
     age: '',
-    gender: '',
-    department: '',
-    position: ''
+    gender: ''
   });
+
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -37,14 +41,23 @@ function StaffRegistration() {
     }
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/register/staff', {
-        ...formData,
-        role: 'staff'
-      });
+      const registrationData = {
+        // Basic user info
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        phone: formData.phone,
+        role: 'staff',
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/operations/scheduling');
+        // Staff specific info
+        age: parseInt(formData.age),
+        gender: formData.gender
+      };
+
+      await authService.register(registrationData);
+      // Show success message and redirect to login
+      alert('Registration successful! Please login to continue.');
+      navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred during registration');
     } finally {
@@ -54,7 +67,7 @@ function StaffRegistration() {
 
   return (
     <div className="login-container">
-      <div className="login-card" style={{ maxWidth: '600px' }}>
+      <div className="login-card" style={{ maxWidth: '800px' }}>
         <div className="login-header">
           <h1>Staff Registration</h1>
           <p>Create your staff account</p>
@@ -67,146 +80,125 @@ function StaffRegistration() {
         )}
 
         <form className="login-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email address</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your email"
-            />
+          <div className="form-section">
+            <h2>Basic Information</h2>
+            <div className="form-group">
+              <label htmlFor="email">Email address*</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your email"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="password">Password*</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength="8"
+                value={formData.password}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Create a password (minimum 8 characters)"
+              />
+              <small className="form-text text-muted">
+                Password must be at least 8 characters long
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="confirmPassword">Confirm Password*</label>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                required
+                minLength="8"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Confirm your password"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="name">Full Name*</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="phone">Phone Number</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your phone number"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Create a password"
-            />
+          <div className="form-section">
+            <h2>Personal Information</h2>
+            <div className="form-group">
+              <label htmlFor="age">Age*</label>
+              <input
+                id="age"
+                name="age"
+                type="number"
+                required
+                min="18"
+                value={formData.age}
+                onChange={handleChange}
+                className="form-input"
+                placeholder="Enter your age"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="gender">Gender*</label>
+              <select
+                id="gender"
+                name="gender"
+                required
+                value={formData.gender}
+                onChange={handleChange}
+                className="form-input"
+              >
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="name">Full Name</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your full name"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="age">Age</label>
-            <input
-              id="age"
-              name="age"
-              type="number"
-              required
-              value={formData.age}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your age"
-              min="18"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="gender">Gender</label>
-            <select
-              id="gender"
-              name="gender"
-              required
-              value={formData.gender}
-              onChange={handleChange}
-              className="form-input"
+          <div className="form-actions">
+            <button 
+              type="submit" 
+              className="submit-button" 
+              disabled={isLoading}
             >
-              <option value="">Select your gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="department">Department</label>
-            <select
-              id="department"
-              name="department"
-              required
-              value={formData.department}
-              onChange={handleChange}
-              className="form-input"
-            >
-              <option value="">Select department</option>
-              <option value="administration">Administration</option>
-              <option value="operations">Operations</option>
-              <option value="finance">Finance</option>
-              <option value="hr">Human Resources</option>
-              <option value="it">IT Support</option>
-              <option value="student-services">Student Services</option>
-              <option value="facilities">Facilities</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="position">Position</label>
-            <input
-              id="position"
-              name="position"
-              type="text"
-              required
-              value={formData.position}
-              onChange={handleChange}
-              className="form-input"
-              placeholder="Enter your position title"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="login-button"
-          >
-            {isLoading ? 'Creating account...' : 'Create Account'}
-          </button>
-
-          <div className="form-switch">
-            Already have an account?{' '}
-            <button
-              type="button"
-              onClick={() => navigate('/auth/login')}
-              className="switch-button"
-            >
-              Sign in
+              {isLoading ? 'Registering...' : 'Register'}
             </button>
           </div>
         </form>
