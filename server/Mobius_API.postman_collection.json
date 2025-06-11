@@ -1,0 +1,297 @@
+{
+    "info": {
+      "name": "Mobius API",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:5001",
+        "type": "string"
+      }
+    ],
+    "item": [
+      {
+        "name": "Users",
+        "item": [
+          {
+            "name": "Get All Users",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/users",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "users"]
+              }
+            }
+          },
+          {
+            "name": "Create User",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"1234567890\",\n    \"role\": \"student\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/users",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "users"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Guardians",
+        "item": [
+          {
+            "name": "Get All Guardians",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/guardians",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "guardians"]
+              }
+            }
+          },
+          {
+            "name": "Create Guardian",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"Jane Doe\",\n    \"phone\": \"0987654321\",\n    \"email\": \"jane@example.com\",\n    \"relationship\": \"parent\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/guardians",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "guardians"]
+              }
+            }
+          },
+          {
+            "name": "Get Guardian's Students",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/guardians/1/students",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "guardians", "1", "students"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Student-Guardian",
+        "item": [
+          {
+            "name": "Link Student to Guardian",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"student_id\": 1,\n    \"guardian_id\": 1\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/student-guardian",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "student-guardian"]
+              }
+            }
+          },
+          {
+            "name": "Remove Student-Guardian Link",
+            "request": {
+              "method": "DELETE",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"student_id\": 1,\n    \"guardian_id\": 1\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/student-guardian",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "student-guardian"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Classes",
+        "item": [
+          {
+            "name": "Get All Classes",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/classes",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "classes"]
+              }
+            }
+          },
+          {
+            "name": "Get Single Class",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/classes/1",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "classes", "1"]
+              }
+            }
+          },
+          {
+            "name": "Create Class",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"instructor_id\": 1,\n    \"student_id\": 1,\n    \"subject_id\": 1,\n    \"session_date\": \"2024-03-20\",\n    \"start_time\": \"14:00:00\",\n    \"end_time\": \"15:00:00\",\n    \"location\": \"Room 101\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/classes",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "classes"]
+              }
+            }
+          },
+          {
+            "name": "Update Class Status",
+            "request": {
+              "method": "PATCH",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"status\": \"completed\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/classes/1/status",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "classes", "1", "status"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Students",
+        "item": [
+          {
+            "name": "Get All Students",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/students",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "students"]
+              }
+            }
+          },
+          {
+            "name": "Create Student",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"phone\": \"1234567890\",\n    \"status\": \"enrolled\",\n    \"guardian_contact\": \"Jane Doe\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/students",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "students"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Subjects",
+        "item": [
+          {
+            "name": "Get All Subjects",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/api/subjects",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "subjects"]
+              }
+            }
+          },
+          {
+            "name": "Create Subject",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n    \"name\": \"Mathematics\",\n    \"department\": \"Sciences\",\n    \"description\": \"Advanced mathematics course\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/api/subjects",
+                "host": ["{{baseUrl}}"],
+                "path": ["api", "subjects"]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
