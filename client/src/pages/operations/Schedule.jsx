@@ -5,7 +5,7 @@ import Events from '../../components/Events';
 import PendingBlocks from '../../components/PendingBlocks';
 import ActionButtons from '../../components/ActionButtons';
 
-function Scheduling() {
+function Schedule() {
   return (
     <div className="main">
       <aside className="mcal-sidebar">
@@ -60,4 +60,4 @@ function Scheduling() {
   );
 }
 
-export default Scheduling;
+export default Schedule;

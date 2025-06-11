@@ -1,12 +1,15 @@
 // src/components/Navbar.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import authService from '../services/authService';
 
 function Navbar({ variant = 'teal' }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeButton, setActiveButton] = useState('none');
   const [compassActive, setCompassActive] = useState(false);
+  const user = authService.getCurrentUser();
+  const isStaff = user?.role === 'staff';
 
   // Update active states based on current route
   useEffect(() => {
@@ -83,7 +86,7 @@ function Navbar({ variant = 'teal' }) {
           <button
             type="button"
             className={`toggle-btn ${activeButton === 'bottom' ? 'active' : ''}`}
-            onClick={(e) => handleToggleClick(e, 'bottom', '/operations/scheduling')}
+            onClick={(e) => handleToggleClick(e, 'bottom', isStaff ? '/operations/scheduling' : '/operations/schedule')}
           >
             <i className="fa-solid fa-wrench"></i>
           </button>
