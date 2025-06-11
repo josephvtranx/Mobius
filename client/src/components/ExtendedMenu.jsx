@@ -2,12 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import authService from '../services/authService';
 
 function ExtendedMenu({ variant = 'operations' }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(true);
   const [prevVariant, setPrevVariant] = useState(variant);
+  const user = authService.getCurrentUser();
+  const isStaff = user?.role === 'staff';
   
   // State for active items and open submenus (now an array to track multiple open submenus)
   const [activeMain, setActiveMain] = useState(null);
@@ -44,12 +47,21 @@ function ExtendedMenu({ variant = 'operations' }) {
   // Define menu structures for both variants
   const menuStructures = {
     operations: [
-      {
-        label: 'Scheduling',
-        icon: 'fa-regular fa-calendar',
-        path: '/operations/scheduling',
-        submenu: null,
-      },
+      ...(isStaff ? [
+        {
+          label: 'Scheduling',
+          icon: 'fa-regular fa-calendar',
+          path: '/operations/scheduling',
+          submenu: null,
+        }
+      ] : [
+        {
+          label: 'Schedule',
+          icon: 'fa-regular fa-calendar',
+          path: '/operations/schedule',
+          submenu: null,
+        }
+      ]),
       {
         label: 'Roster',
         icon: 'fa-solid fa-user-group',
@@ -58,6 +70,7 @@ function ExtendedMenu({ variant = 'operations' }) {
           { label: 'Student Roster', path: '/operations/roster/students' },
           { label: 'Instructor Roster', path: '/operations/roster/instructors' },
           { label: 'Staff Roster', path: '/operations/roster/staff' },
+          { label: 'Class Roster', path: '/operations/roster/classes' },
         ],
       },
       {

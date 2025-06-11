@@ -1,9 +1,12 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
+import authService from '../services/authService';
 
 function Header() {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
+  const user = authService.getCurrentUser();
+  const isStaff = user?.role === 'staff';
 
   // Function to get the title based on the current path
   const getPageTitle = () => {
@@ -17,10 +20,12 @@ function Header() {
       '/academics/red-pen-review': 'Red Pen Review',
       '/academics/testing': 'Testing',
       '/academics/performance': 'Performance',
-      '/operations/scheduling': 'MCal Schedule',
+      '/operations/scheduling': 'MCal Scheduling',
+      '/operations/schedule': 'MCal Schedule',
       '/operations/roster/students': 'Student Roster',
       '/operations/roster/instructors': 'Instructor Roster',
       '/operations/roster/staff': 'Staff Roster',
+      '/operations/roster/classes': 'Class Roster',
       '/operations/finance/overview': 'Financial Overview',
       '/operations/finance/income': 'Income Breakdown',
       '/operations/finance/costs': 'Cost Breakdown',

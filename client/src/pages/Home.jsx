@@ -1,22 +1,21 @@
 import React from 'react';
 import CalendarWidget from '../components/CalendarWidget';
+import authService from '../services/authService';
 
 function Home() {
+  const user = authService.getCurrentUser();
+  const userName = user ? user.name : 'Guest';
+
   return (
     <div className="body body--home">
       <div className="page-container">
-        {/* Profile card (bottom-left) */}
-
         {/* Main dashboard content */}
         <main className="main main--home">
           <div className="dashboard-container">
             <div className="dashboard-main">
               {/* Header */}
               <div className="dashboard-header">
-                <h1>Welcome back, Yvonne</h1>
-                <div className="search-bar-home">
-                  <input type="text" placeholder="Find a Page" />
-                </div>
+                <h1>Welcome back, {userName}</h1>
               </div>
 
               {/* Dashboard content */}
@@ -37,7 +36,6 @@ function Home() {
                     <span className="timestamp">28 mins ago</span>
                   </div>
                 </div>
-
                 {/* Upcoming */}
                 <div className="upcoming">
                   <h2>Upcoming</h2>
@@ -54,8 +52,6 @@ function Home() {
                     <span className="timestamp">27 hours ago</span>
                   </div>
                 </div>
-
-                {/* Calendar Widget */}
                 <CalendarWidget />
               </div>
             </div>

@@ -26,6 +26,8 @@ import Scheduling from './pages/operations/Scheduling';
 import StudentRoster from './pages/operations/roster/StudentRoster';
 import InstructorRoster from './pages/operations/roster/InstructorRoster';
 import StaffRoster from './pages/operations/roster/StaffRoster';
+import ClassRoster from './pages/operations/roster/ClassRoster';
+import Schedule from './pages/operations/Schedule';
 
 // Financial Dashboard pages
 import Overview from './pages/operations/Financial-Dashboard/Overview';
@@ -149,6 +151,14 @@ function AppContent() {
               }
             />
             <Route
+              path="/operations/schedule"
+              element={
+                <ProtectedRoute>
+                  <Schedule />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/operations/roster/students"
               element={
                 <ProtectedRoute>
@@ -169,6 +179,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <StaffRoster />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/roster/classes"
+              element={
+                <ProtectedRoute>
+                  <ClassRoster />
                 </ProtectedRoute>
               }
             />
