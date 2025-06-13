@@ -48,11 +48,11 @@ function ExtendedMenu({ variant = 'operations' }) {
   const menuStructures = {
     operations: [
       ...(isStaff ? [
-        {
-          label: 'Scheduling',
-          icon: 'fa-regular fa-calendar',
-          path: '/operations/scheduling',
-          submenu: null,
+      {
+        label: 'Scheduling',
+        icon: 'fa-regular fa-calendar',
+        path: '/operations/scheduling',
+        submenu: null,
         }
       ] : [
         {

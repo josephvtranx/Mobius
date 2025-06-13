@@ -12,6 +12,7 @@ import guardianRoutes from './routes/guardianRoutes.js';
 import studentGuardianRoutes from './routes/studentGuardianRoutes.js';
 import classSessionRoutes from './routes/classSessionRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
+import subjectGroupsRouter from './routes/subjectGroups.js';
 
 // Initialize express app
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/guardians', guardianRoutes);
 app.use('/api/student-guardian', studentGuardianRoutes);
 app.use('/api/classes', classSessionRoutes);
 app.use('/api/subjects', subjectRoutes);
+app.use('/api/subject-groups', subjectGroupsRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

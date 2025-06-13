@@ -12,11 +12,10 @@ const subjectValidation = [
         .notEmpty()
         .withMessage('Subject name is required')
         .trim(),
-    body('department')
-        .optional()
-        .isString()
-        .withMessage('Department must be a string')
-        .trim(),
+    body('group_id')
+        .exists()
+        .isInt()
+        .withMessage('Subject group is required'),
     body('description')
         .optional()
         .isString()
@@ -24,16 +23,76 @@ const subjectValidation = [
         .trim()
 ];
 
+// Validation middleware for subject creation
+const validateSubjectCreation = (req, res, next) => {
+    const { name, group_id } = req.body;
+    
+    if (!name || !group_id) {
+        return res.status(400).json({ 
+            error: 'Name and group_id are required' 
+        });
+    }
+
+    if (typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ 
+            error: 'Name must be a non-empty string' 
+        });
+    }
+
+    if (isNaN(parseInt(group_id))) {
+        return res.status(400).json({ 
+            error: 'group_id must be a valid integer' 
+        });
+    }
+
+    next();
+};
+
+// Get all subject groups with their subjects
+router.get('/subject-groups', async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const result = await client.query(`
+            SELECT 
+                sg.group_id,
+                sg.name,
+                sg.description,
+                COALESCE(
+                    json_agg(
+                        json_build_object(
+                            'subject_id', s.subject_id,
+                            'name', s.name
+                        )
+                    ) FILTER (WHERE s.subject_id IS NOT NULL),
+                    '[]'::json
+                ) as subjects
+            FROM subject_groups sg
+            LEFT JOIN subjects s ON sg.group_id = s.group_id
+            GROUP BY sg.group_id, sg.name, sg.description
+            ORDER BY sg.name
+        `);
+
+        console.log('Subject groups query result:', JSON.stringify(result.rows, null, 2));
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching subject groups:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch subject groups',
+            details: error.message 
+        });
+    } finally {
+        client.release();
+    }
+});
+
 // Get all subjects
 router.get('/', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
                 s.*,
-                COUNT(DISTINCT is_join.instructor_id) as instructor_count,
                 COUNT(DISTINCT cs.session_id) as active_sessions
             FROM subjects s
-            LEFT JOIN instructor_specialties is_join ON s.subject_id = is_join.subject_id
             LEFT JOIN class_sessions cs ON s.subject_id = cs.subject_id 
                 AND cs.status = 'scheduled'
             GROUP BY s.subject_id
@@ -53,20 +112,14 @@ router.get('/:id', async (req, res) => {
         const result = await pool.query(`
             SELECT 
                 s.*,
-                json_agg(DISTINCT jsonb_build_object(
-                    'instructor_id', i.instructor_id,
-                    'name', u.name,
-                    'email', u.email
-                )) FILTER (WHERE i.instructor_id IS NOT NULL) as instructors,
+                sg.name as group_name,
                 COUNT(DISTINCT cs.session_id) as total_sessions,
                 COUNT(DISTINCT cs.session_id) FILTER (WHERE cs.status = 'completed') as completed_sessions
             FROM subjects s
-            LEFT JOIN instructor_specialties is_join ON s.subject_id = is_join.subject_id
-            LEFT JOIN instructors i ON is_join.instructor_id = i.instructor_id
-            LEFT JOIN users u ON i.user_id = u.user_id
+            LEFT JOIN subject_groups sg ON s.group_id = sg.group_id
             LEFT JOIN class_sessions cs ON s.subject_id = cs.subject_id
             WHERE s.subject_id = $1
-            GROUP BY s.subject_id
+            GROUP BY s.subject_id, sg.name
         `, [id]);
 
         if (result.rows.length === 0) {
@@ -80,31 +133,50 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create new subject
-router.post('/', subjectValidation, validateRequest, async (req, res) => {
+// Create a new subject
+router.post('/', validateSubjectCreation, async (req, res) => {
+    const client = await pool.connect();
     try {
-        const { name, department, description } = req.body;
-
-        // Check if subject already exists
-        const existingSubject = await pool.query(
-            'SELECT subject_id FROM subjects WHERE LOWER(name) = LOWER($1)',
-            [name]
+        const { name, group_id } = req.body;
+        
+        // Check if subject already exists in this group
+        const checkResult = await client.query(
+            'SELECT * FROM subjects WHERE name = $1 AND group_id = $2',
+            [name, group_id]
         );
 
-        if (existingSubject.rows.length > 0) {
-            return res.status(400).json({ error: 'Subject already exists' });
+        if (checkResult.rows.length > 0) {
+            return res.status(400).json({ 
+                error: 'A subject with this name already exists in this group' 
+            });
         }
 
-        const result = await pool.query(`
-            INSERT INTO subjects (name, department, description)
-            VALUES ($1, $2, $3)
-            RETURNING *
-        `, [name, department, description]);
+        // Verify the group exists
+        const groupResult = await client.query(
+            'SELECT * FROM subject_groups WHERE group_id = $1',
+            [group_id]
+        );
+
+        if (groupResult.rows.length === 0) {
+            return res.status(400).json({ 
+                error: 'Invalid subject group' 
+            });
+        }
+
+        const result = await client.query(
+            'INSERT INTO subjects (name, group_id) VALUES ($1, $2) RETURNING *',
+            [name, group_id]
+        );
 
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating subject:', error);
-        res.status(500).json({ error: 'Failed to create subject' });
+        res.status(500).json({ 
+            error: 'Failed to create subject',
+            details: error.message 
+        });
+    } finally {
+        client.release();
     }
 });
 

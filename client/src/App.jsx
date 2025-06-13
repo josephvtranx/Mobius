@@ -40,6 +40,7 @@ import './css/login.css';
 function App() {
   return (
     <Router>
+      <div id="modal-root"></div>
       <AppContent />
     </Router>
   );

@@ -1,6 +1,7 @@
 import pool from '../config/db.js';
 import { verifyAccessToken } from '../helpers/authHelpers.js';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 // Rate limiter for auth endpoints
 export const authLimiter = rateLimit({
@@ -32,60 +33,36 @@ const logAuthAttempt = async (req, success, reason = null) => {
 
 export const authenticateToken = async (req, res, next) => {
     try {
-        // Get token from header
         const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        const token = authHeader && authHeader.split(' ')[1];
 
         if (!token) {
-            await logAuthAttempt(req, false, 'No token provided');
-            return res.status(401).json({ 
-                message: 'Authentication required. Please provide a valid access token'
-            });
+            return res.status(401).json({ message: 'No token provided' });
         }
 
-        // Verify token
-        const decoded = verifyAccessToken(token);
-        if (!decoded) {
-            await logAuthAttempt(req, false, 'Invalid token');
-            return res.status(401).json({ 
-                message: 'Invalid or expired token. Please login again or refresh your token'
-            });
-        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // Check if user still exists and is active
-        const userResult = await pool.query(
-            'SELECT user_id, username, email, role, is_active FROM users WHERE user_id = $1',
+        // Query to get user by id instead of username
+        const result = await pool.query(
+            'SELECT * FROM users WHERE user_id = $1',
             [decoded.userId]
         );
 
-        if (userResult.rows.length === 0) {
-            await logAuthAttempt(req, false, 'User not found');
-            return res.status(401).json({ 
-                message: 'User account no longer exists'
-            });
+        if (result.rows.length === 0) {
+            return res.status(401).json({ message: 'User not found' });
         }
 
-        const user = userResult.rows[0];
-        
-        if (!user.is_active) {
-            await logAuthAttempt(req, false, 'Inactive account');
-            return res.status(401).json({ 
-                message: 'Account is inactive. Please contact support for assistance'
-            });
-        }
-
-        // Log successful authentication
-        await logAuthAttempt(req, true);
-
-        // Add user to request object
-        req.user = user;
+        req.user = result.rows[0];
         next();
     } catch (error) {
         console.error('Auth middleware error:', error);
-        await logAuthAttempt(req, false, 'Internal error');
-        res.status(500).json({ 
-            message: 'An error occurred while authenticating your request'
-        });
+        if (error.name === 'JsonWebTokenError') {
+            return res.status(401).json({ message: 'Invalid token' });
+        }
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ message: 'Token expired' });
+        }
+        return res.status(500).json({ message: 'Internal server error' });
     }
 };
 

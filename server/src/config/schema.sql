@@ -57,28 +57,35 @@ CREATE TABLE instructors (
   major           TEXT
 );
 
--- 5. SUBJECTS
-CREATE TABLE subjects (
-  subject_id  SERIAL PRIMARY KEY,
-  name        TEXT    NOT NULL,
-  department  TEXT
+-- 5. SUBJECT GROUPS
+CREATE TABLE subject_groups (
+  group_id     SERIAL PRIMARY KEY,
+  name         TEXT NOT NULL UNIQUE, -- e.g., "Music", "STEM"
+  description  TEXT
 );
 
--- 6. STUDENT_GUARDIAN
+-- 6. SUBJECTS
+CREATE TABLE subjects (
+  subject_id  SERIAL PRIMARY KEY,
+  group_id    INT REFERENCES subject_groups(group_id) ON DELETE SET NULL,
+  name        TEXT NOT NULL
+);
+
+-- 7. STUDENT_GUARDIAN
 CREATE TABLE student_guardian (
   student_id   INT REFERENCES students(student_id) ON DELETE CASCADE,
   guardian_id  INT REFERENCES guardians(guardian_id) ON DELETE CASCADE,
   PRIMARY KEY (student_id, guardian_id)
 );
 
--- 7. INSTRUCTOR_SPECIALTIES
+-- 8. INSTRUCTOR_SPECIALTIES
 CREATE TABLE instructor_specialties (
   instructor_id  INT REFERENCES instructors(instructor_id) ON DELETE CASCADE,
   subject_id     INT REFERENCES subjects(subject_id) ON DELETE CASCADE,
   PRIMARY KEY (instructor_id, subject_id)
 );
 
--- 8. INSTRUCTOR_ASSIGNMENTS
+-- 9. INSTRUCTOR_ASSIGNMENTS
 CREATE TABLE instructor_assignments (
   assignment_id   SERIAL PRIMARY KEY,
   instructor_id   INT     NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
@@ -88,7 +95,7 @@ CREATE TABLE instructor_assignments (
   end_date        DATE
 );
 
--- 9. CLASS_SERIES 
+-- 10. CLASS_SERIES 
 CREATE TABLE class_series (
   series_id            SERIAL PRIMARY KEY,
   subject_id           INT     NOT NULL REFERENCES subjects(subject_id),
@@ -111,7 +118,7 @@ CREATE TABLE class_series (
   notes                TEXT
 );
 
--- 10. CLASS_SESSIONS
+-- 11. CLASS_SESSIONS
 CREATE TABLE class_sessions (
   session_id                 SERIAL PRIMARY KEY,
   series_id                  INT REFERENCES class_series(series_id),
@@ -130,7 +137,7 @@ CREATE TABLE class_sessions (
   credits_cost               INT     NOT NULL DEFAULT 1
 );
 
--- 11. ATTENDANCE
+-- 12. ATTENDANCE
 CREATE TABLE attendance (
   session_id   INT     NOT NULL REFERENCES class_sessions(session_id) ON DELETE CASCADE,
   student_id   INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
@@ -139,7 +146,7 @@ CREATE TABLE attendance (
   PRIMARY KEY (session_id, student_id)
 );
 
--- 12. TIME_LOGS
+-- 13. TIME_LOGS
 CREATE TABLE time_logs (
   log_id                   SERIAL PRIMARY KEY,
   staff_id                 INT     NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
@@ -149,7 +156,7 @@ CREATE TABLE time_logs (
   notes                    TEXT
 );
 
--- 13. CREDIT_PACKAGES
+-- 14. CREDIT_PACKAGES
 CREATE TABLE credit_packages (
   package_id      SERIAL PRIMARY KEY,
   name            TEXT    NOT NULL,
@@ -158,7 +165,7 @@ CREATE TABLE credit_packages (
   expiration_days INT     NOT NULL CHECK (expiration_days >= 0)
 );
 
--- 14. STUDENT_CREDITS
+-- 15. STUDENT_CREDITS
 CREATE TABLE student_credits (
   purchase_id        SERIAL PRIMARY KEY,
   student_id         INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
@@ -168,7 +175,7 @@ CREATE TABLE student_credits (
   expiration_date    DATE
 );
 
--- 15. CREDIT_REDEMPTIONS
+-- 16. CREDIT_REDEMPTIONS
 CREATE TABLE credit_redemptions (
   redemption_id   SERIAL PRIMARY KEY,
   student_id      INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
@@ -178,7 +185,7 @@ CREATE TABLE credit_redemptions (
   redeemed_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 16. PAYROLL
+-- 17. PAYROLL
 CREATE TABLE payroll (
   payroll_id        SERIAL PRIMARY KEY,
   staff_id          INT     NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,

@@ -1,0 +1,412 @@
+.main-class-roster {
+  flex: 1;
+  width: 100%;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.roster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.roster-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-bottom: 20px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn i {
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background-color: #2563eb;
+  color: #374151;
+  min-width: 140px;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb;
+}
+
+.roster-table-container {
+  flex: 1;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.roster-table th {
+  background-color: #f8fafc;
+  padding: 1rem;
+  font-weight: 500;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.roster-table th:last-child,
+.roster-table td:last-child {
+  text-align: left;
+  padding-left: 10px;
+}
+
+.roster-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.subject-group-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.subject-group-row:hover {
+  background-color: #f9fafb;
+}
+
+.subject-group-row.expanded {
+  background-color: #f3f4f6;
+}
+
+.expanded-content {
+  background-color: #f9fafb;
+}
+
+.expanded-content td {
+  padding: 0;
+}
+
+.classes-container {
+  padding: 1.5rem;
+}
+
+.classes-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.classes-table th {
+  background-color: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.classes-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.classes-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.sections-container {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.sections-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.sections-table th,
+.sections-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.sections-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.sections-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sections-table tr:hover {
+  background: #f8f9fa;
+}
+
+.schedule {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.schedule .day {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #e9ecef;
+  color: #6c757d;
+}
+
+.schedule .day.filled {
+  background: #4CAF50;
+  color: white;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-pill.active {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-pill.pending {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.status-pill.completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.class-row {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.class-row:hover {
+  background-color: #f8f9fa;
+}
+
+.class-row.expanded {
+  background-color: #e9ecef;
+}
+
+@media (max-width: 768px) {
+  .main-class-roster {
+    padding: 1rem;
+  }
+
+  .roster-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .classes-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .sections-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .schedule {
+    flex-wrap: wrap;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999999;
+}
+
+.modal {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  z-index: 1000000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  padding: 0.5rem;
+  line-height: 1;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.subjects-container {
+  padding: 1rem;
+}
+
+.subjects-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.subjects-table th,
+.subjects-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.subjects-table th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+.subjects-table tr:hover {
+  background-color: #f8fafc;
+}
+
+.subjects-table .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.subjects-table .btn-secondary {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.subjects-table .btn-secondary:hover {
+  background-color: #cbd5e1;
+} 
