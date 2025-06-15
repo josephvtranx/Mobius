@@ -11,8 +11,10 @@ import instructorRoutes from './routes/instructorRoutes.js';
 import guardianRoutes from './routes/guardianRoutes.js';
 import studentGuardianRoutes from './routes/studentGuardianRoutes.js';
 import classSessionRoutes from './routes/classSessionRoutes.js';
+import classSeriesRoutes from './routes/classSeriesRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import subjectGroupsRouter from './routes/subjectGroups.js';
+import staffRoutes from './routes/staffRoutes.js';
 
 // Initialize express app
 const app = express();
@@ -42,9 +44,11 @@ app.use('/api/students', studentRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/guardians', guardianRoutes);
 app.use('/api/student-guardian', studentGuardianRoutes);
-app.use('/api/classes', classSessionRoutes);
+app.use('/api/class-sessions', classSessionRoutes);
+app.use('/api/class-series', classSeriesRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);
+app.use('/api/staff', staffRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

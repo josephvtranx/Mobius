@@ -31,10 +31,10 @@ router.get('/', async (req, res) => {
                 u.phone,
                 json_agg(DISTINCT s.name) as specialties
             FROM instructors i
-            JOIN users u ON i.user_id = u.user_id
+            JOIN users u ON i.instructor_id = u.user_id
             LEFT JOIN instructor_specialties is_join ON i.instructor_id = is_join.instructor_id
             LEFT JOIN subjects s ON is_join.subject_id = s.subject_id
-            WHERE u.is_deleted = false
+            WHERE u.is_active = true
             GROUP BY i.instructor_id, u.user_id
             ORDER BY u.name
         `);
@@ -59,12 +59,12 @@ router.get('/:id', async (req, res) => {
                 json_agg(DISTINCT ia.*) as availability,
                 json_agg(DISTINCT cs.*) as upcoming_sessions
             FROM instructors i
-            JOIN users u ON i.user_id = u.user_id
+            JOIN users u ON i.instructor_id = u.user_id
             LEFT JOIN instructor_specialties is_join ON i.instructor_id = is_join.instructor_id
             LEFT JOIN subjects s ON is_join.subject_id = s.subject_id
             LEFT JOIN instructor_availability ia ON i.instructor_id = ia.instructor_id
             LEFT JOIN class_sessions cs ON i.instructor_id = cs.instructor_id
-            WHERE i.instructor_id = $1 AND u.is_deleted = false
+            WHERE i.instructor_id = $1 AND u.is_active = true
             GROUP BY i.instructor_id, u.user_id
         `, [id]);
 

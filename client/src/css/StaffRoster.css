@@ -1,0 +1,119 @@
+.main-staff-roster {
+  padding: 20px;
+}
+
+.main-staff-roster table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.main-staff-roster th,
+.main-staff-roster td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.main-staff-roster th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #333;
+}
+
+.main-staff-roster th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.main-staff-roster th.sortable:hover {
+  background-color: #e9ecef;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-info .email,
+.contact-info .phone {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+.status.full_time {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.status.part_time {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.time-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.time-log {
+  font-size: 0.85em;
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.time-log .date {
+  font-weight: 500;
+  color: #333;
+}
+
+.time-log .hours {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.error {
+  color: #dc3545;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .main-staff-roster {
+    overflow-x: auto;
+  }
+  
+  .main-staff-roster table {
+    min-width: 1000px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-staff-roster {
+    padding: 10px;
+  }
+  
+  .main-staff-roster th,
+  .main-staff-roster td {
+    padding: 8px;
+  }
+} 

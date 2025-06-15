@@ -2,15 +2,14 @@
 import axios from 'axios';
 
 // Use Vite's proxy configuration
-const API_URL = import.meta.env.DEV ? '/api' : 'http://localhost:5001/api';
+const API_URL = import.meta.env.DEV ? 'http://localhost:5001/api' : '/api';
 
 // Create an axios instance with default settings
 const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
-    },
-    withCredentials: true // Important for CORS
+    }
 });
 
 // Add token to requests if it exists
@@ -44,6 +43,7 @@ api.interceptors.response.use(
 export const auth = {
     login: (credentials) => api.post('/auth/login', credentials),
     signup: (userData) => api.post('/auth/signup', userData),
+    verify: () => api.get('/auth/verify'),
     logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

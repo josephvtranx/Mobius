@@ -1,0 +1,121 @@
+.main-student-roster {
+  padding: 20px;
+}
+
+.main-student-roster h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 25px;
+}
+
+th.sortable:hover {
+  background-color: #e9ecef;
+}
+
+th.sortable::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+}
+
+tr:hover {
+  background-color: #f8f9fa;
+}
+
+.class-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.class-pill {
+  background-color: #e9ecef;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.9em;
+  color: #495057;
+}
+
+.schedule {
+  display: flex;
+  gap: 4px;
+}
+
+.day {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.8em;
+  background-color: #e9ecef;
+  color: #6c757d;
+}
+
+.day.filled {
+  background-color: #007bff;
+  color: white;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+  font-size: 1.1em;
+}
+
+.error {
+  text-align: center;
+  padding: 20px;
+  color: #dc3545;
+  font-size: 1.1em;
+  background-color: #f8d7da;
+  border-radius: 4px;
+  margin: 20px 0;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-info .email {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.contact-info .phone {
+  color: #6c757d;
+  font-size: 0.9em;
+} 

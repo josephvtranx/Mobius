@@ -1,6 +1,17 @@
 import api from './api';
 
 const subjectService = {
+    // Get all subject groups
+    getAllSubjectGroups: async () => {
+        try {
+            const response = await api.get('/subjects/subject-groups');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching subject groups:', error);
+            throw error;
+        }
+    },
+
     // Get all subjects
     getAllSubjects: async () => {
         try {

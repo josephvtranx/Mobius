@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../css/Scheduling.css';
+import SearchableDropdown from '../../components/SearchableDropdown';
+import studentService from '../../services/studentService';
+import instructorService from '../../services/instructorService';
+import subjectService from '../../services/subjectService';
+import classSeriesService from '../../services/classSeriesService';
 
 function Scheduling() {
   // Form state
   const [formData, setFormData] = useState({
     student: '',
+    subjectGroup: '',
     subject: '',
     instructor: '',
     location: '',
@@ -28,22 +34,129 @@ function Scheduling() {
     notes: ''
   });
 
+  // Data state
+  const [students, setStudents] = useState([]);
+  const [instructors, setInstructors] = useState([]);
+  const [subjectGroups, setSubjectGroups] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [isLoading, setIsLoading] = useState({
+    students: false,
+    instructors: false,
+    subjects: false
+  });
+
   // Error state
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sample data for pending classes
-  const [pendingClasses] = useState([
-    {
-      id: 1,
-      student: 'John Doe',
-      instructor: 'Jane Smith',
-      subject: 'Mathematics',
-      start: '2024-04-10 09:00 AM',
-      days: 'Mon, Wed',
-      status: 'Pending'
+  // Replace the static pendingClasses state with:
+  const [pendingClasses, setPendingClasses] = useState([]);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
+
+  // Add this useEffect to fetch pending classes
+  useEffect(() => {
+    fetchPendingClasses();
+  }, []);
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchStudents();
+    fetchInstructors();
+    fetchSubjectGroups();
+  }, []);
+
+  // Fetch subjects when subject group changes
+  useEffect(() => {
+    if (formData.subjectGroup) {
+      fetchSubjects(formData.subjectGroup);
+    } else {
+      setSubjects([]);
     }
-  ]);
+  }, [formData.subjectGroup]);
+
+  const fetchStudents = async () => {
+    setIsLoading(prev => ({ ...prev, students: true }));
+    try {
+      const data = await studentService.getAllStudents();
+      const formattedStudents = data.map(student => ({
+        id: student.student_id,
+        name: student.name,
+        first_name: student.first_name,
+        last_name: student.last_name
+      }));
+      setStudents(formattedStudents);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, students: false }));
+    }
+  };
+
+  const fetchInstructors = async () => {
+    setIsLoading(prev => ({ ...prev, instructors: true }));
+    try {
+      const data = await instructorService.getAllInstructors();
+      const formattedInstructors = data.map(instructor => ({
+        id: instructor.instructor_id,
+        name: instructor.name,
+        first_name: instructor.first_name,
+        last_name: instructor.last_name
+      }));
+      setInstructors(formattedInstructors);
+    } catch (error) {
+      console.error('Error fetching instructors:', error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, instructors: false }));
+    }
+  };
+
+  const fetchSubjectGroups = async () => {
+    setIsLoading(prev => ({ ...prev, subjects: true }));
+    try {
+      const data = await subjectService.getAllSubjectGroups();
+      const formattedGroups = data.map(group => ({
+        id: group.group_id,
+        name: group.name,
+        description: group.description
+      }));
+      setSubjectGroups(formattedGroups);
+    } catch (error) {
+      console.error('Error fetching subject groups:', error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, subjects: false }));
+    }
+  };
+
+  const fetchSubjects = async (groupId) => {
+    setIsLoading(prev => ({ ...prev, subjects: true }));
+    try {
+      const data = await subjectService.getAllSubjects();
+      const filteredSubjects = data
+        .filter(subject => subject.group_id === parseInt(groupId))
+        .map(subject => ({
+          id: subject.subject_id,
+          name: subject.name,
+          group_id: subject.group_id
+        }));
+      setSubjects(filteredSubjects);
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+    } finally {
+      setIsLoading(prev => ({ ...prev, subjects: false }));
+    }
+  };
+
+  const fetchPendingClasses = async () => {
+    setIsLoadingPending(true);
+    try {
+      const data = await classSeriesService.getPendingClassSeries();
+      setPendingClasses(data);
+    } catch (error) {
+      console.error('Error fetching pending classes:', error);
+    } finally {
+      setIsLoadingPending(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -64,13 +177,31 @@ function Scheduling() {
     }
   };
 
+  const handleSelect = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value.id
+    }));
+
+    // If subject group is selected, fetch subjects for that group
+    if (field === 'subjectGroup') {
+      fetchSubjects(value.id);
+      // Clear the subject selection when subject group changes
+      setFormData(prev => ({
+        ...prev,
+        subject: ''
+      }));
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.student.trim()) newErrors.student = 'Student is required';
+    if (!formData.student) newErrors.student = 'Student is required';
+    if (!formData.subjectGroup) newErrors.subjectGroup = 'Subject group is required';
     if (!formData.subject) newErrors.subject = 'Subject is required';
-    if (!formData.instructor.trim()) newErrors.instructor = 'Instructor is required';
-    if (!formData.location.trim()) newErrors.location = 'Location is required';
+    if (!formData.instructor) newErrors.instructor = 'Instructor is required';
+    if (!formData.location) newErrors.location = 'Location is required';
 
     if (formData.classType === 'one-time') {
       if (!formData.date) newErrors.date = 'Date is required';
@@ -96,12 +227,40 @@ function Scheduling() {
     if (Object.keys(newErrors).length === 0) {
       setIsSubmitting(true);
       try {
-        // TODO: Replace with actual API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        alert('Class scheduled successfully!');
+        if (formData.classType === 'one-time') {
+          // Create one-time class
+          await classSeriesService.createOneTimeClass({
+            instructor_id: formData.instructor,
+            student_id: formData.student,
+            subject_id: formData.subject,
+            session_date: formData.date,
+            start_time: formData.startTime,
+            end_time: formData.endTime,
+            location: formData.location,
+            notes: formData.notes
+          });
+        } else {
+          // Create recurring class series
+          await classSeriesService.createClassSeries({
+            subject_id: formData.subject,
+            student_id: formData.student,
+            instructor_id: formData.instructor,
+            start_date: formData.recStart,
+            end_date: formData.recEnd,
+            days_of_week: Object.entries(formData.recDays)
+              .filter(([_, checked]) => checked)
+              .map(([day]) => day),
+            start_time: formData.recStartTime,
+            end_time: formData.recEndTime,
+            location: formData.location,
+            notes: formData.notes
+          });
+        }
+
         // Reset form
         setFormData({
           student: '',
+          subjectGroup: '',
           subject: '',
           instructor: '',
           location: '',
@@ -114,7 +273,9 @@ function Scheduling() {
             tue: false,
             wed: false,
             thu: false,
-            fri: false
+            fri: false,
+            sat: false,
+            sun: false
           },
           recStart: '',
           recEnd: '',
@@ -122,13 +283,34 @@ function Scheduling() {
           recEndTime: '',
           notes: ''
         });
+        setErrors({});
+        alert('Class scheduled successfully!');
       } catch (error) {
-        alert('Failed to schedule class. Please try again.');
+        console.error('Error scheduling class:', error);
+        alert(error.response?.data?.error || 'Failed to schedule class. Please try again.');
       } finally {
         setIsSubmitting(false);
       }
     } else {
       setErrors(newErrors);
+    }
+  };
+
+  const handleEdit = async (id) => {
+    // TODO: Implement edit functionality
+    console.log('Edit class:', id);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this class series?')) {
+      try {
+        await classSeriesService.deleteClassSeries(id);
+        fetchPendingClasses(); // Refresh the list
+        alert('Class series deleted successfully');
+      } catch (error) {
+        console.error('Error deleting class series:', error);
+        alert(error.response?.data?.error || 'Failed to delete class series');
+      }
     }
   };
 
@@ -138,68 +320,60 @@ function Scheduling() {
         <section className="dashboard-main">
           <form className="create-class-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>
-                Student
-                <input
-                  type="text"
-                  name="student"
-                  value={formData.student}
-                  onChange={handleInputChange}
-                  placeholder="Search student"
-                  className={errors.student ? 'error' : ''}
-                />
-                {errors.student && <span className="error-message">{errors.student}</span>}
-              </label>
+              <label>Student</label>
+              <SearchableDropdown
+                options={students}
+                value={formData.student}
+                onChange={(value) => handleSelect('student', value)}
+                placeholder="Search student"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                className={errors.student ? 'error' : ''}
+              />
+              {errors.student && <span className="error-message">{errors.student}</span>}
             </div>
 
             <div className="form-group">
-              <label>
-                Subject
-                <select
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleInputChange}
-                  className={errors.subject ? 'error' : ''}
-                >
-                  <option value="">Select subject</option>
-                  <option value="math">Mathematics</option>
-                  <option value="english">English</option>
-                  <option value="science">Science</option>
-                </select>
-                {errors.subject && <span className="error-message">{errors.subject}</span>}
-              </label>
-            </div>
-            <div className="form-group">
-              <label>
-                Class
-                <select
-                  name="class"
-                  value={formData.subject}
-                  onChange={handleInputChange}
-                  className={errors.subject ? 'error' : ''}
-                >
-                  <option value="">Select subject</option>
-                  <option value="math">Mathematics</option>
-                  <option value="english">English</option>
-                  <option value="science">Science</option>
-                </select>
-                {errors.subject && <span className="error-message">{errors.subject}</span>}
-              </label>
+              <label>Subject Group</label>
+              <SearchableDropdown
+                options={subjectGroups}
+                value={formData.subjectGroup}
+                onChange={(value) => handleSelect('subjectGroup', value)}
+                placeholder="Select subject group"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                className={errors.subjectGroup ? 'error' : ''}
+              />
+              {errors.subjectGroup && <span className="error-message">{errors.subjectGroup}</span>}
             </div>
 
             <div className="form-group">
-              <label>
-                Instructor
-                <input
-                  type="text"
-                  name="instructor"
-                  value={formData.instructor}
-                  onChange={handleInputChange}
-                  placeholder="Search instructor"
-                  className={errors.instructor ? 'error' : ''}
-                />
-                {errors.instructor && <span className="error-message">{errors.instructor}</span>}
-              </label>
+              <label>Subject</label>
+              <SearchableDropdown
+                options={subjects}
+                value={formData.subject}
+                onChange={(value) => handleSelect('subject', value)}
+                placeholder="Select subject"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                className={errors.subject ? 'error' : ''}
+                disabled={!formData.subjectGroup}
+              />
+              {errors.subject && <span className="error-message">{errors.subject}</span>}
+            </div>
+
+            <div className="form-group">
+              <label>Instructor</label>
+              <SearchableDropdown
+                options={instructors}
+                value={formData.instructor}
+                onChange={(value) => handleSelect('instructor', value)}
+                placeholder="Search instructor"
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                className={errors.instructor ? 'error' : ''}
+              />
+              {errors.instructor && <span className="error-message">{errors.instructor}</span>}
             </div>
 
             <div className="form-group">
@@ -371,43 +545,64 @@ function Scheduling() {
           <section className="pending-classes">
             <h2 className="title">Pending Instructor Confirmations</h2>
             <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Student</th>
-                    <th>Instructor</th>
-                    <th>Subject</th>
-                    <th>Start</th>
-                    <th>Days</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingClasses.map(classItem => (
-                    <tr key={classItem.id}>
-                      <td>{classItem.student}</td>
-                      <td>{classItem.instructor}</td>
-                      <td>{classItem.subject}</td>
-                      <td>{classItem.start}</td>
-                      <td>{classItem.days}</td>
-                      <td>
-                        <span className="status-badge pending">{classItem.status}</span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button className="btn-icon" onClick={() => handleEdit(classItem.id)}>
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button className="btn-icon delete" onClick={() => handleDelete(classItem.id)}>
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </div>
-                      </td>
+              {isLoadingPending ? (
+                <div className="loading">Loading pending classes...</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Instructor</th>
+                      <th>Subject</th>
+                      <th>Start</th>
+                      <th>Days</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {pendingClasses.map(classItem => (
+                      <tr key={classItem.series_id}>
+                        <td>{classItem.student.name}</td>
+                        <td>{classItem.instructor.name}</td>
+                        <td>{classItem.subject_name}</td>
+                        <td>{new Date(classItem.start_date).toLocaleDateString()}</td>
+                        <td>{classItem.days_of_week.join(', ')}</td>
+                        <td>
+                          <span className={`status-badge ${classItem.status.toLowerCase()}`}>
+                            {classItem.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button 
+                              className="btn-icon" 
+                              onClick={() => handleEdit(classItem.series_id)}
+                              title="Edit"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button 
+                              className="btn-icon delete" 
+                              onClick={() => handleDelete(classItem.series_id)}
+                              title="Delete"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {pendingClasses.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="no-data">
+                          No pending classes found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
           </section>
         </section>

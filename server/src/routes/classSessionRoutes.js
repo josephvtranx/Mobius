@@ -150,11 +150,24 @@ router.post('/', sessionValidation, async (req, res) => {
 
         // Check if instructor is available
         const instructorAvailability = await pool.query(`
-            SELECT * FROM instructor_availability
-            WHERE instructor_id = $1
-            AND day_of_week = to_char(date $2, 'Day')
-            AND $3::time BETWEEN start_time AND end_time
-            AND $4::time BETWEEN start_time AND end_time
+            WITH availability_check AS (
+                SELECT * FROM instructor_availability
+                WHERE instructor_id = $1
+                AND day_of_week = to_char($2::date, 'Day')
+                AND $3::time BETWEEN start_time AND end_time
+                AND $4::time BETWEEN start_time AND end_time
+            ),
+            unavailability_check AS (
+                SELECT * FROM instructor_unavailability
+                WHERE instructor_id = $1
+                AND $2::date BETWEEN DATE(start_datetime) AND DATE(end_datetime)
+                AND $3::time BETWEEN TIME(start_datetime) AND TIME(end_datetime)
+                AND $4::time BETWEEN TIME(start_datetime) AND TIME(end_datetime)
+            )
+            SELECT * FROM availability_check
+            WHERE NOT EXISTS (
+                SELECT 1 FROM unavailability_check
+            )
         `, [instructor_id, session_date, start_time, end_time]);
 
         if (instructorAvailability.rows.length === 0) {

@@ -1,6 +1,5 @@
 -- =================================
 -- PostgreSQL Schema for Mobius
--- Includes: class_series table and series_id link in class_sessions
 -- =================================
 
 -- 1. USERS
@@ -57,10 +56,33 @@ CREATE TABLE instructors (
   major           TEXT
 );
 
+-- 4c. INSTRUCTOR_AVAILABILITY (recurring slots)
+CREATE TABLE instructor_availability (
+  availability_id SERIAL PRIMARY KEY,
+  instructor_id   INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
+  day_of_week     TEXT NOT NULL
+                   CHECK (day_of_week IN (
+                     'mon','tue','wed','thu','fri','sat','sun'
+                   )),
+  start_time      TIME NOT NULL,
+  end_time        TIME NOT NULL,
+  notes           TEXT
+);
+
+-- 4d. INSTRUCTOR_UNAVAILABILITY (exceptions)
+CREATE TABLE instructor_unavailability (
+  unavail_id     SERIAL PRIMARY KEY,
+  instructor_id  INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
+  start_datetime TIMESTAMP NOT NULL,
+  end_datetime   TIMESTAMP NOT NULL,
+  reason         TEXT,
+  CHECK (end_datetime > start_datetime)
+);
+
 -- 5. SUBJECT GROUPS
 CREATE TABLE subject_groups (
   group_id     SERIAL PRIMARY KEY,
-  name         TEXT NOT NULL UNIQUE, -- e.g., "Music", "STEM"
+  name         TEXT NOT NULL UNIQUE,
   description  TEXT
 );
 
@@ -95,7 +117,7 @@ CREATE TABLE instructor_assignments (
   end_date        DATE
 );
 
--- 10. CLASS_SERIES 
+-- 10. CLASS_SERIES
 CREATE TABLE class_series (
   series_id            SERIAL PRIMARY KEY,
   subject_id           INT     NOT NULL REFERENCES subjects(subject_id),
@@ -112,9 +134,9 @@ CREATE TABLE class_series (
   num_sessions         INT     NOT NULL,
   location             TEXT,
   status               TEXT DEFAULT 'pending'
-                      CHECK (status IN ('pending', 'confirmed', 'in_progress', 'completed', 'canceled')),
+                       CHECK (status IN ('pending','confirmed','in_progress','completed','canceled')),
   instructor_confirmation_status TEXT DEFAULT 'pending'
-                      CHECK (instructor_confirmation_status IN ('pending', 'accepted', 'declined')),
+                       CHECK (instructor_confirmation_status IN ('pending','accepted','declined')),
   notes                TEXT
 );
 
