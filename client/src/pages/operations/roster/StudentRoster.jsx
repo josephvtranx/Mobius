@@ -7,6 +7,7 @@ function StudentRoster() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
   const [sortConfig, setSortConfig] = useState({
     key: 'name',
     direction: 'ascending'
@@ -28,26 +29,28 @@ function StudentRoster() {
           throw new Error('No data received from server');
         }
 
-        const processedData = response.data.map(student => ({
-          id: student.id || '',
-          name: student.name || '',
-          contact: student.contact || '',
-          phone: student.phone || '',
-          status: student.status || '',
-          age: student.age || '',
-          grade: student.grade || '',
-          gender: student.gender || '',
-          school: student.school || '',
-          paCode: student.paCode || '',
-          guardians: student.guardians || [],
-          enrolledClasses: student.enrolledClasses || []
-        }));
+        const processedData = response.data.map(student => {
+          console.log('Processing student:', student);
+          return {
+            id: student.id || '',
+            name: student.name || '',
+            studentEmail: student.studentEmail || '',
+            studentPhone: student.studentPhone || '',
+            parentNames: student.parentNames || [],
+            parentEmails: student.parentEmails || [],
+            parentPhones: student.parentPhones || [],
+            instructors: student.instructors || [],
+            status: student.status || '',
+            enrolledClasses: student.enrolledClasses || [],
+            schedule: student.schedule || []
+          };
+        });
 
+        console.log('Processed data sample:', processedData[0]);
         setStudents(processedData);
       } catch (err) {
         console.error('Error fetching students:', err);
         
-        // Handle specific error cases
         if (err.response) {
           switch (err.response.status) {
             case 401:
@@ -111,11 +114,22 @@ function StudentRoster() {
     return sortConfig.direction === 'ascending' ? '↑' : '↓';
   };
 
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const formatSchedule = (schedule) => {
+    if (!schedule || schedule.length === 0) return 'No schedule';
+    return schedule.map(s => `${s.day} ${s.start_time}-${s.end_time}`).join(', ');
+  };
+
   if (loading) {
     return (
       <div className="main">
         <div className="main-student-roster">
-          <h2>Student Roster</h2>
           <div className="loading">Loading student data...</div>
         </div>
       </div>
@@ -126,7 +140,6 @@ function StudentRoster() {
     return (
       <div className="main">
         <div className="main-student-roster">
-          <h2>Student Roster</h2>
           <div className="error">{error}</div>
         </div>
       </div>
@@ -138,61 +151,99 @@ function StudentRoster() {
   return (
     <div className="main">
       <div className="main-student-roster">
-        <h2>Student Roster</h2>
-        <table>
+        <table className="roster-table">
           <thead>
             <tr>
               <th onClick={() => requestSort('name')} className="sortable">
-                Student Name {getSortIcon('name')}
+                Name {getSortIcon('name')}
               </th>
-              <th onClick={() => requestSort('contact')} className="sortable">
-                Contact {getSortIcon('contact')}
-              </th>
-              <th onClick={() => requestSort('status')} className="sortable">
-                Status {getSortIcon('status')}
-              </th>
-              <th onClick={() => requestSort('grade')} className="sortable">
-                Grade {getSortIcon('grade')}
-              </th>
-              <th onClick={() => requestSort('school')} className="sortable">
-                School {getSortIcon('school')}
-              </th>
-              <th>Guardians</th>
+              <th>Student Contact</th>
+              <th>Parents</th>
+              <th>Instructors</th>
+              <th>Status</th>
               <th>Enrolled Classes</th>
+              <th>Schedule</th>
             </tr>
           </thead>
           <tbody>
             {sortedStudents.map((student) => (
-              <tr key={student.id}>
-                <td>{student.name}</td>
-                <td>
-                  <div className="contact-info">
-                    {student.contact && <div className="email">{student.contact}</div>}
-                    {student.phone && <div className="phone">{student.phone}</div>}
-                  </div>
-                </td>
-                <td>
-                  <span className={`status ${student.status}`}>
-                    {student.status}
-                  </span>
-                </td>
-                <td>{student.grade}</td>
-                <td>{student.school}</td>
-                <td className="guardian-list">
-                  {student.guardians.map((guardian, idx) => (
-                    <span key={idx} className="guardian-pill">
-                      {guardian}
-                    </span>
-                  ))}
-                </td>
-                <td className="class-list">
-                  {student.enrolledClasses.map((classCode, idx) => (
-                    <span key={idx} className="class-pill">
-                      {classCode}
-                    </span>
-                  ))}
-                </td>
-              </tr>
+              <React.Fragment key={student.id}>
+                <tr 
+                  className={`roster-row ${expandedRows[student.id] ? 'expanded' : ''}`}
+                  onClick={() => toggleRow(student.id)}
+                >
+                  <td>{student.name}</td>
+                  <td>
+                    {student.studentEmail && (
+                      <span className="email">{student.studentEmail}</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="parent-pills">
+                      {student.parentNames.map((name, index) => (
+                        <span key={index} className="parent-pill" data-parent-index={index}>
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td>{student.instructors.join(', ')}</td>
+                  <td>{student.status}</td>
+                  <td>{student.enrolledClasses.join(', ')}</td>
+                  <td>{formatSchedule(student.schedule)}</td>
+                </tr>
+                {expandedRows[student.id] && (
+                  <>
+                    {/* First row: Student contact + First parent contact */}
+                    {(student.studentPhone || (student.parentNames.length > 0 && (student.parentEmails[0] || student.parentPhones[0]))) && (
+                      <tr className="roster-subrow">
+                        <td></td>
+                        <td>
+                          {student.studentPhone && (
+                            <div className="contact-pills">
+                              <span className="contact-pill student-contact">{student.studentPhone}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          {student.parentNames.length > 0 && (student.parentEmails[0] || student.parentPhones[0]) && (
+                            <div className="contact-pills">
+                              {student.parentEmails[0] && (
+                                <span className="contact-pill" data-parent-index="0">{student.parentEmails[0]}</span>
+                              )}
+                              {student.parentPhones[0] && (
+                                <span className="contact-pill" data-parent-index="0">{student.parentPhones[0]}</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td colSpan="4"></td>
+                      </tr>
+                    )}
+                    {/* Additional parent contacts on separate rows */}
+                    {student.parentNames.slice(1).map((parentName, index) => {
+                      const actualIndex = index + 1;
+                      return (
+                        <tr key={`parent-${actualIndex}`} className="roster-subrow">
+                          <td></td>
+                          <td></td>
+                          <td>
+                            <div className="contact-pills">
+                              {student.parentEmails[actualIndex] && (
+                                <span className="contact-pill" data-parent-index={actualIndex}>{student.parentEmails[actualIndex]}</span>
+                              )}
+                              {student.parentPhones[actualIndex] && (
+                                <span className="contact-pill" data-parent-index={actualIndex}>{student.parentPhones[actualIndex]}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td colSpan="4"></td>
+                        </tr>
+                      );
+                    })}
+                  </>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

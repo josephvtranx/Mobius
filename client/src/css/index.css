@@ -29,14 +29,12 @@ body {
     left: 0;
     right: 0;
     height: 90px;
-    /* Fixed height */
     display: flex;
     align-items: center;
-    padding: 0 2rem;
+    padding: 20px 2rem;
     background-color: #FFFFFF;
     z-index: 1000;
     gap: 2rem;
-    /* Space between logo and title section */
 }
 
 .logo {
@@ -65,12 +63,20 @@ body {
     /* Space between elements */
 }
 
-.title {
-    color: #FFAB45;
-    font-size: 1.5rem;
+.title-section .title {
+    font-size: 1.5rem !important;
     font-weight: 700;
     white-space: nowrap;
     /* Prevent title wrapping */
+    color: #FFAB45; /* Default orange color */
+}
+
+.title-section .title--teal {
+    color: #64B2B2 !important;
+}
+
+.title-section .title--orange {
+    color: #FFAB45 !important;
 }
 
 .search-bar {
@@ -475,7 +481,6 @@ body {
     height: 100%;
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     overflow: auto;
 }
 

@@ -50,11 +50,12 @@ function App() {
 function AppContent() {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
+  const variant = location.pathname === '/home' || location.pathname.startsWith('/operations') ? 'orange' : 'teal';
 
   return (
     <div className="app">
       {/* Header - Show on all pages */}
-      <Header />
+      <Header variant={variant} />
       
       {/* Main content area */}
       <div className={`main-content ${isAuthRoute ? 'auth-layout' : 'app-layout'}`}>

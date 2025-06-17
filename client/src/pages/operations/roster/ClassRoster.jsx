@@ -135,14 +135,12 @@ function ClassRoster() {
     <div className="main">
       <div className="main-class-roster">
         <div className="roster-header">
-          <h2>Class Roster</h2>
           <div className="action-buttons">
             <button className="btn btn-primary" onClick={() => setShowSubjectGroupModal(true)}>
               <i className="fas fa-plus"></i> New Subject Group
             </button>
           </div>
         </div>
-
         <div className="roster-table-container">
           <table className="roster-table">
             <thead>

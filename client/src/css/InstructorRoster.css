@@ -1,30 +1,31 @@
 .main-student-roster {
-  padding: 20px;
+  width: 100%;
+  background-color: #EAEAEA;
+  border-radius: 4px;
+  padding: 0;
+  margin: 0;
 }
 
-.main-student-roster h2 {
-  margin-bottom: 20px;
-  color: #333;
-}
-
-table {
+.main-student-roster table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: #EAEAEA;
+  margin: 0;
 }
 
-th, td {
-  padding: 12px 15px;
+.main-student-roster th,
+.main-student-roster td {
+  padding: 12px;
   text-align: left;
+  border: none;
   border-bottom: 1px solid #ddd;
 }
 
-th {
-  background-color: #f8f9fa;
+.main-student-roster th {
+  background-color: #EAEAEA;
   font-weight: 600;
-  color: #495057;
+  color: #333;
+  border-bottom: 1px solid #666;
 }
 
 th.sortable {
@@ -117,5 +118,48 @@ tr:hover {
 
 .contact-info .phone {
   color: #6c757d;
+  font-size: 0.9em;
+}
+
+.roster-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.roster-row:hover {
+  background-color: #f5f5f5;
+}
+
+.roster-subrow {
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.roster-subrow td {
+  padding: 8px 16px;
+}
+
+.phone-cell {
+  color: #666;
+  font-size: 0.95em;
+  padding-left: 32px !important;
+}
+
+.roster-row.expanded {
+  background-color: #f5f5f5;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-info .email {
+  color: #333;
+}
+
+.contact-info .phone {
+  color: #666;
   font-size: 0.9em;
 } 

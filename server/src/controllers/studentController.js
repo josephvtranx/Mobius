@@ -1,6 +1,6 @@
 import pool from '../config/db.js';
 
-const getStudentRoster = async (req, res) => {
+export const getStudentRoster = async (req, res) => {
   try {
     // Check if user is authenticated
     if (!req.user) {
@@ -11,46 +11,83 @@ const getStudentRoster = async (req, res) => {
     console.log('Fetching student roster for user:', req.user.user_id);
     
     const query = `
-      WITH student_classes AS (
+      WITH student_instructors AS (
+        SELECT 
+          ia.student_id,
+          ARRAY_AGG(DISTINCT u.name) as instructor_names
+        FROM instructor_assignments ia
+        JOIN instructors i ON ia.instructor_id = i.instructor_id
+        JOIN users u ON i.instructor_id = u.user_id
+        GROUP BY ia.student_id
+      ),
+      student_classes AS (
         SELECT 
           cs.student_id,
-          array_agg(DISTINCT cs.series_id) as series_ids
-        FROM class_sessions cs
+          ARRAY_AGG(DISTINCT cs.series_id) as class_ids,
+          ARRAY_AGG(
+            json_build_object(
+              'day', cs.days_of_week,
+              'start_time', cs.start_time,
+              'end_time', cs.end_time,
+              'status', cs.status
+            )
+          ) as schedule
+        FROM class_series cs
         WHERE cs.status != 'canceled'
         GROUP BY cs.student_id
+      ),
+      student_guardians AS (
+        SELECT 
+          sg.student_id,
+          json_agg(
+            json_build_object(
+              'name', g.name,
+              'email', g.email,
+              'phone', g.phone
+            ) ORDER BY g.name
+          ) as guardian_data
+        FROM student_guardian sg
+        JOIN guardians g ON sg.guardian_id = g.guardian_id
+        GROUP BY sg.student_id
       )
       SELECT 
-        u.user_id,
+        u.user_id as id,
         u.name,
-        u.email,
-        u.phone,
+        u.email as student_email,
+        u.phone as student_phone,
+        COALESCE(
+          ARRAY(
+            SELECT (guardian->>'name')::text 
+            FROM json_array_elements(sg.guardian_data) AS guardian
+          ), 
+          ARRAY[]::text[]
+        ) as parent_names,
+        COALESCE(
+          ARRAY(
+            SELECT (guardian->>'email')::text 
+            FROM json_array_elements(sg.guardian_data) AS guardian
+          ), 
+          ARRAY[]::text[]
+        ) as parent_emails,
+        COALESCE(
+          ARRAY(
+            SELECT (guardian->>'phone')::text 
+            FROM json_array_elements(sg.guardian_data) AS guardian
+          ), 
+          ARRAY[]::text[]
+        ) as parent_phones,
         s.status,
-        s.age,
-        s.grade,
-        s.gender,
-        s.school,
-        s.pa_code,
-        COALESCE(array_remove(array_agg(DISTINCT g.name), NULL), ARRAY[]::text[]) as guardians,
-        COALESCE(sc.series_ids, ARRAY[]::integer[]) as enrolled_classes
+        COALESCE(si.instructor_names, ARRAY[]::text[]) as instructors,
+        COALESCE(sc.class_ids, ARRAY[]::integer[]) as enrolled_classes,
+        COALESCE(sc.schedule, ARRAY[]::json[]) as schedule
       FROM users u
       JOIN students s ON u.user_id = s.student_id
-      LEFT JOIN student_guardian sg ON s.student_id = sg.student_id
-      LEFT JOIN guardians g ON sg.guardian_id = g.guardian_id
+      LEFT JOIN student_guardians sg ON s.student_id = sg.student_id
+      LEFT JOIN student_instructors si ON s.student_id = si.student_id
       LEFT JOIN student_classes sc ON s.student_id = sc.student_id
-      WHERE u.role = 'student' 
+      WHERE u.role = 'student'
         AND u.is_active = true
-      GROUP BY 
-        u.user_id,
-        u.name,
-        u.email,
-        u.phone,
-        s.status,
-        s.age,
-        s.grade,
-        s.gender,
-        s.school,
-        s.pa_code,
-        sc.series_ids;
+      ORDER BY u.name;
     `;
 
     console.log('Executing query...');
@@ -64,26 +101,22 @@ const getStudentRoster = async (req, res) => {
       return res.json([]);
     }
     
-    // Transform the data to match the frontend structure
-    const students = result.rows.map(student => {
-      console.log('Processing student:', student.name, 'Email:', student.email);
-      return {
-        id: student.user_id,
-        name: student.name,
-        contact: student.email || '',
-        phone: student.phone || '',
-        status: student.status,
-        age: student.age,
-        grade: student.grade,
-        gender: student.gender,
-        school: student.school,
-        paCode: student.pa_code,
-        guardians: student.guardians || [],
-        enrolledClasses: student.enrolled_classes || []
-      };
-    });
+    // Process the results to handle arrays and null values
+    const students = result.rows.map(student => ({
+      id: student.id,
+      name: student.name,
+      studentEmail: student.student_email || '',
+      studentPhone: student.student_phone || '',
+      parentNames: student.parent_names || [],
+      parentEmails: student.parent_emails || [],
+      parentPhones: student.parent_phones || [],
+      status: student.status || '',
+      instructors: student.instructors || [],
+      enrolledClasses: student.enrolled_classes || [],
+      schedule: student.schedule || []
+    }));
 
-    console.log('Sending response with', students.length, 'students');
+    console.log('Sample student data:', students[0]);
     res.json(students);
   } catch (error) {
     console.error('Error fetching student roster:', {
@@ -110,8 +143,4 @@ const getStudentRoster = async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
-};
-
-export {
-  getStudentRoster
 }; 

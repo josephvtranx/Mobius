@@ -6,6 +6,7 @@ function StaffRoster() {
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
   const [sortConfig, setSortConfig] = useState({
     key: 'name',
     direction: 'ascending'
@@ -120,11 +121,17 @@ function StaffRoster() {
     return typeof hours === 'number' ? hours.toFixed(1) : '0.0';
   };
 
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
   if (loading) {
     return (
       <div className="main">
         <div className="main-staff-roster">
-          <h2>Staff Roster</h2>
           <div className="loading">Loading staff data...</div>
         </div>
       </div>
@@ -135,7 +142,6 @@ function StaffRoster() {
     return (
       <div className="main">
         <div className="main-staff-roster">
-          <h2>Staff Roster</h2>
           <div className="error">{error}</div>
         </div>
       </div>
@@ -147,7 +153,6 @@ function StaffRoster() {
   return (
     <div className="main">
       <div className="main-staff-roster">
-        <h2>Staff Roster</h2>
         <table>
           <thead>
             <tr>
@@ -177,39 +182,46 @@ function StaffRoster() {
           </thead>
           <tbody>
             {sortedStaff.map((member) => (
-              <tr key={member.id}>
-                <td>{member.name}</td>
-                <td>
-                  <div className="contact-info">
-                    {member.contact && <div className="email">{member.contact}</div>}
-                    {member.phone && <div className="phone">{member.phone}</div>}
-                  </div>
-                </td>
-                <td>{member.department}</td>
-                <td>
-                  <span className={`status ${member.employmentStatus}`}>
-                    {member.employmentStatus}
-                  </span>
-                </td>
-                <td>{formatCurrency(member.salary)}</td>
-                <td>{formatCurrency(member.hourlyRate)}</td>
-                <td>{formatHours(member.totalHoursWorked)}</td>
-                <td className="time-logs">
-                  {member.timeLogs.slice(0, 3).map((log, idx) => (
-                    <div key={idx} className="time-log">
-                      <div className="date">
-                        {new Date(log.clock_in).toLocaleDateString()}
+              <React.Fragment key={member.id}>
+                <tr 
+                  className={`roster-row ${expandedRows[member.id] ? 'expanded' : ''}`}
+                  onClick={() => toggleRow(member.id)}
+                >
+                  <td>{member.name}</td>
+                  <td>{member.contact}</td>
+                  <td>{member.department}</td>
+                  <td>
+                    <span className={`status ${member.employmentStatus}`}>
+                      {member.employmentStatus}
+                    </span>
+                  </td>
+                  <td>{formatCurrency(member.salary)}</td>
+                  <td>{formatCurrency(member.hourlyRate)}</td>
+                  <td>{formatHours(member.totalHoursWorked)}</td>
+                  <td className="time-logs">
+                    {member.timeLogs.slice(0, 3).map((log, idx) => (
+                      <div key={idx} className="time-log">
+                        <div className="date">
+                          {new Date(log.clock_in).toLocaleDateString()}
+                        </div>
+                        <div className="hours">
+                          {log.clock_out 
+                            ? `${new Date(log.clock_in).toLocaleTimeString()} - ${new Date(log.clock_out).toLocaleTimeString()}`
+                            : `${new Date(log.clock_in).toLocaleTimeString()} (In Progress)`
+                          }
+                        </div>
                       </div>
-                      <div className="hours">
-                        {log.clock_out 
-                          ? `${new Date(log.clock_in).toLocaleTimeString()} - ${new Date(log.clock_out).toLocaleTimeString()}`
-                          : `${new Date(log.clock_in).toLocaleTimeString()} (In Progress)`
-                        }
-                      </div>
-                    </div>
-                  ))}
-                </td>
-              </tr>
+                    ))}
+                  </td>
+                </tr>
+                {expandedRows[member.id] && member.phone && (
+                  <tr className="roster-subrow">
+                    <td></td>
+                    <td className="phone-cell">{member.phone}</td>
+                    <td colSpan="6"></td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

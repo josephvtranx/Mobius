@@ -81,7 +81,6 @@ function InstructorRoster() {
     return (
       <div className="main">
         <div className="main-student-roster">
-          <h2>Instructor Roster</h2>
           <div className="loading">Loading instructor data...</div>
         </div>
       </div>
@@ -92,7 +91,6 @@ function InstructorRoster() {
     return (
       <div className="main">
         <div className="main-student-roster">
-          <h2>Instructor Roster</h2>
           <div className="error">{error}</div>
         </div>
       </div>
@@ -104,7 +102,6 @@ function InstructorRoster() {
   return (
     <div className="main">
       <div className="main-student-roster">
-        <h2>Instructor Roster</h2>
         <table>
           <thead>
             <tr>

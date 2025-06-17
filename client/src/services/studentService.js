@@ -54,6 +54,15 @@ const studentService = {
             console.error(`Error deleting student ${id}:`, error);
             throw error;
         }
+    },
+
+    getRoster: async () => {
+        try {
+            const response = await api.get('/api/students/roster');
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
     }
 };
 

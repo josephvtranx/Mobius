@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 
-function Header() {
+function Header({ variant = 'teal' }) {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
   const user = authService.getCurrentUser();
@@ -34,6 +34,9 @@ function Header() {
     return routeTitles[path] || 'Møbius Academy';
   };
 
+  // Determine title color based on variant
+  const titleColorClass = variant === 'teal' ? 'title--teal' : 'title--orange';
+
   return (
     <header className={`header ${isAuthRoute ? 'header--auth' : ''}`}>
       {/* Logo - Always show */}
@@ -52,7 +55,7 @@ function Header() {
         </div>
       ) : (
         <div className="title-section">
-          <h1 className="title">{getPageTitle()}</h1>
+          <h1 className={`title ${titleColorClass}`}>{getPageTitle()}</h1>
 
           <div className="search-bar">
             <input type="text" placeholder="Search" />
