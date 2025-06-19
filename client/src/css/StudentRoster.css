@@ -15,6 +15,7 @@
   border-collapse: collapse;
   background-color: #EAEAEA;
   margin: 0;
+  table-layout: fixed;
 }
 
 .main-student-roster thead {
@@ -53,130 +54,111 @@
 
 .main-student-roster th,
 .main-student-roster td {
-  padding: 12px;
+  padding: 8px;
   text-align: left;
   border: none;
   border-bottom: 1px solid #ddd;
-  width: auto;
   white-space: nowrap;
 }
 
-/* Set specific widths for each column */
+/* Column widths and padding */
 .main-student-roster th:first-child,
-.main-student-roster td:first-child {
-  width: 10%;
+.main-student-roster td:first-child,
+.roster-subrow td:first-child {
+  width: 175px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 12px;
 }
 
 .main-student-roster th:nth-child(2),
-.main-student-roster td:nth-child(2) {
-  width: 15%;
+.main-student-roster td:nth-child(2),
+.roster-subrow td:nth-child(2) {
+  width: 200px;
+  padding: 12px 12px 12px 5px;
 }
 
 .main-student-roster th:nth-child(3),
-.main-student-roster td:nth-child(3) {
-  width: 20%;
-  padding-left: 2px;
+.main-student-roster td:nth-child(3),
+.roster-subrow td:nth-child(3) {
+  width: 250px;
+  padding: 12px 12px 12px 2px;
 }
 
 .main-student-roster th:nth-child(4),
-.main-student-roster td:nth-child(4) {
-  width: 15%;
+.main-student-roster td:nth-child(4),
+.roster-subrow td:nth-child(4) {
+  width: 150px;
+  padding: 12px;
 }
 
 .main-student-roster th:nth-child(5),
-.main-student-roster td:nth-child(5) {
-  width: 10%;
+.main-student-roster td:nth-child(5),
+.roster-subrow td:nth-child(5) {
+  width: 100px;
+  padding: 12px;
 }
 
 .main-student-roster th:nth-child(6),
-.main-student-roster td:nth-child(6) {
-  width: 14%;
+.main-student-roster td:nth-child(6),
+.roster-subrow td:nth-child(6) {
+  width: 150px;
+  padding: 12px;
 }
 
 .main-student-roster th:nth-child(7),
-.main-student-roster td:nth-child(7) {
-  width: 14%;
+.main-student-roster td:nth-child(7),
+.roster-subrow td:nth-child(7) {
+  width: 200px;
+  padding: 12px;
 }
 
-.main-student-roster th {
-  background-color: #EAEAEA;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #666;
-}
-
-/* Only apply sortable styles to the name column */
-.main-student-roster th:first-child {
-  cursor: pointer;
-  user-select: none;
-  position: relative;
-  padding-right: 25px;
-}
-
-.main-student-roster th:first-child:hover {
-  background-color: #e9ecef;
-}
-
-tr:hover {
-  background-color: #f8f9fa;
-}
-
-.roster-row {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.roster-row:hover {
-  background-color: #f5f5f5;
-}
-
-.roster-row.expanded {
-  background-color: #f5f5f5;
-}
-
+/* Subrow specific styles */
 .roster-subrow {
   background-color: #f8f9fa;
   border-top: 1px solid #e9ecef;
+  display: table-row;
+  width: 100%;
 }
 
 .roster-subrow td {
-  padding: 8px 16px;
-  width: auto;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Ensure consistent padding for all subrows */
-.roster-subrow td:nth-child(2),
-.roster-subrow td:nth-child(3) {
-  padding-left: 12px;
+/* Ensure subrow cells maintain same width as parent */
+.roster-subrow td[colspan="4"] {
+  width: calc(150px + 100px + 150px + 200px); /* Sum of widths for columns 4-7 */
 }
 
-.roster-subrow td:nth-child(4) {
-  width: 15%;
+/* Contact pills in subrows */
+.roster-subrow .contact-pill {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.9em;
+  color: #495057;
+  white-space: nowrap;
+  background-color: #e9ecef;
 }
 
-.roster-subrow td:nth-child(5) {
-  width: 10%;
-}
-
-.roster-subrow td:nth-child(6) {
-  width: 14%;
-}
-
-.roster-subrow td:nth-child(7) {
-  width: 14%;
+.roster-subrow .contact-pill:last-child {
+  margin-right: 0;
 }
 
 .phone-cell {
   color: #666;
   font-size: 0.95em;
-  padding-left: 32px !important;
 }
 
 .contact-info {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 0;
+  padding: 0;
 }
 
 .phone-label {
@@ -252,7 +234,10 @@ tr:hover {
 .parent-pills {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
 }
 
 .parent-pill {
@@ -261,7 +246,8 @@ tr:hover {
   font-size: 0.9em;
   color: #495057;
   white-space: nowrap;
-  margin: 2px 0;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .parent-pill[data-parent-index="0"] {
@@ -282,7 +268,7 @@ tr:hover {
   font-size: 0.9em;
   color: #495057;
   white-space: nowrap;
-  margin: 2px 0;
+  margin: 0;
 }
 
 .contact-pill[data-parent-index="0"] {
@@ -306,12 +292,64 @@ tr:hover {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding-left: 0;
   margin: 0;
+  padding: 0;
 }
 
 .email-cell {
-  color: #007bff;
+  color: #333;
   font-size: 0.95em;
-  padding-left: 32px !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* Contact pills container */
+.main-student-roster .contact-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+}
+
+/* Contact pill */
+.main-student-roster .contact-pill {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.9em;
+  color: #495057;
+  white-space: nowrap;
+  margin: 2px 0;
+}
+
+/* Parent pills container */
+.main-student-roster .parent-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+}
+
+/* Parent pill */
+.main-student-roster .parent-pill {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.9em;
+  color: #495057;
+  white-space: nowrap;
+  margin: 2px 0;
+}
+
+/* Ensure table cells maintain their width */
+.main-student-roster td {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Ensure content inside cells doesn't affect cell width */
+.main-student-roster td > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 } 

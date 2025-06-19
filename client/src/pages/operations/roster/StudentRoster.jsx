@@ -200,21 +200,19 @@ function StudentRoster() {
                         <td></td>
                         <td>
                           {student.studentPhone && (
-                            <div className="contact-pills">
-                              <span className="contact-pill student-contact">{student.studentPhone}</span>
-                            </div>
+                            <span className="contact-pill student-contact">{student.studentPhone}</span>
                           )}
                         </td>
                         <td>
                           {student.parentNames.length > 0 && (student.parentEmails[0] || student.parentPhones[0]) && (
-                            <div className="contact-pills">
+                            <>
                               {student.parentEmails[0] && (
                                 <span className="contact-pill" data-parent-index="0">{student.parentEmails[0]}</span>
                               )}
                               {student.parentPhones[0] && (
                                 <span className="contact-pill" data-parent-index="0">{student.parentPhones[0]}</span>
                               )}
-                            </div>
+                            </>
                           )}
                         </td>
                         <td colSpan="4"></td>
@@ -228,14 +226,12 @@ function StudentRoster() {
                           <td></td>
                           <td></td>
                           <td>
-                            <div className="contact-pills">
-                              {student.parentEmails[actualIndex] && (
-                                <span className="contact-pill" data-parent-index={actualIndex}>{student.parentEmails[actualIndex]}</span>
-                              )}
-                              {student.parentPhones[actualIndex] && (
-                                <span className="contact-pill" data-parent-index={actualIndex}>{student.parentPhones[actualIndex]}</span>
-                              )}
-                            </div>
+                            {student.parentEmails[actualIndex] && (
+                              <span className="contact-pill" data-parent-index={actualIndex}>{student.parentEmails[actualIndex]}</span>
+                            )}
+                            {student.parentPhones[actualIndex] && (
+                              <span className="contact-pill" data-parent-index={actualIndex}>{student.parentPhones[actualIndex]}</span>
+                            )}
                           </td>
                           <td colSpan="4"></td>
                         </tr>

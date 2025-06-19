@@ -95,12 +95,13 @@ function Scheduling() {
   const fetchInstructors = async () => {
     setIsLoading(prev => ({ ...prev, instructors: true }));
     try {
-      const data = await instructorService.getAllInstructors();
+      const data = await instructorService.getInstructorRoster();
       const formattedInstructors = data.map(instructor => ({
-        id: instructor.instructor_id,
+        id: instructor.id,
         name: instructor.name,
-        first_name: instructor.first_name,
-        last_name: instructor.last_name
+        first_name: instructor.name.split(' ')[0] || '',
+        last_name: instructor.name.split(' ').slice(1).join(' ') || '',
+        teachingSubjects: instructor.teachingSubjects || []
       }));
       setInstructors(formattedInstructors);
     } catch (error) {
@@ -146,6 +147,21 @@ function Scheduling() {
     }
   };
 
+  // Filter instructors based on selected subject
+  const getFilteredInstructors = () => {
+    if (!formData.subject) {
+      return instructors;
+    }
+    
+    return instructors.filter(instructor => 
+      instructor.teachingSubjects && 
+      instructor.teachingSubjects.length > 0 &&
+      instructor.teachingSubjects.some(subject => 
+        subjects.find(s => s.id === formData.subject)?.name === subject
+      )
+    );
+  };
+
   const fetchPendingClasses = async () => {
     setIsLoadingPending(true);
     try {
@@ -186,10 +202,19 @@ function Scheduling() {
     // If subject group is selected, fetch subjects for that group
     if (field === 'subjectGroup') {
       fetchSubjects(value.id);
-      // Clear the subject selection when subject group changes
+      // Clear the subject and instructor selection when subject group changes
       setFormData(prev => ({
         ...prev,
-        subject: ''
+        subject: '',
+        instructor: ''
+      }));
+    }
+
+    // If subject is selected, clear instructor selection since available instructors will change
+    if (field === 'subject') {
+      setFormData(prev => ({
+        ...prev,
+        instructor: ''
       }));
     }
   };
@@ -365,15 +390,19 @@ function Scheduling() {
             <div className="form-group">
               <label>Instructor</label>
               <SearchableDropdown
-                options={instructors}
+                options={getFilteredInstructors()}
                 value={formData.instructor}
                 onChange={(value) => handleSelect('instructor', value)}
-                placeholder="Search instructor"
+                placeholder={formData.subject ? "Select instructor for this subject" : "Search instructor"}
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
                 className={errors.instructor ? 'error' : ''}
+                disabled={!formData.subject}
               />
               {errors.instructor && <span className="error-message">{errors.instructor}</span>}
+              {formData.subject && getFilteredInstructors().length === 0 && (
+                <span className="info-message">No instructors available for this subject</span>
+              )}
             </div>
 
             <div className="form-group">

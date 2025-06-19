@@ -11,7 +11,7 @@ export const generateAccessToken = (user) => {
             email: user.email 
         },
         process.env.JWT_SECRET,
-        { expiresIn: '15m' } // Short lived - 15 minutes
+        { expiresIn: '120m' } // Short lived - 15 minutes
     );
 };
 

@@ -87,6 +87,13 @@
   margin-top: 0.25rem;
 }
 
+.info-message {
+  color: #17a2b8;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
 .btn {
   background-color: #007bff;
   color: white;

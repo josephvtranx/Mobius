@@ -1,5 +1,5 @@
 -- =================================
--- PostgreSQL Schema for Mobius
+-- Complete PostgreSQL Schema for Mobius (Updated with Group + Subject Specialties)
 -- =================================
 
 -- 1. USERS
@@ -53,19 +53,23 @@ CREATE TABLE instructors (
   age             INT,
   gender          TEXT   CHECK (gender IN ('male','female','other')),
   college_attended TEXT,
-  major           TEXT
+  major           TEXT,
+  employment_type TEXT   CHECK (employment_type IN ('full_time','part_time')),
+  salary          NUMERIC CHECK (salary >= 0),
+  hourly_rate     NUMERIC CHECK (hourly_rate >= 0)
 );
 
 -- 4c. INSTRUCTOR_AVAILABILITY (recurring slots)
 CREATE TABLE instructor_availability (
   availability_id SERIAL PRIMARY KEY,
   instructor_id   INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
-  day_of_week     TEXT NOT NULL
-                   CHECK (day_of_week IN (
-                     'mon','tue','wed','thu','fri','sat','sun'
-                   )),
+  day_of_week     TEXT NOT NULL CHECK (day_of_week IN ('mon','tue','wed','thu','fri','sat','sun')),
   start_time      TIME NOT NULL,
   end_time        TIME NOT NULL,
+  start_date      DATE,
+  end_date        DATE,
+  status          TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  type            TEXT CHECK (type IN ('default','preferred','emergency')),
   notes           TEXT
 );
 
@@ -100,11 +104,18 @@ CREATE TABLE student_guardian (
   PRIMARY KEY (student_id, guardian_id)
 );
 
--- 8. INSTRUCTOR_SPECIALTIES
+-- 8. INSTRUCTOR_SPECIALTIES (subject-level specialties)
 CREATE TABLE instructor_specialties (
   instructor_id  INT REFERENCES instructors(instructor_id) ON DELETE CASCADE,
   subject_id     INT REFERENCES subjects(subject_id) ON DELETE CASCADE,
   PRIMARY KEY (instructor_id, subject_id)
+);
+
+-- 8b. INSTRUCTOR_GROUP_SPECIALTIES (group-level assignment)
+CREATE TABLE instructor_group_specialties (
+  instructor_id  INT REFERENCES instructors(instructor_id) ON DELETE CASCADE,
+  group_id       INT REFERENCES subject_groups(group_id) ON DELETE CASCADE,
+  PRIMARY KEY (instructor_id, group_id)
 );
 
 -- 9. INSTRUCTOR_ASSIGNMENTS
@@ -126,17 +137,13 @@ CREATE TABLE class_series (
   created_by_staff_id  INT     REFERENCES staff(staff_id),
   start_date           DATE    NOT NULL,
   end_date             DATE,
-  days_of_week         TEXT[]  NOT NULL CHECK (
-    days_of_week <@ ARRAY['mon','tue','wed','thu','fri','sat','sun']
-  ),
+  days_of_week         TEXT[]  NOT NULL CHECK (days_of_week <@ ARRAY['mon','tue','wed','thu','fri','sat','sun']),
   start_time           TIME    NOT NULL,
   end_time             TIME    NOT NULL,
   num_sessions         INT     NOT NULL,
   location             TEXT,
-  status               TEXT DEFAULT 'pending'
-                       CHECK (status IN ('pending','confirmed','in_progress','completed','canceled')),
-  instructor_confirmation_status TEXT DEFAULT 'pending'
-                       CHECK (instructor_confirmation_status IN ('pending','accepted','declined')),
+  status               TEXT DEFAULT 'pending' CHECK (status IN ('pending','confirmed','in_progress','completed','canceled')),
+  instructor_confirmation_status TEXT DEFAULT 'pending' CHECK (instructor_confirmation_status IN ('pending','accepted','declined')),
   notes                TEXT
 );
 
@@ -151,12 +158,11 @@ CREATE TABLE class_sessions (
   start_time                 TIME    NOT NULL,
   end_time                   TIME    NOT NULL,
   location                   TEXT,
-  status                     TEXT    NOT NULL
-                             CHECK (status IN ('scheduled','completed','canceled','rescheduled'))
-                             DEFAULT 'scheduled',
+  status                     TEXT    NOT NULL CHECK (status IN ('scheduled','completed','canceled','rescheduled')) DEFAULT 'scheduled',
   cancellation_reason        TEXT,
   rescheduled_to_session_id  INT     REFERENCES class_sessions(session_id) ON DELETE SET NULL,
-  credits_cost               INT     NOT NULL DEFAULT 1
+  credits_cost               INT     NOT NULL DEFAULT 1,
+  matched_availability_id    INT     REFERENCES instructor_availability(availability_id)
 );
 
 -- 12. ATTENDANCE
@@ -207,12 +213,25 @@ CREATE TABLE credit_redemptions (
   redeemed_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 17. PAYROLL
+-- 17. PAYROLL (polymorphic user-based)
 CREATE TABLE payroll (
   payroll_id        SERIAL PRIMARY KEY,
-  staff_id          INT     NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
+  user_id           INT     NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_type         TEXT    NOT NULL CHECK (user_type IN ('staff','instructor')),
   pay_period_start  DATE    NOT NULL,
   pay_period_end    DATE    NOT NULL,
   total_pay         NUMERIC NOT NULL CHECK (total_pay >= 0),
   generated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 18. RESCHEDULE REQUESTS
+CREATE TABLE reschedule_requests (
+  request_id     SERIAL PRIMARY KEY,
+  session_id     INT NOT NULL REFERENCES class_sessions(session_id) ON DELETE CASCADE,
+  student_id     INT NOT NULL REFERENCES students(student_id),
+  instructor_id  INT NOT NULL REFERENCES instructors(instructor_id),
+  proposed_times JSONB,
+  selected_time  TIMESTAMP,
+  status         TEXT CHECK (status IN ('pending','approved','declined','expired')) DEFAULT 'pending',
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

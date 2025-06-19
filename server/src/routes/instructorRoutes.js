@@ -1,6 +1,8 @@
 import express from 'express';
 import { body } from 'express-validator';
 import pool from '../config/db.js';
+import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
+import { startOfWeek, endOfWeek, format } from 'date-fns';
 const router = express.Router();
 
 // Validation middleware
@@ -12,13 +14,23 @@ const instructorValidation = [
 ];
 
 const availabilityValidation = [
-    body('day_of_week').isIn(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+    body('day_of_week').isIn(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
         .withMessage('Valid day of week is required'),
     body('start_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
         .withMessage('Start time must be in HH:MM format'),
     body('end_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
-        .withMessage('End time must be in HH:MM format')
+        .withMessage('End time must be in HH:MM format'),
+    body('type').optional().isIn(['default', 'preferred', 'emergency'])
+        .withMessage('Type must be default, preferred, or emergency'),
+    body('status').optional().isIn(['active', 'inactive'])
+        .withMessage('Status must be active or inactive'),
+    body('start_date').optional().isISO8601().withMessage('Start date must be a valid date'),
+    body('end_date').optional().isISO8601().withMessage('End date must be a valid date'),
+    body('notes').optional().isString().withMessage('Notes must be a string')
 ];
+
+// Get instructor roster
+router.get('/roster', getInstructorRoster);
 
 // Get all instructors
 router.get('/', async (req, res) => {
@@ -134,48 +146,23 @@ router.post('/', instructorValidation, async (req, res) => {
     }
 });
 
-// Update instructor
-router.put('/:id', instructorValidation, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { 
-            hourly_rate, 
-            max_weekly_hours, 
-            specialization,
-            biography 
-        } = req.body;
-
-        const result = await pool.query(`
-            UPDATE instructors 
-            SET 
-                hourly_rate = $1,
-                max_weekly_hours = $2,
-                specialization = $3,
-                biography = $4
-            WHERE instructor_id = $5
-            RETURNING *
-        `, [hourly_rate, max_weekly_hours, specialization, biography, id]);
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Instructor not found' });
-        }
-
-        res.json(result.rows[0]);
-    } catch (error) {
-        console.error('Error updating instructor:', error);
-        res.status(500).json({ error: 'Failed to update instructor' });
-    }
-});
+// Update instructor - using new controller function
+router.put('/:id', updateInstructor);
 
 // Add availability
 router.post('/:id/availability', availabilityValidation, async (req, res) => {
     try {
         const { id } = req.params;
-        const { day_of_week, start_time, end_time } = req.body;
+        const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
 
         // Validate time range
         if (start_time >= end_time) {
             return res.status(400).json({ error: 'Start time must be before end time' });
+        }
+
+        // Validate date range if both dates are provided
+        if (start_date && end_date && new Date(start_date) >= new Date(end_date)) {
+            return res.status(400).json({ error: 'Start date must be before end date' });
         }
 
         const result = await pool.query(`
@@ -183,11 +170,26 @@ router.post('/:id/availability', availabilityValidation, async (req, res) => {
                 instructor_id,
                 day_of_week,
                 start_time,
-                end_time
+                end_time,
+                type,
+                status,
+                start_date,
+                end_date,
+                notes
             )
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             RETURNING *
-        `, [id, day_of_week, start_time, end_time]);
+        `, [
+            id, 
+            day_of_week, 
+            start_time, 
+            end_time, 
+            type || 'default', 
+            status || 'active', 
+            start_date || null, 
+            end_date || null, 
+            notes || null
+        ]);
 
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -205,17 +207,18 @@ router.get('/:id/availability', async (req, res) => {
             WHERE instructor_id = $1
             ORDER BY 
                 CASE day_of_week
-                    WHEN 'Monday' THEN 1
-                    WHEN 'Tuesday' THEN 2
-                    WHEN 'Wednesday' THEN 3
-                    WHEN 'Thursday' THEN 4
-                    WHEN 'Friday' THEN 5
-                    WHEN 'Saturday' THEN 6
-                    WHEN 'Sunday' THEN 7
+                    WHEN 'mon' THEN 1
+                    WHEN 'tue' THEN 2
+                    WHEN 'wed' THEN 3
+                    WHEN 'thu' THEN 4
+                    WHEN 'fri' THEN 5
+                    WHEN 'sat' THEN 6
+                    WHEN 'sun' THEN 7
                 END,
                 start_time
         `, [id]);
 
+        console.log('[DEBUG] /api/instructors/' + id + '/availability result:', result.rows);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching availability:', error);
@@ -223,16 +226,49 @@ router.get('/:id/availability', async (req, res) => {
     }
 });
 
-// Delete availability slot
-router.delete('/:id/availability/:slotId', async (req, res) => {
+// Update availability slot
+router.put('/:id/availability/:availabilityId', async (req, res) => {
     try {
-        const { id, slotId } = req.params;
+        const { id, availabilityId } = req.params;
+        const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
+
+        // Validate time range
+        if (start_time >= end_time) {
+            return res.status(400).json({ error: 'Start time must be before end time' });
+        }
+
+        // Validate date range if both dates are provided
+        if (start_date && end_date && new Date(start_date) >= new Date(end_date)) {
+            return res.status(400).json({ error: 'Start date must be before end date' });
+        }
 
         const result = await pool.query(`
-            DELETE FROM instructor_availability
-            WHERE instructor_id = $1 AND id = $2
+            UPDATE instructor_availability
+            SET day_of_week = $1, start_time = $2, end_time = $3, type = $4, status = $5, start_date = $6, end_date = $7, notes = $8
+            WHERE availability_id = $9 AND instructor_id = $10
             RETURNING *
-        `, [id, slotId]);
+        `, [day_of_week, start_time, end_time, type, status, start_date || null, end_date || null, notes || null, availabilityId, id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Availability slot not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Error updating availability:', error);
+        res.status(500).json({ error: 'Failed to update availability' });
+    }
+});
+
+// Delete availability slot
+router.delete('/:id/availability/:availabilityId', async (req, res) => {
+    try {
+        const { id, availabilityId } = req.params;
+        const result = await pool.query(`
+            DELETE FROM instructor_availability
+            WHERE availability_id = $1 AND instructor_id = $2
+            RETURNING *
+        `, [availabilityId, id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Availability slot not found' });
@@ -242,6 +278,111 @@ router.delete('/:id/availability/:slotId', async (req, res) => {
     } catch (error) {
         console.error('Error deleting availability:', error);
         res.status(500).json({ error: 'Failed to delete availability' });
+    }
+});
+
+// Get instructor unavailability
+router.get('/:id/unavailability', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(`
+            SELECT * FROM instructor_unavailability
+            WHERE instructor_id = $1
+            ORDER BY start_datetime
+        `, [id]);
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching unavailability:', error);
+        res.status(500).json({ error: 'Failed to fetch unavailability' });
+    }
+});
+
+// Add unavailability
+router.post('/:id/unavailability', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { start_datetime, end_datetime, reason } = req.body;
+
+        // Validate datetime range
+        if (new Date(start_datetime) >= new Date(end_datetime)) {
+            return res.status(400).json({ error: 'Start datetime must be before end datetime' });
+        }
+
+        const result = await pool.query(`
+            INSERT INTO instructor_unavailability (
+                instructor_id,
+                start_datetime,
+                end_datetime,
+                reason
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [id, start_datetime, end_datetime, reason]);
+
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error('Error adding unavailability:', error);
+        res.status(500).json({ error: 'Failed to add unavailability' });
+    }
+});
+
+// Delete unavailability
+router.delete('/:id/unavailability/:unavailabilityId', async (req, res) => {
+    try {
+        const { id, unavailabilityId } = req.params;
+        const result = await pool.query(`
+            DELETE FROM instructor_unavailability
+            WHERE unavail_id = $1 AND instructor_id = $2
+            RETURNING *
+        `, [unavailabilityId, id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Unavailability record not found' });
+        }
+
+        res.json({ message: 'Unavailability record deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting unavailability:', error);
+        res.status(500).json({ error: 'Failed to delete unavailability' });
+    }
+});
+
+// Get instructor's weekly schedule (class sessions + student/subject info)
+router.get('/:id/schedule', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let { start_date, end_date } = req.query;
+
+        // Default to current week (Mon-Sun)
+        const now = new Date();
+        if (!start_date) start_date = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        if (!end_date) end_date = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+
+        const result = await pool.query(`
+            SELECT 
+                cs.session_id,
+                cs.session_date,
+                cs.start_time,
+                cs.end_time,
+                cs.status,
+                u_s.name as student_name,
+                sub.name as subject_name
+            FROM class_sessions cs
+            JOIN students s ON cs.student_id = s.student_id
+            JOIN users u_s ON s.student_id = u_s.user_id
+            JOIN subjects sub ON cs.subject_id = sub.subject_id
+            WHERE cs.instructor_id = $1
+              AND cs.session_date >= $2
+              AND cs.session_date <= $3
+              AND cs.status IN ('scheduled', 'completed', 'in_progress')
+            ORDER BY cs.session_date, cs.start_time
+        `, [id, start_date, end_date]);
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching instructor schedule:', error);
+        res.status(500).json({ error: 'Failed to fetch instructor schedule' });
     }
 });
 
