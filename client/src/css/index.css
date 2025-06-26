@@ -450,7 +450,7 @@ body {
   left: 280px; 
   right: 0;
   bottom: 20px;
-  padding: 2rem;
+  padding: 0.5rem;
   padding-top: 20px;
   height: calc(100vh - 110px);
   background-color: #EAEAEA;
@@ -888,7 +888,6 @@ h4 {
   
   /* Dashboard Main Section */
   .dashboard-main {
-    background-color: #FFFFFF;
     padding: 2rem;
     border-radius: 8px;
     max-width: 1400px;

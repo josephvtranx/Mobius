@@ -13,6 +13,12 @@
   padding: 2rem;
 }
 
+.scheduling-dashboard-main {
+  padding: 2rem;
+  background-color: #FFFFFF;
+  background: #FFFFFF;
+}
+
 .create-class-form {
   max-width: 1200px;
   margin: 0 auto;
