@@ -15,6 +15,8 @@ import classSeriesRoutes from './routes/classSeriesRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import subjectGroupsRouter from './routes/subjectGroups.js';
 import staffRoutes from './routes/staffRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
+import timePackageRoutes from './routes/timePackageRoutes.js';
 
 // Initialize express app
 const app = express();
@@ -49,6 +51,8 @@ app.use('/api/class-series', classSeriesRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);
 app.use('/api/staff', staffRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/time-packages', timePackageRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

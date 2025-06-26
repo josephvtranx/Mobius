@@ -67,6 +67,7 @@ const getInstructorRoster = async (req, res) => {
       console.log('Processing instructor:', instructor.name, 'Employment type:', instructor.employment_type, 'Raw salary:', instructor.salary, 'Raw hourly_rate:', instructor.hourly_rate);
       return {
         id: instructor.user_id,
+        instructorId: instructor.instructor_id,
         name: instructor.name,
         email: instructor.email,
         phone: instructor.phone,

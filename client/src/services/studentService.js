@@ -63,6 +63,41 @@ const studentService = {
         } catch (error) {
             throw error;
         }
+    },
+
+    // Get student time packages
+    getStudentTimePackages: async (studentId) => {
+        try {
+            const response = await api.get(`/students/${studentId}/time-packages`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching student time packages:', error);
+            throw error;
+        }
+    },
+
+    // Purchase time package
+    purchaseTimePackage: async (studentId, timePackageId) => {
+        try {
+            const response = await api.post(`/students/${studentId}/time-packages`, {
+                time_package_id: timePackageId
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error purchasing time package:', error);
+            throw error;
+        }
+    },
+
+    // Get student time balance
+    getStudentTimeBalance: async (studentId) => {
+        try {
+            const response = await api.get(`/students/${studentId}/time-balance`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching student time balance:', error);
+            throw error;
+        }
     }
 };
 

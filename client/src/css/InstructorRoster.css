@@ -1089,6 +1089,31 @@
   color: #721c24;
 }
 
+.preview-dates {
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: inline-block;
+  width: fit-content;
+  background-color: #e9ecef;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.preview-dates.ongoing {
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.date-range-indicator {
+  margin: 8px 0;
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 3px solid #007bff;
+}
+
 .remove-preview-btn {
   background: none;
   border: none;
@@ -1319,4 +1344,67 @@
 .rbc-today {
   background-color: #FFF7ED !important;
   border-top: 2px solid #FDBA74 !important;
+}
+
+/* Calendar Event Styles for React Big Calendar */
+.calendar-availability-event {
+  background-color: #DCF4FF !important;
+  color: #1a4b6e !important;
+  border: 1px solid #b6e0fe !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 4px #b6e0fe33 !important;
+  padding: 2px 6px !important;
+  font-size: 0.85em !important;
+}
+
+.calendar-class-event {
+  background-color: #FFEDD5 !important;
+  color: #7c3a00 !important;
+  border: 1px solid #ffd6a0 !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 4px #ffd6a033 !important;
+  padding: 2px 6px !important;
+  font-size: 0.85em !important;
+}
+
+/* Override React Big Calendar default styles */
+.rbc-event {
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  font-size: 0.85em !important;
+  min-height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.rbc-event-content {
+  font-weight: 600 !important;
+  font-size: 0.85em !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+
+/* Ensure events are visible */
+.rbc-event.calendar-availability-event,
+.rbc-event.calendar-class-event {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 20px !important;
+  margin: 1px 0 !important;
+}
+
+/* Override any conflicting styles */
+.rbc-event.rbc-selected {
+  background-color: inherit !important;
+}
+
+.rbc-event:focus {
+  outline: none !important;
 } 

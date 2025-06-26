@@ -1,6 +1,6 @@
--- =================================
--- Complete PostgreSQL Schema for Mobius (Updated with Group + Subject Specialties)
--- =================================
+-- =============================================
+-- PostgreSQL Schema for Mobius (Time-Based Tracking Edition)
+-- =============================================
 
 -- 1. USERS
 CREATE TABLE users (
@@ -59,7 +59,7 @@ CREATE TABLE instructors (
   hourly_rate     NUMERIC CHECK (hourly_rate >= 0)
 );
 
--- 4c. INSTRUCTOR_AVAILABILITY (recurring slots)
+-- 4c. INSTRUCTOR_AVAILABILITY
 CREATE TABLE instructor_availability (
   availability_id SERIAL PRIMARY KEY,
   instructor_id   INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
@@ -73,7 +73,7 @@ CREATE TABLE instructor_availability (
   notes           TEXT
 );
 
--- 4d. INSTRUCTOR_UNAVAILABILITY (exceptions)
+-- 4d. INSTRUCTOR_UNAVAILABILITY
 CREATE TABLE instructor_unavailability (
   unavail_id     SERIAL PRIMARY KEY,
   instructor_id  INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
@@ -104,14 +104,14 @@ CREATE TABLE student_guardian (
   PRIMARY KEY (student_id, guardian_id)
 );
 
--- 8. INSTRUCTOR_SPECIALTIES (subject-level specialties)
+-- 8. INSTRUCTOR_SPECIALTIES
 CREATE TABLE instructor_specialties (
   instructor_id  INT REFERENCES instructors(instructor_id) ON DELETE CASCADE,
   subject_id     INT REFERENCES subjects(subject_id) ON DELETE CASCADE,
   PRIMARY KEY (instructor_id, subject_id)
 );
 
--- 8b. INSTRUCTOR_GROUP_SPECIALTIES (group-level assignment)
+-- 8b. INSTRUCTOR_GROUP_SPECIALTIES
 CREATE TABLE instructor_group_specialties (
   instructor_id  INT REFERENCES instructors(instructor_id) ON DELETE CASCADE,
   group_id       INT REFERENCES subject_groups(group_id) ON DELETE CASCADE,
@@ -161,7 +161,6 @@ CREATE TABLE class_sessions (
   status                     TEXT    NOT NULL CHECK (status IN ('scheduled','completed','canceled','rescheduled')) DEFAULT 'scheduled',
   cancellation_reason        TEXT,
   rescheduled_to_session_id  INT     REFERENCES class_sessions(session_id) ON DELETE SET NULL,
-  credits_cost               INT     NOT NULL DEFAULT 1,
   matched_availability_id    INT     REFERENCES instructor_availability(availability_id)
 );
 
@@ -184,36 +183,37 @@ CREATE TABLE time_logs (
   notes                    TEXT
 );
 
--- 14. CREDIT_PACKAGES
-CREATE TABLE credit_packages (
-  package_id      SERIAL PRIMARY KEY,
-  name            TEXT    NOT NULL,
-  total_credits   INT     NOT NULL CHECK (total_credits > 0),
-  price           NUMERIC NOT NULL CHECK (price >= 0),
-  expiration_days INT     NOT NULL CHECK (expiration_days >= 0)
+-- 14. TIME_PACKAGES
+CREATE TABLE time_packages (
+  time_package_id  SERIAL PRIMARY KEY,
+  name             TEXT    NOT NULL,
+  hours_total      INT     NOT NULL CHECK (hours_total > 0),
+  price            NUMERIC NOT NULL CHECK (price >= 0),
+  expiration_days  INT     NOT NULL CHECK (expiration_days >= 0)
 );
 
--- 15. STUDENT_CREDITS
-CREATE TABLE student_credits (
+-- 15. STUDENT_TIME_PACKAGES
+CREATE TABLE student_time_packages (
   purchase_id        SERIAL PRIMARY KEY,
   student_id         INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
-  package_id         INT     NOT NULL REFERENCES credit_packages(package_id) ON DELETE RESTRICT,
+  time_package_id    INT     NOT NULL REFERENCES time_packages(time_package_id) ON DELETE RESTRICT,
   purchase_date      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  credits_remaining  INT     NOT NULL CHECK (credits_remaining >= 0),
-  expiration_date    DATE
+  minutes_remaining  INT     NOT NULL CHECK (minutes_remaining >= 0),
+  expiration_date    DATE,
+  hours_total        NUMERIC GENERATED ALWAYS AS (minutes_remaining / 60.0) STORED
 );
 
--- 16. CREDIT_REDEMPTIONS
-CREATE TABLE credit_redemptions (
-  redemption_id   SERIAL PRIMARY KEY,
+-- 16. TIME_DEDUCTIONS
+CREATE TABLE time_deductions (
+  deduction_id    SERIAL PRIMARY KEY,
   student_id      INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
   session_id      INT     NOT NULL REFERENCES class_sessions(session_id) ON DELETE CASCADE,
-  purchase_id     INT     NOT NULL REFERENCES student_credits(purchase_id) ON DELETE CASCADE,
-  credits_used    INT     NOT NULL CHECK (credits_used > 0),
-  redeemed_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  time_package_id INT     NOT NULL REFERENCES student_time_packages(purchase_id) ON DELETE CASCADE,
+  minutes_used    INT     NOT NULL CHECK (minutes_used > 0),
+  deducted_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 17. PAYROLL (polymorphic user-based)
+-- 17. PAYROLL
 CREATE TABLE payroll (
   payroll_id        SERIAL PRIMARY KEY,
   user_id           INT     NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,

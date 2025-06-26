@@ -65,6 +65,17 @@ const classSessionService = {
             console.error(`Error updating class session status ${id}:`, error);
             throw error;
         }
+    },
+
+    // Get sessions for a specific instructor
+    getInstructorSessions: async (instructorId) => {
+        try {
+            const response = await api.get(`/classes/instructor/${instructorId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching sessions for instructor ${instructorId}:`, error);
+            throw error;
+        }
     }
 };
 

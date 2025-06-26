@@ -1,0 +1,145 @@
+.attendance-marker {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 500px;
+  margin: 20px auto;
+}
+
+.attendance-marker h3 {
+  margin: 0 0 20px 0;
+  color: #495057;
+  text-align: center;
+}
+
+.attendance-options {
+  display: flex;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.attendance-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.attendance-option:hover {
+  border-color: #007bff;
+}
+
+.attendance-option input[type="radio"] {
+  margin-right: 8px;
+  transform: scale(1.2);
+}
+
+.attendance-label {
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.attendance-label.attended {
+  background: #d4edda;
+  color: #155724;
+}
+
+.attendance-label.absent {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.attendance-option input[type="radio"]:checked + .attendance-label.attended {
+  background: #28a745;
+  color: white;
+}
+
+.attendance-option input[type="radio"]:checked + .attendance-label.absent {
+  background: #dc3545;
+  color: white;
+}
+
+.attendance-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+.attendance-actions .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.btn-primary:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.btn-secondary:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 10px 0;
+  border: 1px solid #f5c6cb;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+} 

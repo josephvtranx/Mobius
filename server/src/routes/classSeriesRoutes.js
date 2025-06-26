@@ -1,6 +1,12 @@
 import express from 'express';
-import { body } from 'express-validator';
+import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { 
+    generateTimeSlots, 
+    validateSchedulingRequest,
+    findSmartSchedulingMatches
+} from '../helpers/timeSlotHelpers.js';
 const router = express.Router();
 
 // Validation middleware
@@ -39,10 +45,10 @@ router.get('/', async (req, res) => {
                 ) as student,
                 sub.name as subject_name
             FROM class_series cs
-            JOIN instructors i ON cs.instructor_id = i.instructor_id
-            JOIN users u_i ON i.user_id = u_i.user_id
+            LEFT JOIN instructors i ON cs.instructor_id = i.instructor_id
+            LEFT JOIN users u_i ON i.instructor_id = u_i.user_id
             JOIN students s ON cs.student_id = s.student_id
-            JOIN users u_s ON s.user_id = u_s.user_id
+            JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             ORDER BY cs.start_date DESC
         `);
@@ -72,9 +78,9 @@ router.get('/pending', async (req, res) => {
                 sub.name as subject_name
             FROM class_series cs
             JOIN instructors i ON cs.instructor_id = i.instructor_id
-            JOIN users u_i ON i.user_id = u_i.user_id
+            JOIN users u_i ON i.instructor_id = u_i.user_id
             JOIN students s ON cs.student_id = s.student_id
-            JOIN users u_s ON s.user_id = u_s.user_id
+            JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             WHERE cs.status = 'pending'
             ORDER BY cs.start_date ASC
@@ -281,6 +287,226 @@ router.delete('/:id', async (req, res) => {
         await client.query('ROLLBACK');
         console.error('Error deleting class series:', error);
         res.status(500).json({ error: 'Failed to delete class series' });
+    } finally {
+        client.release();
+    }
+});
+
+// Get suggested time slots for a specific instructor
+router.get('/suggested-slots/:instructorId', authenticateToken, async (req, res) => {
+    const client = await pool.connect();
+    try {
+        const { instructorId } = req.params;
+        const { student_id, subject_id, duration_minutes = 60 } = req.query;
+
+        if (!student_id || !subject_id) {
+            return res.status(400).json({ 
+                error: 'Student ID and Subject ID are required' 
+            });
+        }
+
+        // Validate scheduling request
+        const creditInfo = await validateSchedulingRequest(
+            client, student_id, instructorId, subject_id, duration_minutes
+        );
+
+        // Get instructor availability
+        const availabilityQuery = `
+            SELECT 
+                ia.availability_id,
+                ia.day_of_week,
+                ia.start_time,
+                ia.end_time,
+                ia.type,
+                ia.notes
+            FROM instructor_availability ia
+            WHERE ia.instructor_id = $1
+            AND ia.status = 'active'
+            AND (ia.start_date IS NULL OR ia.start_date <= CURRENT_DATE + INTERVAL '14 days')
+            AND (ia.end_date IS NULL OR ia.end_date >= CURRENT_DATE)
+            ORDER BY 
+                CASE ia.day_of_week 
+                    WHEN 'mon' THEN 1 
+                    WHEN 'tue' THEN 2 
+                    WHEN 'wed' THEN 3 
+                    WHEN 'thu' THEN 4 
+                    WHEN 'fri' THEN 5 
+                    WHEN 'sat' THEN 6 
+                    WHEN 'sun' THEN 7 
+                END,
+                ia.start_time
+        `;
+
+        const availabilityResult = await client.query(availabilityQuery, [instructorId]);
+        
+        if (availabilityResult.rows.length === 0) {
+            return res.json({ 
+                timeSlots: [],
+                message: 'No availability found for this instructor',
+                studentTime: creditInfo.totalMinutes,
+                timeNeeded: creditInfo.minutesNeeded
+            });
+        }
+
+        // Generate time slots
+        const suggestedSlots = await generateTimeSlots(
+            client, 
+            availabilityResult.rows, 
+            duration_minutes, 
+            instructorId, 
+            student_id
+        );
+
+        // Add time information to each slot
+        const slotsWithTime = suggestedSlots.map(slot => ({
+            ...slot,
+            timeNeeded: creditInfo.minutesNeeded
+        }));
+
+        // Limit to first 20 slots to avoid overwhelming the UI
+        const limitedSlots = slotsWithTime.slice(0, 20);
+
+        res.json({
+            timeSlots: limitedSlots,
+            totalFound: suggestedSlots.length,
+            studentTime: creditInfo.totalMinutes,
+            timeNeeded: creditInfo.minutesNeeded,
+            message: limitedSlots.length > 0 
+                ? `Found ${limitedSlots.length} available time slots` 
+                : 'No available time slots found'
+        });
+
+    } catch (error) {
+        console.error('Error fetching suggested time slots:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch suggested time slots',
+            details: error.message 
+        });
+    } finally {
+        client.release();
+    }
+});
+
+// Smart scheduling endpoint - matches students with instructors based on preferences
+router.post('/smart-schedule', authenticateToken, [
+    body('student_id').isInt().withMessage('Student ID must be a valid integer'),
+    body('subject_id').isInt().withMessage('Subject ID must be a valid integer'),
+    body('preferred_days').isArray().withMessage('Preferred days must be an array'),
+    body('preferred_days.*').isIn(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']).withMessage('Invalid day format'),
+    body('preferred_start_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid start time format'),
+    body('preferred_end_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid end time format'),
+    body('duration_minutes').optional().isInt({ min: 30, max: 120 }).withMessage('Duration must be between 30 and 120 minutes')
+], async (req, res) => {
+    const client = await pool.connect();
+    try {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                error: 'Validation failed', 
+                details: errors.array() 
+            });
+        }
+
+        const {
+            student_id,
+            subject_id,
+            preferred_days,
+            preferred_start_time,
+            preferred_end_time,
+            duration_minutes = 60
+        } = req.body;
+
+        // Validate time range
+        if (preferred_start_time >= preferred_end_time) {
+            return res.status(400).json({ 
+                error: 'Preferred start time must be before end time' 
+            });
+        }
+
+        // Check if student exists and is active
+        const studentCheck = await client.query(`
+            SELECT s.student_id, u.name, u.is_active
+            FROM students s
+            JOIN users u ON s.student_id = u.user_id
+            WHERE s.student_id = $1
+        `, [student_id]);
+
+        if (studentCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+
+        if (!studentCheck.rows[0].is_active) {
+            return res.status(400).json({ error: 'Student account is inactive' });
+        }
+
+        // Check if subject exists
+        const subjectCheck = await client.query(`
+            SELECT subject_id, name FROM subjects WHERE subject_id = $1
+        `, [subject_id]);
+
+        if (subjectCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Subject not found' });
+        }
+
+        // Find smart scheduling matches
+        const matches = await findSmartSchedulingMatches(
+            client, student_id, subject_id, preferred_days, 
+            preferred_start_time, preferred_end_time, duration_minutes
+        );
+
+        // Get student time information (for display only, not validation)
+        const studentTime = await client.query(`
+            SELECT COALESCE(SUM(minutes_remaining), 0) as total_minutes
+            FROM student_time_packages 
+            WHERE student_id = $1 AND expiration_date >= CURRENT_DATE
+        `, [student_id]);
+
+        const totalMinutes = parseInt(studentTime.rows[0].total_minutes);
+
+        // Group matches by quality
+        const exactMatches = matches.filter(match => match.matchQuality === 'exact');
+        const alternateMatches = matches.filter(match => match.matchQuality === 'alternate');
+
+        // Limit results to top 20 matches
+        const topMatches = matches.slice(0, 20);
+
+        res.json({
+            success: true,
+            student: {
+                id: studentCheck.rows[0].student_id,
+                name: studentCheck.rows[0].name
+            },
+            subject: {
+                id: subjectCheck.rows[0].subject_id,
+                name: subjectCheck.rows[0].name
+            },
+            preferences: {
+                days: preferred_days,
+                startTime: preferred_start_time,
+                endTime: preferred_end_time,
+                duration: duration_minutes
+            },
+            matches: {
+                exact: exactMatches.length,
+                alternate: alternateMatches.length,
+                total: matches.length
+            },
+            timeSlots: topMatches,
+            time: {
+                available: totalMinutes,
+                needed: duration_minutes,
+                availableHours: (totalMinutes / 60).toFixed(1),
+                neededHours: (duration_minutes / 60).toFixed(1),
+                sufficient: totalMinutes >= duration_minutes
+            }
+        });
+
+    } catch (error) {
+        console.error('Smart scheduling error:', error);
+        res.status(500).json({ 
+            error: error.message || 'Failed to find scheduling matches' 
+        });
     } finally {
         client.release();
     }

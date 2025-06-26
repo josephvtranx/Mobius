@@ -1,19 +1,36 @@
 /* src/css/CalendarWidget.css */
-.react-calendar {
-    border: none;
-    width: 100%;
-    background-color: #f9f9f9;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-  
-  .react-calendar__tile--now {
-    background: #EAEAEA;
-  }
-  
-  .react-calendar__tile--active {
-    background: #FFC06E;
-    color: white;
-  }
+.calendar-widget {
+  /* Scope all styles to this wrapper */
+}
+
+.calendar-widget .react-calendar {
+  border: none;
+  width: 100%;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.calendar-widget .react-calendar__tile--now {
+  background: #EAEAEA;
+}
+
+.calendar-widget .react-calendar__tile--active {
+  background: #FFC06E;
+  color: white;
+}
+
+/* Additional scoped styles for calendar widget */
+.calendar-widget .calendar-header {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  font-weight: 600;
+  color: #495057;
+}
+
+.calendar-widget .calendar-core {
+  /* Additional styling for the calendar core if needed */
+}
   

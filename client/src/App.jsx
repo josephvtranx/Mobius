@@ -1,4 +1,6 @@
 import React from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import SideNav from './components/SideNav';
@@ -39,10 +41,12 @@ import './css/login.css';
 
 function App() {
   return (
-    <Router>
-      <div id="modal-root"></div>
-      <AppContent />
-    </Router>
+    <DndProvider backend={HTML5Backend}>
+      <Router>
+        <div id="modal-root"></div>
+        <AppContent />
+      </Router>
+    </DndProvider>
   );
 }
 

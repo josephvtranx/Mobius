@@ -165,8 +165,8 @@ router.put('/:id', studentValidation, async (req, res) => {
     }
 });
 
-// Credit related routes
-router.get('/:id/credits', async (req, res) => {
+// Time package related routes
+router.get('/:id/time-packages', async (req, res) => {
     try {
         const { id } = req.params;
         
@@ -178,32 +178,33 @@ router.get('/:id/credits', async (req, res) => {
 
         const result = await pool.query(`
             SELECT 
-                sc.*,
-                cp.name as package_name,
-                cp.total_credits,
-                cp.price
-            FROM student_credits sc
-            JOIN credit_packages cp ON sc.package_id = cp.package_id
-            WHERE sc.student_id = $1
-            ORDER BY sc.purchase_date DESC
+                stp.*,
+                tp.name as package_name,
+                tp.hours_total,
+                tp.price,
+                tp.expiration_days
+            FROM student_time_packages stp
+            JOIN time_packages tp ON stp.time_package_id = tp.time_package_id
+            WHERE stp.student_id = $1
+            ORDER BY stp.purchase_date DESC
         `, [id]);
 
         res.json(result.rows);
     } catch (error) {
-        console.error('Error fetching student credits:', error);
+        console.error('Error fetching student time packages:', error);
         res.status(500).json({ 
-            error: 'Failed to fetch student credits',
+            error: 'Failed to fetch student time packages',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 });
 
-// Purchase credits
-router.post('/:id/credits', async (req, res) => {
+// Purchase time package
+router.post('/:id/time-packages', async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
-        const { package_id } = req.body;
+        const { time_package_id } = req.body;
 
         // Validate student exists
         const studentExists = await client.query('SELECT * FROM students WHERE student_id = $1', [id]);
@@ -213,12 +214,12 @@ router.post('/:id/credits', async (req, res) => {
 
         // Get package details
         const packageResult = await client.query(
-            'SELECT * FROM credit_packages WHERE package_id = $1',
-            [package_id]
+            'SELECT * FROM time_packages WHERE time_package_id = $1',
+            [time_package_id]
         );
 
         if (packageResult.rows.length === 0) {
-            return res.status(404).json({ error: 'Credit package not found' });
+            return res.status(404).json({ error: 'Time package not found' });
         }
 
         await client.query('BEGIN');
@@ -227,24 +228,65 @@ router.post('/:id/credits', async (req, res) => {
         const expiration_date = new Date();
         expiration_date.setDate(expiration_date.getDate() + package_info.expiration_days);
 
+        // Convert hours to minutes
+        const minutes_remaining = package_info.hours_total * 60;
+
         const result = await client.query(`
-            INSERT INTO student_credits 
-            (student_id, package_id, credits_remaining, expiration_date)
+            INSERT INTO student_time_packages 
+            (student_id, time_package_id, minutes_remaining, expiration_date)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-        `, [id, package_id, package_info.total_credits, expiration_date]);
+        `, [id, time_package_id, minutes_remaining, expiration_date]);
 
         await client.query('COMMIT');
         res.status(201).json(result.rows[0]);
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Error purchasing credits:', error);
+        console.error('Error purchasing time package:', error);
         res.status(500).json({ 
-            error: 'Failed to purchase credits',
+            error: 'Failed to purchase time package',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     } finally {
         client.release();
+    }
+});
+
+// Get student time balance summary
+router.get('/:id/time-balance', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Validate student exists
+        const studentExists = await pool.query('SELECT * FROM students WHERE student_id = $1', [id]);
+        if (studentExists.rows.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+
+        const result = await pool.query(`
+            SELECT 
+                COALESCE(SUM(minutes_remaining), 0) as total_minutes,
+                COUNT(*) as active_packages,
+                COUNT(CASE WHEN expiration_date < CURRENT_DATE THEN 1 END) as expired_packages
+            FROM student_time_packages 
+            WHERE student_id = $1
+        `, [id]);
+
+        const summary = result.rows[0];
+        const totalHours = (summary.total_minutes / 60).toFixed(1);
+
+        res.json({
+            totalMinutes: parseInt(summary.total_minutes),
+            totalHours: parseFloat(totalHours),
+            activePackages: parseInt(summary.active_packages),
+            expiredPackages: parseInt(summary.expired_packages)
+        });
+    } catch (error) {
+        console.error('Error fetching student time balance:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch student time balance',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 

@@ -1,20 +1,19 @@
 import express from 'express';
 import { body } from 'express-validator';
 import pool from '../config/db.js';
+import { authenticateToken } from '../middleware/auth.js';
+
 const router = express.Router();
 
 // Validation middleware
 const sessionValidation = [
-    body('instructor_id').isInt().withMessage('Valid instructor ID is required'),
-    body('student_id').isInt().withMessage('Valid student ID is required'),
-    body('subject_id').isInt().withMessage('Valid subject ID is required'),
-    body('session_date').isDate().withMessage('Valid date is required'),
-    body('start_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
-        .withMessage('Start time must be in HH:MM format'),
-    body('end_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
-        .withMessage('End time must be in HH:MM format'),
-    body('location').optional().isString().withMessage('Location must be a string'),
-    body('credits_cost').optional().isInt({ min: 1 }).withMessage('Credits cost must be positive')
+    body('instructor_id').isInt().withMessage('Instructor ID must be a valid integer'),
+    body('student_id').isInt().withMessage('Student ID must be a valid integer'),
+    body('subject_id').isInt().withMessage('Subject ID must be a valid integer'),
+    body('session_date').isDate().withMessage('Session date must be a valid date'),
+    body('start_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid start time format'),
+    body('end_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid end time format'),
+    body('location').optional().isString().withMessage('Location must be a string')
 ];
 
 // Get all class sessions with filters
@@ -44,9 +43,9 @@ router.get('/', async (req, res) => {
                 sub.name as subject_name
             FROM class_sessions cs
             JOIN instructors i ON cs.instructor_id = i.instructor_id
-            JOIN users u_i ON i.user_id = u_i.user_id
+            JOIN users u_i ON i.instructor_id = u_i.user_id
             JOIN students s ON cs.student_id = s.student_id
-            JOIN users u_s ON s.user_id = u_s.user_id
+            JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             WHERE 1=1
         `;
@@ -115,9 +114,9 @@ router.get('/:id', async (req, res) => {
                 att.notes as attendance_notes
             FROM class_sessions cs
             JOIN instructors i ON cs.instructor_id = i.instructor_id
-            JOIN users u_i ON i.user_id = u_i.user_id
+            JOIN users u_i ON i.instructor_id = u_i.user_id
             JOIN students s ON cs.student_id = s.student_id
-            JOIN users u_s ON s.user_id = u_s.user_id
+            JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             LEFT JOIN attendance att ON cs.session_id = att.session_id
             WHERE cs.session_id = $1
@@ -134,8 +133,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create new class session
-router.post('/', sessionValidation, async (req, res) => {
+// Create a new class session
+router.post('/', authenticateToken, sessionValidation, async (req, res) => {
     try {
         const {
             instructor_id,
@@ -144,11 +143,66 @@ router.post('/', sessionValidation, async (req, res) => {
             session_date,
             start_time,
             end_time,
-            location,
-            credits_cost = 1
+            location
         } = req.body;
 
-        // Check if instructor is available
+        // Validate time range
+        if (start_time >= end_time) {
+            return res.status(400).json({ error: 'Start time must be before end time' });
+        }
+
+        // Check if instructor exists and is active
+        const instructorCheck = await pool.query(`
+            SELECT i.instructor_id, u.name, u.is_active
+            FROM instructors i
+            JOIN users u ON i.instructor_id = u.user_id
+            WHERE i.instructor_id = $1
+        `, [instructor_id]);
+
+        if (instructorCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Instructor not found' });
+        }
+
+        if (!instructorCheck.rows[0].is_active) {
+            return res.status(400).json({ error: 'Instructor account is inactive' });
+        }
+
+        // Check if student exists and is active
+        const studentCheck = await pool.query(`
+            SELECT s.student_id, u.name, u.is_active
+            FROM students s
+            JOIN users u ON s.student_id = u.user_id
+            WHERE s.student_id = $1
+        `, [student_id]);
+
+        if (studentCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+
+        if (!studentCheck.rows[0].is_active) {
+            return res.status(400).json({ error: 'Student account is inactive' });
+        }
+
+        // Check if subject exists
+        const subjectCheck = await pool.query(`
+            SELECT subject_id, name FROM subjects WHERE subject_id = $1
+        `, [subject_id]);
+
+        if (subjectCheck.rows.length === 0) {
+            return res.status(404).json({ error: 'Subject not found' });
+        }
+
+        // Check if instructor is qualified to teach this subject
+        const instructorSubjectCheck = await pool.query(`
+            SELECT * FROM instructor_specialties 
+            WHERE instructor_id = $1 AND subject_id = $2
+        `, [instructor_id, subject_id]);
+
+        if (instructorSubjectCheck.rows.length === 0) {
+            return res.status(400).json({ error: 'Instructor is not qualified to teach this subject' });
+        }
+
+        // Check instructor availability
         const instructorAvailability = await pool.query(`
             WITH availability_check AS (
                 SELECT * FROM instructor_availability
@@ -189,18 +243,7 @@ router.post('/', sessionValidation, async (req, res) => {
             return res.status(400).json({ error: 'Time slot conflicts with existing session' });
         }
 
-        // Check student credits
-        const studentCredits = await pool.query(`
-            SELECT SUM(credits_remaining) as total_credits
-            FROM student_credits
-            WHERE student_id = $1 AND expiration_date >= CURRENT_DATE
-        `, [student_id]);
-
-        if (studentCredits.rows[0].total_credits < credits_cost) {
-            return res.status(400).json({ error: 'Insufficient credits' });
-        }
-
-        // Create session
+        // Create session (no credit deduction at scheduling time)
         const result = await pool.query(`
             INSERT INTO class_sessions (
                 instructor_id,
@@ -210,23 +253,11 @@ router.post('/', sessionValidation, async (req, res) => {
                 start_time,
                 end_time,
                 location,
-                status,
-                credits_cost
+                status
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled', $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
             RETURNING *
-        `, [instructor_id, student_id, subject_id, session_date, start_time, end_time, location, credits_cost]);
-
-        // Deduct credits
-        await pool.query(`
-            UPDATE student_credits
-            SET credits_remaining = credits_remaining - $1
-            WHERE student_id = $2
-            AND expiration_date >= CURRENT_DATE
-            AND credits_remaining >= $1
-            ORDER BY expiration_date
-            LIMIT 1
-        `, [credits_cost, student_id]);
+        `, [instructor_id, student_id, subject_id, session_date, start_time, end_time, location]);
 
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -258,17 +289,8 @@ router.patch('/:id/status', async (req, res) => {
             return res.status(404).json({ error: 'Class session not found' });
         }
 
-        // If canceled, refund credits
-        if (status === 'canceled') {
-            await pool.query(`
-                UPDATE student_credits
-                SET credits_remaining = credits_remaining + $1
-                WHERE student_id = $2
-                AND expiration_date >= CURRENT_DATE
-                ORDER BY expiration_date
-                LIMIT 1
-            `, [result.rows[0].credits_cost, result.rows[0].student_id]);
-        }
+        // Note: No credit refund logic here since credits are only deducted when attendance is marked
+        // If a session is canceled before attendance is marked, no credits were deducted
 
         res.json(result.rows[0]);
     } catch (error) {
@@ -307,6 +329,45 @@ router.post('/:id/attendance', async (req, res) => {
     } catch (error) {
         console.error('Error marking attendance:', error);
         res.status(500).json({ error: 'Failed to mark attendance' });
+    }
+});
+
+// Get class sessions by instructor
+router.get('/instructor/:instructorId', async (req, res) => {
+    try {
+        const { instructorId } = req.params;
+        const { startDate, endDate } = req.query;
+
+        let query = `
+            SELECT 
+                cs.*,
+                json_build_object(
+                    'student_id', s.student_id,
+                    'name', u_s.name,
+                    'email', u_s.email
+                ) as student,
+                sub.name as subject_name
+            FROM class_sessions cs
+            JOIN students s ON cs.student_id = s.student_id
+            JOIN users u_s ON s.student_id = u_s.user_id
+            JOIN subjects sub ON cs.subject_id = sub.subject_id
+            WHERE cs.instructor_id = $1
+        `;
+
+        const params = [instructorId];
+
+        if (startDate && endDate) {
+            query += ` AND cs.session_date BETWEEN $2 AND $3`;
+            params.push(startDate, endDate);
+        }
+
+        query += ` ORDER BY cs.session_date ASC, cs.start_time ASC`;
+
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching instructor sessions:', error);
+        res.status(500).json({ error: 'Failed to fetch instructor sessions' });
     }
 });
 

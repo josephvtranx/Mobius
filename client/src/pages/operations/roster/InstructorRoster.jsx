@@ -66,9 +66,16 @@ function InstructorRoster() {
   // Fetch availability data when row expands
   const fetchAvailabilityData = async (instructorId) => {
     try {
+      // Find the instructor to get the instructorId
+      const instructor = instructors.find(inst => inst.id === instructorId);
+      if (!instructor || !instructor.instructorId) {
+        console.error('Instructor not found or missing instructorId:', instructorId);
+        return;
+      }
+      
       const [availabilityRes, unavailabilityRes] = await Promise.all([
-        axios.get(`/api/instructors/${instructorId}/availability`),
-        axios.get(`/api/instructors/${instructorId}/unavailability`)
+        axios.get(`/api/instructors/${instructor.instructorId}/availability`),
+        axios.get(`/api/instructors/${instructor.instructorId}/unavailability`)
       ]);
       
       setAvailabilityData(prev => ({
@@ -94,6 +101,7 @@ function InstructorRoster() {
           console.log('Processing instructor:', instructor.name, 'Raw salary:', instructor.salary, 'Raw hourlyRate:', instructor.hourlyRate);
           return {
             id: instructor.id || `temp-${index}`,
+            instructorId: instructor.instructorId, // Add instructorId from backend
           name: instructor.name || '',
             email: instructor.email || '',
           phone: instructor.phone || '',
@@ -269,12 +277,19 @@ function InstructorRoster() {
   // Availability management functions
   const addAvailability = async (instructorId, availabilityBlocks) => {
     try {
+      // Find the instructor to get the instructorId
+      const instructor = instructors.find(inst => inst.id === instructorId);
+      if (!instructor || !instructor.instructorId) {
+        console.error('Instructor not found or missing instructorId:', instructorId);
+        return;
+      }
+      
       // If it's a single block (from edit form), wrap it in an array
       const blocks = Array.isArray(availabilityBlocks) ? availabilityBlocks : [availabilityBlocks];
       
       // Create all availability blocks in parallel
       const promises = blocks.map(block => 
-        axios.post(`/api/instructors/${instructorId}/availability`, block)
+        axios.post(`/api/instructors/${instructor.instructorId}/availability`, block)
       );
       
       await Promise.all(promises);
@@ -287,7 +302,14 @@ function InstructorRoster() {
 
   const updateAvailability = async (instructorId, availabilityId, availabilityData) => {
     try {
-      await axios.put(`/api/instructors/${instructorId}/availability/${availabilityId}`, availabilityData);
+      // Find the instructor to get the instructorId
+      const instructor = instructors.find(inst => inst.id === instructorId);
+      if (!instructor || !instructor.instructorId) {
+        console.error('Instructor not found or missing instructorId:', instructorId);
+        return;
+      }
+      
+      await axios.put(`/api/instructors/${instructor.instructorId}/availability/${availabilityId}`, availabilityData);
       await fetchAvailabilityData(instructorId);
       setEditingAvailability(prev => ({ ...prev, [availabilityId]: false }));
     } catch (error) {
@@ -297,7 +319,14 @@ function InstructorRoster() {
 
   const deleteAvailability = async (instructorId, availabilityId) => {
     try {
-      await axios.delete(`/api/instructors/${instructorId}/availability/${availabilityId}`);
+      // Find the instructor to get the instructorId
+      const instructor = instructors.find(inst => inst.id === instructorId);
+      if (!instructor || !instructor.instructorId) {
+        console.error('Instructor not found or missing instructorId:', instructorId);
+        return;
+      }
+      
+      await axios.delete(`/api/instructors/${instructor.instructorId}/availability/${availabilityId}`);
       await fetchAvailabilityData(instructorId);
     } catch (error) {
       console.error('Error deleting availability:', error);
@@ -306,7 +335,14 @@ function InstructorRoster() {
 
   const addUnavailability = async (instructorId, unavailabilityData) => {
     try {
-      await axios.post(`/api/instructors/${instructorId}/unavailability`, unavailabilityData);
+      // Find the instructor to get the instructorId
+      const instructor = instructors.find(inst => inst.id === instructorId);
+      if (!instructor || !instructor.instructorId) {
+        console.error('Instructor not found or missing instructorId:', instructorId);
+        return;
+      }
+      
+      await axios.post(`/api/instructors/${instructor.instructorId}/unavailability`, unavailabilityData);
       await fetchAvailabilityData(instructorId);
       setShowAddUnavailability(prev => ({ ...prev, [instructorId]: false }));
     } catch (error) {
@@ -316,7 +352,14 @@ function InstructorRoster() {
 
   const deleteUnavailability = async (instructorId, unavailabilityId) => {
     try {
-      await axios.delete(`/api/instructors/${instructorId}/unavailability/${unavailabilityId}`);
+      // Find the instructor to get the instructorId
+      const instructor = instructors.find(inst => inst.id === instructorId);
+      if (!instructor || !instructor.instructorId) {
+        console.error('Instructor not found or missing instructorId:', instructorId);
+        return;
+      }
+      
+      await axios.delete(`/api/instructors/${instructor.instructorId}/unavailability/${unavailabilityId}`);
       await fetchAvailabilityData(instructorId);
     } catch (error) {
       console.error('Error deleting unavailability:', error);
@@ -349,38 +392,69 @@ function InstructorRoster() {
       const now = new Date();
       const weekStart = startOfWeek(now, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-      // Fetch availability
-      const availability = await instructorService.getInstructorAvailability(instructor.id);
-      // Fetch class sessions
+      
+      // Fetch availability using instructorId
+      const availability = await instructorService.getInstructorAvailability(instructor.instructorId);
+      
+      // Fetch class sessions using instructorId
       const sessions = await instructorService.getInstructorSchedule(
-        instructor.id,
+        instructor.instructorId,
         weekStart.toISOString().slice(0, 10),
         weekEnd.toISOString().slice(0, 10)
       );
-      // Transform availability to events
-      const availabilityEvents = (availability || []).map((slot) => {
-        const dayMap = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
+      
+      // Transform availability to events - create events for 6 months (26 weeks)
+      const availabilityEvents = [];
+      const dayMap = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
+      
+      (availability || []).forEach((slot) => {
         const dayIdx = dayMap[slot.day_of_week];
         if (dayIdx === undefined) {
-          console.log('Unknown day_of_week:', slot.day_of_week, slot);
-          return null;
+          return;
         }
-        const slotDate = addDays(weekStart, dayIdx);
-        const [startHour, startMinute] = slot.start_time.split(':');
-        const [endHour, endMinute] = slot.end_time.split(':');
-        const start = new Date(slotDate);
-        start.setHours(Number(startHour), Number(startMinute), 0, 0);
-        const end = new Date(slotDate);
-        end.setHours(Number(endHour), Number(endMinute), 0, 0);
-        const event = {
-          title: 'Available',
-          start,
-          end,
-          allDay: false,
-          type: 'availability',
-        };
-        return event;
-      }).filter(Boolean);
+        
+        // Create events for 26 weeks (6 months) starting from current week
+        for (let weekOffset = 0; weekOffset < 26; weekOffset++) {
+          const weekStartDate = addDays(weekStart, weekOffset * 7);
+          const slotDate = addDays(weekStartDate, dayIdx);
+          
+          // Check if this date is within any date restrictions
+          let shouldInclude = true;
+          
+          if (slot.start_date) {
+            const startDate = new Date(slot.start_date);
+            if (slotDate < startDate) {
+              shouldInclude = false;
+            }
+          }
+          
+          if (slot.end_date) {
+            const endDate = new Date(slot.end_date);
+            if (slotDate > endDate) {
+              shouldInclude = false;
+            }
+          }
+          
+          if (shouldInclude) {
+            const [startHour, startMinute] = slot.start_time.split(':');
+            const [endHour, endMinute] = slot.end_time.split(':');
+            const start = new Date(slotDate);
+            start.setHours(Number(startHour), Number(startMinute), 0, 0);
+            const end = new Date(slotDate);
+            end.setHours(Number(endHour), Number(endMinute), 0, 0);
+            
+            const event = {
+              title: 'Available',
+              start,
+              end,
+              allDay: false,
+              type: 'availability',
+            };
+            availabilityEvents.push(event);
+          }
+        }
+      });
+      
       // Transform sessions to events
       const sessionEvents = (sessions || []).map((session) => {
         const [startHour, startMinute] = session.start_time.split(':');
@@ -399,8 +473,10 @@ function InstructorRoster() {
         };
         return event;
       });
+      
       setCalendarEvents([...availabilityEvents, ...sessionEvents]);
     } catch (err) {
+      console.error('Error fetching schedule data:', err);
       setCalendarEvents([]);
     } finally {
       setCalendarLoading(false);
@@ -486,8 +562,8 @@ function InstructorRoster() {
                         <span className="no-tags">No active classes</span>
                       )}
                     </div>
-                  </td>
-                  <td>
+                </td>
+                <td>
                     <button 
                       className="view-schedule-btn"
                       onClick={(e) => {
@@ -545,7 +621,7 @@ function InstructorRoster() {
                                   instructor.teachingSubjects.map((subject, idx) => (
                                     <span key={`${instructor.id}-subject-${idx}`} className="tag-pill teaching-subject-tag">
                                       {subject}
-                                    </span>
+                      </span>
                                   ))
                                 ) : (
                                   <span className="no-tags">No subjects assigned</span>
@@ -1055,6 +1131,12 @@ function AvailabilityAddForm({ onSave, onCancel }) {
       return;
     }
 
+    // Validate date range if both dates are provided
+    if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
+      alert('End date must be after start date');
+      return;
+    }
+
     // Create availability blocks for each selected day
     const newBlocks = selectedDayKeys.map(day => ({
       id: Date.now() + Math.random(), // Temporary ID for preview
@@ -1096,12 +1178,29 @@ function AvailabilityAddForm({ onSave, onCancel }) {
     }
 
     // Remove temporary IDs and prepare data for backend
-    const blocksToSave = previewBlocks.map(({ id, day_label, ...block }) => block);
+    // Convert empty strings to null for dates
+    const blocksToSave = previewBlocks.map(({ id, day_label, ...block }) => ({
+      ...block,
+      start_date: block.start_date || null,
+      end_date: block.end_date || null
+    }));
     onSave(blocksToSave);
   };
 
   const getSelectedDaysCount = () => {
     return Object.values(selectedDays).filter(Boolean).length;
+  };
+
+  const getDateRangeText = () => {
+    if (formData.start_date && formData.end_date) {
+      return `Limited: ${formData.start_date} to ${formData.end_date}`;
+    } else if (formData.start_date) {
+      return `From: ${formData.start_date} (ongoing)`;
+    } else if (formData.end_date) {
+      return `Until: ${formData.end_date}`;
+    } else {
+      return 'Ongoing (no end date)';
+    }
   };
 
   return (
@@ -1188,7 +1287,7 @@ function AvailabilityAddForm({ onSave, onCancel }) {
               type="date"
               value={formData.start_date}
               onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-              placeholder="Leave empty for indefinite"
+              placeholder="Leave empty for immediate start"
             />
           </div>
           
@@ -1198,9 +1297,16 @@ function AvailabilityAddForm({ onSave, onCancel }) {
               type="date"
               value={formData.end_date}
               onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-              placeholder="Leave empty for indefinite"
+              placeholder="Leave empty for ongoing availability"
             />
           </div>
+        </div>
+
+        {/* Date range indicator */}
+        <div className="date-range-indicator">
+          <small style={{ color: '#666', fontStyle: 'italic' }}>
+            {getDateRangeText()}
+          </small>
         </div>
 
         <div className="form-group">
@@ -1241,6 +1347,18 @@ function AvailabilityAddForm({ onSave, onCancel }) {
                   <span className={`preview-status ${block.status}`}>
                     {block.status}
                   </span>
+                  {block.start_date || block.end_date ? (
+                    <span className="preview-dates">
+                      {block.start_date && block.end_date 
+                        ? `${block.start_date} to ${block.end_date}`
+                        : block.start_date 
+                        ? `From ${block.start_date}`
+                        : `Until ${block.end_date}`
+                      }
+                    </span>
+                  ) : (
+                    <span className="preview-dates ongoing">Ongoing</span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -1284,7 +1402,33 @@ function AvailabilityEditForm({ slot, onSave, onCancel }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Validate date range if both dates are provided
+    if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
+      alert('End date must be after start date');
+      return;
+    }
+
+    // Convert empty strings to null for dates
+    const dataToSave = {
+      ...formData,
+      start_date: formData.start_date || null,
+      end_date: formData.end_date || null
+    };
+    
+    onSave(dataToSave);
+  };
+
+  const getDateRangeText = () => {
+    if (formData.start_date && formData.end_date) {
+      return `Limited: ${formData.start_date} to ${formData.end_date}`;
+    } else if (formData.start_date) {
+      return `From: ${formData.start_date} (ongoing)`;
+    } else if (formData.end_date) {
+      return `Until: ${formData.end_date}`;
+    } else {
+      return 'Ongoing (no end date)';
+    }
   };
 
   return (
@@ -1357,7 +1501,7 @@ function AvailabilityEditForm({ slot, onSave, onCancel }) {
             type="date"
             value={formData.start_date}
             onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-            placeholder="Leave empty for indefinite"
+            placeholder="Leave empty for immediate start"
           />
         </div>
         
@@ -1367,9 +1511,16 @@ function AvailabilityEditForm({ slot, onSave, onCancel }) {
             type="date"
             value={formData.end_date}
             onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-            placeholder="Leave empty for indefinite"
+            placeholder="Leave empty for ongoing availability"
           />
         </div>
+      </div>
+
+      {/* Date range indicator */}
+      <div className="date-range-indicator">
+        <small style={{ color: '#666', fontStyle: 'italic' }}>
+          {getDateRangeText()}
+        </small>
       </div>
       
       <div className="form-group">
