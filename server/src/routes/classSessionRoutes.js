@@ -207,7 +207,7 @@ router.post('/', authenticateToken, sessionValidation, async (req, res) => {
             WITH availability_check AS (
                 SELECT * FROM instructor_availability
                 WHERE instructor_id = $1
-                AND day_of_week = to_char($2::date, 'Day')
+                AND day_of_week = LOWER(to_char($2::date, 'Dy'))
                 AND $3::time BETWEEN start_time AND end_time
                 AND $4::time BETWEEN start_time AND end_time
             ),
@@ -215,8 +215,8 @@ router.post('/', authenticateToken, sessionValidation, async (req, res) => {
                 SELECT * FROM instructor_unavailability
                 WHERE instructor_id = $1
                 AND $2::date BETWEEN DATE(start_datetime) AND DATE(end_datetime)
-                AND $3::time BETWEEN TIME(start_datetime) AND TIME(end_datetime)
-                AND $4::time BETWEEN TIME(start_datetime) AND TIME(end_datetime)
+                AND $3::time BETWEEN CAST(start_datetime AS time) AND CAST(end_datetime AS time)
+                AND $4::time BETWEEN CAST(start_datetime AS time) AND CAST(end_datetime AS time)
             )
             SELECT * FROM availability_check
             WHERE NOT EXISTS (
@@ -259,6 +259,20 @@ router.post('/', authenticateToken, sessionValidation, async (req, res) => {
             RETURNING *
         `, [instructor_id, student_id, subject_id, session_date, start_time, end_time, location]);
 
+        // Create instructor unavailability for this specific session
+        const sessionStartDateTime = `${session_date} ${start_time}`;
+        const sessionEndDateTime = `${session_date} ${end_time}`;
+        
+        await pool.query(`
+            INSERT INTO instructor_unavailability (
+                instructor_id,
+                start_datetime,
+                end_datetime,
+                reason
+            )
+            VALUES ($1, $2::timestamp, $3::timestamp, $4)
+        `, [instructor_id, sessionStartDateTime, sessionEndDateTime, `Scheduled class session ${result.rows[0].session_id}`]);
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating class session:', error);
@@ -287,6 +301,15 @@ router.patch('/:id/status', async (req, res) => {
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Class session not found' });
+        }
+
+        // If session is canceled or completed, remove the unavailability record
+        if (status === 'canceled' || status === 'completed') {
+            await pool.query(`
+                DELETE FROM instructor_unavailability
+                WHERE instructor_id = $1
+                AND reason LIKE $2
+            `, [result.rows[0].instructor_id, `Scheduled class session ${id}%`]);
         }
 
         // Note: No credit refund logic here since credits are only deducted when attendance is marked

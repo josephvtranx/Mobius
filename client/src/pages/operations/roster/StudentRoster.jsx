@@ -245,8 +245,6 @@ function StudentRoster() {
         </table>
       </div>
 
-      {/* Profile card (bottom-left) */}
-      <ProfileCard />
     </div>
   );
 }

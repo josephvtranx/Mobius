@@ -108,48 +108,69 @@ router.post('/', classSeriesValidation, async (req, res) => {
             start_time,
             end_time,
             location,
-            notes
+            notes,
+            sessions
         } = req.body;
 
-        // Check instructor availability
-        const instructorAvailability = await client.query(`
-            SELECT * FROM instructor_availability
-            WHERE instructor_id = $1
-            AND day_of_week = ANY($2::text[])
-            AND $3::time BETWEEN start_time AND end_time
-            AND $4::time BETWEEN start_time AND end_time
-        `, [instructor_id, days_of_week, start_time, end_time]);
-
-        if (instructorAvailability.rows.length === 0) {
-            return res.status(400).json({ error: 'Instructor is not available at these times' });
-        }
-
-        // Calculate number of sessions first
-        const sessions = [];
-        let currentDate = new Date(start_date);
-        const endDate = new Date(end_date);
-
-        while (currentDate <= endDate) {
-            const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
-            
-            if (days_of_week.includes(dayOfWeek)) {
-                sessions.push({
+        let sessionsToInsert = [];
+        if (Array.isArray(sessions) && sessions.length > 0) {
+            // Validate each session
+            for (const [i, session] of sessions.entries()) {
+                if (!session.session_date || !session.start_time || !session.end_time) {
+                    return res.status(400).json({ error: `Session ${i + 1} is missing required fields` });
+                }
+                // Check instructor availability for this session
+                const avail = await client.query(`
+                    SELECT * FROM instructor_availability
+                    WHERE instructor_id = $1
+                    AND day_of_week = $2
+                    AND $3::time >= start_time
+                    AND $4::time <= end_time
+                `, [
+                    instructor_id,
+                    days_of_week[new Date(session.session_date).getDay() === 0 ? 6 : new Date(session.session_date).getDay() - 1], // map JS day to days_of_week
+                    session.start_time,
+                    session.end_time
+                ]);
+                if (avail.rows.length === 0) {
+                    return res.status(400).json({ error: `Instructor is not available for session on ${session.session_date} (${session.start_time} - ${session.end_time})` });
+                }
+                sessionsToInsert.push({
                     instructor_id,
                     student_id,
                     subject_id,
-                    session_date: new Date(currentDate),
-                    start_time,
-                    end_time,
+                    session_date: session.session_date,
+                    start_time: session.start_time,
+                    end_time: session.end_time,
                     location,
                     status: 'scheduled',
                     credits_cost: 1
                 });
             }
-            
-            currentDate.setDate(currentDate.getDate() + 1);
+        } else {
+            // Fallback: generate sessions from pattern (legacy)
+            let currentDate = new Date(start_date);
+            const endDate = new Date(end_date);
+            while (currentDate <= endDate) {
+                const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+                if (days_of_week.includes(dayOfWeek)) {
+                    sessionsToInsert.push({
+                        instructor_id,
+                        student_id,
+                        subject_id,
+                        session_date: new Date(currentDate),
+                        start_time,
+                        end_time,
+                        location,
+                        status: 'scheduled',
+                        credits_cost: 1
+                    });
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
         }
 
-        // Create class series
+        // Create class series (keep start_time/end_time for reference, but sessions can vary)
         const seriesResult = await client.query(`
             INSERT INTO class_series (
                 subject_id,
@@ -173,7 +194,7 @@ router.post('/', classSeriesValidation, async (req, res) => {
             subject_id,
             student_id,
             instructor_id,
-            req.user.staff_id, // Assuming we have the staff_id from the authenticated user
+            req.user?.staff_id || null, // Make it optional
             start_date,
             end_date,
             days_of_week,
@@ -181,14 +202,14 @@ router.post('/', classSeriesValidation, async (req, res) => {
             end_time,
             location,
             notes,
-            sessions.length
+            sessionsToInsert.length
         ]);
 
         // Generate individual sessions
         const series = seriesResult.rows[0];
 
         // Insert all sessions
-        for (const session of sessions) {
+        for (const session of sessionsToInsert) {
             await client.query(`
                 INSERT INTO class_sessions (
                     series_id,
@@ -199,10 +220,9 @@ router.post('/', classSeriesValidation, async (req, res) => {
                     start_time,
                     end_time,
                     location,
-                    status,
-                    credits_cost
+                    status
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             `, [
                 series.series_id,
                 session.instructor_id,
@@ -212,8 +232,7 @@ router.post('/', classSeriesValidation, async (req, res) => {
                 session.start_time,
                 session.end_time,
                 session.location,
-                session.status,
-                session.credits_cost
+                session.status
             ]);
         }
 
@@ -222,7 +241,8 @@ router.post('/', classSeriesValidation, async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error creating class series:', error);
-        res.status(500).json({ error: 'Failed to create class series' });
+        console.error('Request body:', req.body);
+        res.status(500).json({ error: 'Failed to create class series', details: error.message });
     } finally {
         client.release();
     }

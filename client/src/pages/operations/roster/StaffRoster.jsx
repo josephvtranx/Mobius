@@ -153,7 +153,7 @@ function StaffRoster() {
   return (
     <div className="main">
       <div className="main-staff-roster">
-        <table>
+        <table className="roster-table">
           <thead>
             <tr>
               <th onClick={() => requestSort('name')} className="sortable">

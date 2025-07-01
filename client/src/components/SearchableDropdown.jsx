@@ -34,7 +34,7 @@ const SearchableDropdown = ({
       );
       setFilteredOptions(filtered);
     }
-  }, [searchTerm, options, getOptionLabel]);
+  }, [searchTerm, options]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

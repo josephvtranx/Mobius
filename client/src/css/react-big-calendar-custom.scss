@@ -1,0 +1,450 @@
+// React Big Calendar SASS Customization
+// This file customizes React Big Calendar's default styles using SASS variables
+
+// ========================================
+// SASS VARIABLES (MUST BE DEFINED BEFORE IMPORTS)
+// ========================================
+$out-of-range-color: #999999;
+$out-of-range-hover-color: #666666;
+$calendar-border: #DDD;
+$cell-border: #DDD;
+$background-color: #fff;
+$background-color-hover: #f5f5f5;
+$today-color: #eaf6ff;
+$ranged-hover-color: #f5f5f5;
+$inverted-bg: #333;
+$inverted-border: #333;
+$event-bg: #C5F0ED;
+$event-border: #16a34a;
+$event-color: #ffffff;
+$event-border-radius: 12px;
+$event-selected-bg: #22c55e;
+$event-selected-border: #16a34a;
+$time-gutter-width: 60px;
+$time-slot-height: 12px;
+$header-height: 40px;
+$header-border: #DDD;
+$toolbar-height: 40px;
+$toolbar-border: #DDD;
+$day-height: 100px;
+$day-border: #DDD;
+$month-border: #DDD;
+$agenda-border: #DDD;
+$agenda-time-color: #666;
+$agenda-title-color: #333;
+
+// Import React Big Calendar SASS files (after variables are defined)
+@import 'react-big-calendar/lib/sass/styles';
+@import 'react-big-calendar/lib/addons/dragAndDrop/styles';
+
+// ========================================
+// SMART SCHEDULING CALENDAR LAYOUT & CONTAINER
+// ========================================
+.smart-scheduling-calendar {
+  padding: 5px;
+  background: #F9FAFD;
+  border-radius: 0;
+  box-shadow: none;
+  isolation: isolate;
+}
+
+.smart-scheduling-calendar .rbc-calendar {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.smart-scheduling-calendar .rbc-header {
+  background-color: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 4px 1px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  font-size: 11px;
+}
+
+.smart-scheduling-calendar .rbc-time-view {
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  background: #F9FAFD;
+}
+
+.smart-scheduling-calendar .rbc-time-header {
+  border-bottom: none;
+  background: #F9FAFD;
+}
+
+.smart-scheduling-calendar .rbc-time-content {
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  position: relative;
+  background: #F9FAFD;
+}
+
+.smart-scheduling-calendar .rbc-timeslot-group {
+  border-bottom: none;
+  height: 12px;
+  position: relative;
+  overflow: visible;
+}
+
+.smart-scheduling-calendar .rbc-time-slot {
+  border-top: none;
+  height: 12px;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  position: relative;
+  overflow: visible;
+}
+
+.smart-scheduling-calendar .rbc-time-gutter .rbc-timeslot-group {
+  border-right: none;
+  height: 12px;
+}
+
+.smart-scheduling-calendar .rbc-time-gutter .rbc-label {
+  padding: 0;
+  margin: 0;
+  font-size: 10px;
+  color: #6b7280;
+  font-weight: 500;
+  line-height: 12px;
+  text-align: left;
+  padding-left: 4px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.smart-scheduling-calendar .rbc-time-header-content {
+  border-left: none;
+}
+
+.smart-scheduling-calendar .rbc-time-header-content .rbc-header {
+  border-right: none;
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+  padding: 3px 1px;
+  font-size: 10px;
+}
+
+// Custom header styling for date on top of day
+.smart-scheduling-calendar .custom-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2px 1px;
+}
+
+.smart-scheduling-calendar .custom-header .day-number {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1;
+  margin-bottom: 1px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2px auto;
+}
+
+.smart-scheduling-calendar .custom-header .day-name {
+  font-size: 9px;
+  font-weight: 500;
+  color: #6b7280;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+// Today styling with red circle
+.smart-scheduling-calendar .custom-header.today {
+  position: relative;
+}
+
+.smart-scheduling-calendar .custom-header.today .day-number {
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 2px auto;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+// Custom toolbar styling
+.smart-scheduling-calendar .custom-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: none;
+  background-color: #f8fafc;
+}
+
+.smart-scheduling-calendar .toolbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.smart-scheduling-calendar .toolbar-left .month-year {
+  font-size: 20px;
+  color: #374151;
+}
+
+.smart-scheduling-calendar .toolbar-left .month-year .month {
+  font-weight: 700;
+}
+
+.smart-scheduling-calendar .toolbar-left .month-year .year {
+  font-weight: 400;
+}
+
+.smart-scheduling-calendar .toolbar-right {
+  display: flex;
+  gap: 8px;
+}
+
+.smart-scheduling-calendar .toolbar-btn {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.smart-scheduling-calendar .toolbar-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.smart-scheduling-calendar .toolbar-btn:active {
+  background-color: #e5e7eb;
+}
+
+// Hide :30 time labels (every other time slot)
+.smart-scheduling-calendar .rbc-time-gutter .rbc-timeslot-group:nth-child(even) .rbc-label {
+  display: none;
+}
+
+// ========================================
+// LEGEND & RESPONSIVE DESIGN
+// ========================================
+.smart-scheduling-calendar .calendar-legend {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.smart-scheduling-calendar .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  color: #374151;
+}
+
+.smart-scheduling-calendar .legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid #d1d5db;
+}
+
+.smart-scheduling-calendar .legend-color.availability {
+  background-color: #dcfce7;
+  border-color: #16a34a;
+}
+
+.smart-scheduling-calendar .legend-color.preference {
+  background-color: #c7d2fe;
+  border-color: #818cf8;
+}
+
+.smart-scheduling-calendar .legend-color.scheduled {
+  background-color: #fecaca;
+  border-color: #dc2626;
+}
+
+.smart-scheduling-calendar .legend-color.conflict {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .smart-scheduling-calendar {
+    padding: 2px;
+  }
+  .smart-scheduling-calendar .calendar-legend {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .smart-scheduling-calendar .rbc-header {
+    font-size: 9px;
+  }
+}
+
+// ========================================
+// TODAY HIGHLIGHTING, HOVER, FOCUS, ETC.
+// ========================================
+// Removed orange column highlighting - only red circle marks current day
+.smart-scheduling-calendar .rbc-today {
+  background-color: transparent !important;
+  border-top: none !important;
+}
+
+.smart-scheduling-calendar .rbc-time-header .rbc-today {
+  background-color: transparent !important;
+  border-top: none !important;
+}
+
+.smart-scheduling-calendar .rbc-time-content .rbc-today {
+  background-color: transparent !important;
+  border-top: none !important;
+}
+
+.smart-scheduling-calendar .rbc-time-slot:hover {
+  background-color: #f8fafc;
+}
+
+.smart-scheduling-calendar .rbc-event:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+
+.smart-scheduling-calendar .rbc-allday-cell,
+.smart-scheduling-calendar .rbc-allday-events {
+  display: none;
+}
+
+.smart-scheduling-calendar .calendar-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.smart-scheduling-calendar .calendar-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #dc2626;
+  font-size: 14px;
+  text-align: center;
+  padding: 1rem;
+}
+
+// ========================================
+// SPECIFIC EVENT STYLING BY CATEGORY
+// ========================================
+
+// Availability events (green background)
+.smart-scheduling-calendar .rbc-event[data-event-type="availability"],
+.smart-scheduling-calendar .rbc-event.availability-event {
+  background-color: #22c55e !important;
+  border-color: #16a34a !important;
+  color: white !important;
+  border-radius: 12px !important;
+  pointer-events: none !important;
+  cursor: default !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+}
+
+.smart-scheduling-calendar .rbc-event[data-event-type="availability"]:hover,
+.smart-scheduling-calendar .rbc-event.availability-event:hover {
+  background-color: #22c55e !important;
+  border-color: #16a34a !important;
+}
+
+// Student preference events (purple background)
+.smart-scheduling-calendar .rbc-event[data-event-type="preference"],
+.smart-scheduling-calendar .rbc-event.session-event {
+  background-color: #c7d2fe !important;
+  border-color: #818cf8 !important;
+  color: #3730a3 !important;
+  border-radius: 12px !important;
+  cursor: grab !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+}
+
+.smart-scheduling-calendar .rbc-event[data-event-type="preference"]:hover,
+.smart-scheduling-calendar .rbc-event.session-event:hover {
+  background-color: #a5b4fc !important;
+  border-color: #6366f1 !important;
+}
+
+// Class blocks (scheduled sessions - light red background)
+.smart-scheduling-calendar .rbc-event[data-event-type="existing-session"],
+.smart-scheduling-calendar .rbc-event.existing-session-event {
+  background-color: rgb(254, 202, 202) !important;
+  border-color: #dc2626 !important;
+  color: #991b1b !important;
+  border-radius: 12px !important;
+  cursor: default !important;
+  pointer-events: none !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  z-index: 3 !important;
+}
+
+.smart-scheduling-calendar .rbc-event[data-event-type="existing-session"]:hover,
+.smart-scheduling-calendar .rbc-event.existing-session-event:hover {
+  background-color: rgb(254, 202, 202) !important;
+  border-color: #dc2626 !important;
+}
+
+// Drag and drop styling
+.smart-scheduling-calendar .rbc-addons-dnd .rbc-addons-dnd-drag-preview {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+}
+
+// Event content styling
+.smart-scheduling-calendar .rbc-day-slot .rbc-event-content {
+  border-radius: 12px !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  padding: 2px 4px !important;
+}
+
+// Time slot sizing
+.smart-scheduling-calendar .rbc-timeslot-group {
+  height: 12px !important;
+}
+
+.smart-scheduling-calendar .rbc-time-slot {
+  height: 12px !important;
+}
+
+// Current time indicator (red line)
+.smart-scheduling-calendar .rbc-current-time-indicator {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  height: 2px !important;
+  z-index: 10 !important;
+} 

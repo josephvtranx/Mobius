@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import '../../css/Scheduling.css';
@@ -9,6 +9,7 @@ import instructorService from '../../services/instructorService';
 import subjectService from '../../services/subjectService';
 import classSeriesService from '../../services/classSeriesService';
 import timePackageService from '../../services/timePackageService';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 function Scheduling() {
   // Form state
@@ -17,11 +18,11 @@ function Scheduling() {
     subjectGroup: '',
     subject: '',
     location: '',
-    selectedTimeSlot: null,
     notes: '',
     numSessions: 1,
     endDate: '',
-    timePackageId: null
+    timePackageId: null,
+    sessionType: 'one-time'
   });
 
   // Student preferences for the calendar
@@ -40,11 +41,26 @@ function Scheduling() {
   });
   const [selectedInstructorId, setSelectedInstructorId] = useState(null);
 
+  // Track number of student blocks on calendar
+  const [studentBlockCount, setStudentBlockCount] = useState(0);
+
   // Selected block values (for display in dropdowns)
   const [selectedBlockValues, setSelectedBlockValues] = useState({
     startTime: '09:00',
     duration: 60
   });
+
+  // Track multiple time slots for multiple sessions
+  const [selectedTimeSlots, setSelectedTimeSlots] = useState([]);
+
+  // Track the visible range for the calendar
+  const [calendarRange, setCalendarRange] = useState({
+    start: startOfWeek(new Date(), { weekStartsOn: 0 }),
+    end: endOfWeek(new Date(), { weekStartsOn: 0 })
+  });
+
+  // Track the anchor start date for session generation
+  const [anchorStartDate, setAnchorStartDate] = useState(calendarRange.start);
 
   // Data state
   const [students, setStudents] = useState([]);
@@ -211,9 +227,11 @@ function Scheduling() {
     setIsLoading(prev => ({ ...prev, studentTimePackages: true }));
     try {
       const data = await timePackageService.getStudentTimePackages(studentId);
+      console.log('Student time packages data:', data); // Debug log
       setStudentTimePackages(data);
     } catch (error) {
       console.error('Error fetching student time packages:', error);
+      setStudentTimePackages(null);
     } finally {
       setIsLoading(prev => ({ ...prev, studentTimePackages: false }));
     }
@@ -228,17 +246,64 @@ function Scheduling() {
   const handlePreferencesChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    if (type === 'checkbox') {
-      setPreferences(prev => ({
-        ...prev,
-        preferredDays: { ...prev.preferredDays, [value]: checked }
-      }));
+    if (name === 'preferredDays') {
+      const newPreferences = { ...preferences };
       
-      // Reset selected block values to current preferences when day preferences change
-      setSelectedBlockValues({
-        startTime: preferences.preferredStartTime,
-        duration: preferences.duration
-      });
+      // If session type is one-time, only allow one day to be selected
+      if (formData.sessionType === 'one-time') {
+        if (checked) {
+          // If selecting a day, unselect all other days first
+          Object.keys(newPreferences.preferredDays).forEach(day => {
+            newPreferences.preferredDays[day] = false;
+          });
+          newPreferences.preferredDays[value] = true;
+        } else {
+          // If deselecting the only selected day, don't allow it
+          const currentSelectedCount = Object.values(newPreferences.preferredDays).filter(Boolean).length;
+          if (currentSelectedCount <= 1) {
+            return; // Don't allow deselecting the last day for one-time sessions
+          }
+          newPreferences.preferredDays[value] = false;
+        }
+      } else {
+        // For multiple sessions, allow normal selection/deselection
+        newPreferences.preferredDays[value] = checked;
+        
+        // Immediately update session count based on new selection
+        const newSelectedDays = Object.values(newPreferences.preferredDays).filter(Boolean).length;
+        if (newSelectedDays > 0) {
+          const currentSessions = formData.numSessions || 1;
+          if (currentSessions < newSelectedDays) {
+            // Update session count to match new selection
+            setFormData(prev => ({
+              ...prev,
+              numSessions: newSelectedDays
+            }));
+          }
+        }
+        
+        // If deselecting a day and we have more sessions than available days, reduce sessions
+        if (!checked && formData.sessionType === 'multiple') {
+          if (newSelectedDays > 0 && formData.numSessions > newSelectedDays) {
+            handleSessionCountChange(newSelectedDays);
+          }
+        }
+      }
+      
+      setPreferences(newPreferences);
+      
+      // Update student block count after preferences change
+      updateStudentBlockCount();
+      
+      // Preserve current start time and duration when day preferences change
+      // Only reset if there's no current selection (not just if it's the default)
+      if (!selectedBlockValues.startTime) {
+        setSelectedBlockValues({
+          startTime: preferences.preferredStartTime,
+          duration: preferences.duration
+        });
+      }
+      // Otherwise, keep the current selectedBlockValues unchanged
     } else {
       setPreferences(prev => ({ ...prev, [name]: value }));
       
@@ -302,12 +367,7 @@ function Scheduling() {
   const handleTimeSlotSelect = (timeSlot) => {
     console.log('Time slot selected:', timeSlot);
     
-    setFormData(prev => ({
-      ...prev,
-      selectedTimeSlot: timeSlot,
-    }));
-
-    // Extract start time and duration from the selected time slot
+    // For both one-time and multiple sessions, just update the display values to show the clicked time slot
     if (timeSlot && timeSlot.startTime && timeSlot.duration) {
       setSelectedBlockValues({
         startTime: timeSlot.startTime,
@@ -334,28 +394,94 @@ function Scheduling() {
     if (!formData.student) newErrors.student = 'Student is required';
     if (!formData.subject) newErrors.subject = 'Subject is required';
     if (!selectedInstructorId) newErrors.instructor = 'Please select a qualified instructor.';
-    if (!formData.selectedTimeSlot) newErrors.selectedTimeSlot = 'Please select an available time slot from the calendar.';
+    const allTimeBlocks = selectedTimeSlots;
+    if (allTimeBlocks.length === 0) {
+      newErrors.selectedTimeSlot = 'No student time blocks found on the calendar. Please ensure sessions are configured.';
+    }
     if (!formData.location) newErrors.location = 'Location is required';
     if (!formData.numSessions || formData.numSessions < 1) newErrors.numSessions = 'Number of sessions must be at least 1';
-    if (!formData.endDate) newErrors.endDate = 'End date is required';
-    
+
+    // Prevent scheduling in the past
+    const now = new Date();
+    for (const block of allTimeBlocks) {
+      // block.date is yyyy-mm-dd, block.startTime is HH:mm
+      const blockDateTime = new Date(`${block.date}T${block.startTime}`);
+      if (blockDateTime < now) {
+        newErrors.pastDate = 'Cannot schedule a class in the past.';
+        break;
+      }
+    }
+
     // Check time availability
     const timeCheck = checkTimeAvailability();
     if (!timeCheck.hasSufficientTime) {
       newErrors.timeAvailability = `Insufficient time. Need ${timeCheck.totalNeeded} minutes, but only ${timeCheck.availableTime} minutes available.`;
     }
-    
     // Check if at least one day is selected
     const selectedDays = Object.values(preferences.preferredDays).filter(day => day).length;
     if (selectedDays === 0) newErrors.preferredDays = 'Please select at least one preferred day';
-    
     return newErrors;
+  };
+
+  // Calculate end time based on start time and duration
+  const calculateEndTime = (startTime, durationMinutes) => {
+    if (!startTime) return '';
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const startDate = new Date();
+    startDate.setHours(hours, minutes, 0, 0);
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // Get selected days as array
+  const getSelectedDays = () => {
+    return Object.entries(preferences.preferredDays)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([day, _]) => day);
+  };
+
+  // Calculate end date based on start date, selected days, and number of sessions
+  const calculateEndDate = (startDate, selectedDays, numSessions) => {
+    if (!startDate || selectedDays.length === 0 || numSessions <= 0) {
+      return null;
+    }
+
+    const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+    const start = new Date(startDate);
+    
+    // Calculate how many weeks we need
+    const weeksNeeded = Math.ceil(numSessions / selectedDays.length);
+    
+    // Calculate the end date
+    let currentDate = new Date(start);
+    let sessionsCreated = 0;
+    let weekCount = 0;
+    
+    while (sessionsCreated < numSessions && weekCount < weeksNeeded) {
+      for (const day of selectedDays) {
+        if (sessionsCreated >= numSessions) break;
+        
+        const dayOfWeek = dayMap[day];
+        const targetDate = new Date(start);
+        targetDate.setDate(start.getDate() + (weekCount * 7) + (dayOfWeek - start.getDay() + 7) % 7);
+        
+        if (targetDate >= start) {
+          currentDate = targetDate;
+          sessionsCreated++;
+        }
+      }
+      weekCount++;
+    }
+    
+    return currentDate.toISOString().split('T')[0];
   };
 
   // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('handleSubmit: selectedTimeSlots:', selectedTimeSlots);
     const newErrors = validateForm();
+    console.log('handleSubmit: errors:', newErrors);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -363,21 +489,84 @@ function Scheduling() {
 
     setIsSubmitting(true);
     try {
-      await classSeriesService.createOneTimeClass({
-        instructor_id: selectedInstructorId,
-        student_id: formData.student,
-        subject_id: formData.subject,
-        session_date: formData.selectedTimeSlot.date,
-        start_time: formData.selectedTimeSlot.startTime,
-        end_time: formData.selectedTimeSlot.endTime,
-        location: formData.location,
-        notes: formData.notes
+      const selectedDays = getSelectedDays();
+      const startTime = selectedBlockValues.startTime;
+      const duration = selectedBlockValues.duration;
+      const endTime = calculateEndTime(startTime, duration);
+      const allTimeBlocks = selectedTimeSlots;
+      console.log('All time blocks found:', allTimeBlocks);
+      console.log('Selected time slots state:', selectedTimeSlots);
+      if (allTimeBlocks.length === 0) {
+        throw new Error('No student time blocks found on the calendar');
+      }
+      // Sort time blocks by session number if available, otherwise by date
+      const sortedTimeBlocks = allTimeBlocks.sort((a, b) => {
+        if (a.sessionNumber && b.sessionNumber) {
+          return a.sessionNumber - b.sessionNumber;
+        }
+        return new Date(a.date) - new Date(b.date);
       });
-
-      alert('Class created successfully!');
-      
+      if (formData.sessionType === 'multiple') {
+        // Create a class series and all sessions
+        // Gather info for the series
+        const daysOfWeek = Array.from(new Set(sortedTimeBlocks.map(b => b.dayOfWeek)));
+        const start_date = sortedTimeBlocks[0].date;
+        const end_date = sortedTimeBlocks[sortedTimeBlocks.length - 1].date;
+        const num_sessions = sortedTimeBlocks.length;
+        // Use the first block's start/end time for the series
+        const firstBlock = sortedTimeBlocks[0];
+        const lastBlock = sortedTimeBlocks[sortedTimeBlocks.length - 1];
+        const seriesData = {
+          subject_id: formData.subject,
+          student_id: formData.student,
+          instructor_id: selectedInstructorId,
+          start_date,
+          end_date,
+          days_of_week: daysOfWeek,
+          start_time: firstBlock.startTime,
+          end_time: calculateEndTime(firstBlock.startTime, firstBlock.duration),
+          location: formData.location,
+          notes: formData.notes,
+          num_sessions
+        };
+        console.log('Sending series data:', seriesData);
+        await classSeriesService.createClassSeries(seriesData);
+      } else {
+        // One-time session: create individual class session
+        const sessionPromises = sortedTimeBlocks.map(async (timeBlock, index) => {
+          const sessionEndTime = calculateEndTime(timeBlock.startTime, timeBlock.duration);
+          return classSeriesService.createOneTimeClass({
+            instructor_id: selectedInstructorId,
+            student_id: formData.student,
+            subject_id: formData.subject,
+            session_date: timeBlock.date,
+            start_time: timeBlock.startTime,
+            end_time: sessionEndTime,
+            location: formData.location,
+            notes: formData.notes,
+            series_id: null // Will be updated when we implement series grouping
+          });
+        });
+        await Promise.all(sessionPromises);
+      }
+      // Refresh calendar data to show updated availability
+      if (window.refreshCalendarData) {
+        window.refreshCalendarData();
+      }
+      alert(formData.sessionType === 'one-time' ? 'Class created successfully!' : 'Class series created successfully!');
       // Reset form and state
-      setFormData({ student: '', subjectGroup: '', subject: '', location: '', selectedTimeSlot: null, notes: '', numSessions: 1, endDate: '', timePackageId: null });
+      setFormData({ 
+        student: '', 
+        subjectGroup: '', 
+        subject: '', 
+        location: '', 
+        selectedTimeSlot: null, 
+        notes: '', 
+        numSessions: 1, 
+        endDate: '', 
+        timePackageId: null, 
+        sessionType: 'one-time' 
+      });
       setPreferences({
         preferredDays: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false },
         preferredStartTime: '09:00',
@@ -388,6 +577,7 @@ function Scheduling() {
         duration: 60
       });
       setSelectedInstructorId(null);
+      setSelectedTimeSlots([]);
       setErrors({});
       await fetchPendingClasses();
     } catch (error) {
@@ -405,6 +595,12 @@ function Scheduling() {
       try {
         await classSeriesService.deleteClassSeries(id);
         fetchPendingClasses();
+        
+        // Refresh calendar data to show updated availability
+        if (window.refreshCalendarData) {
+          window.refreshCalendarData();
+        }
+        
         alert('Class series deleted successfully');
       } catch (error) {
         console.error('Error deleting class series:', error);
@@ -413,20 +609,137 @@ function Scheduling() {
     }
   };
 
-  // Calculate total time needed for the series
+  // Calculate total time needed for all sessions
   const calculateTotalTimeNeeded = () => {
-    const selectedDays = Object.values(preferences.preferredDays).filter(day => day).length;
+    const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
     const totalSessions = selectedDays * formData.numSessions;
-    const totalMinutes = totalSessions * selectedBlockValues.duration;
-    return totalMinutes;
+    return totalSessions * preferences.duration;
   };
+
+  // Calculate student block count and update session count
+  const updateStudentBlockCount = () => {
+    const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+    setStudentBlockCount(selectedDays);
+    
+    // For one-time sessions, always set to 1
+    if (formData.sessionType === 'one-time') {
+      if (formData.numSessions !== 1) {
+        setFormData(prev => ({
+          ...prev,
+          numSessions: 1
+        }));
+      }
+    } else {
+      // For multiple sessions, ensure numSessions is at least equal to selected days
+      if (selectedDays > 0) {
+        const currentSessions = formData.numSessions || 1;
+        if (currentSessions < selectedDays) {
+          setFormData(prev => ({
+            ...prev,
+            numSessions: selectedDays
+          }));
+        }
+      }
+    }
+  };
+
+  // Expand preferred days when session count increases
+  const expandPreferredDays = (newSessionCount) => {
+    const currentSelectedDays = Object.entries(preferences.preferredDays)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([day, _]) => day);
+    
+    if (currentSelectedDays.length === 0) return;
+
+    // Calculate how many weeks we need
+    const weeksNeeded = Math.ceil(newSessionCount / currentSelectedDays.length);
+    
+    // Create a new preferences object with expanded days
+    const newPreferences = { ...preferences };
+    
+    // Reset all days to false first
+    Object.keys(newPreferences.preferredDays).forEach(day => {
+      newPreferences.preferredDays[day] = false;
+    });
+    
+    // Add days in repeating pattern
+    let sessionIndex = 0;
+    for (let week = 0; week < weeksNeeded && sessionIndex < newSessionCount; week++) {
+      for (const day of currentSelectedDays) {
+        if (sessionIndex < newSessionCount) {
+          newPreferences.preferredDays[day] = true;
+          sessionIndex++;
+        }
+      }
+    }
+    
+    setPreferences(newPreferences);
+  };
+
+  // Handle session count change with day expansion
+  const handleSessionCountChange = (newCount) => {
+    const currentCount = formData.numSessions || 1;
+    const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+    
+    // For multiple sessions, ensure minimum is the number of selected days
+    if (formData.sessionType === 'multiple' && selectedDays > 0) {
+      const minSessions = Math.max(selectedDays, 1);
+      newCount = Math.max(newCount, minSessions);
+    }
+    
+    // If increasing sessions, expand the days
+    if (newCount > currentCount) {
+      expandPreferredDays(newCount);
+    }
+    
+    // Update the form data
+    setFormData(prev => ({
+      ...prev,
+      numSessions: newCount
+    }));
+  };
+
+  // Update block count when preferences change - removed to prevent infinite loop
+  // The updateStudentBlockCount function is called directly in handlePreferencesChange
+
+  // Additional effect to ensure session count is always correct
+  useEffect(() => {
+    if (formData.sessionType === 'multiple') {
+      const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+      const currentSessions = formData.numSessions || 1;
+      
+      if (selectedDays > 0 && currentSessions < selectedDays) {
+        setFormData(prev => ({
+          ...prev,
+          numSessions: selectedDays
+        }));
+      }
+    }
+  }, [preferences.preferredDays, formData.sessionType]);
 
   // Check if student has sufficient time
   const checkTimeAvailability = () => {
     const totalNeeded = calculateTotalTimeNeeded();
-    const availableTime = studentTimePackages.reduce((total, pkg) => {
-      return total + pkg.minutes_remaining;
-    }, 0);
+    
+    // Handle both old array format and new object format
+    let availableTime = 0;
+    if (!studentTimePackages) {
+      // No data available
+      availableTime = 0;
+    } else if (Array.isArray(studentTimePackages)) {
+      // Old format: array of packages
+      availableTime = studentTimePackages.reduce((total, pkg) => {
+        return total + (pkg.minutes_remaining || 0);
+      }, 0);
+    } else if (studentTimePackages && studentTimePackages.packages && Array.isArray(studentTimePackages.packages)) {
+      // New format: object with packages array
+      availableTime = studentTimePackages.packages.reduce((total, pkg) => {
+        return total + (pkg.remaining * 60 || 0); // Convert hours to minutes
+      }, 0);
+    } else {
+      // Fallback: try to use currentBalance if available
+      availableTime = (studentTimePackages.currentBalance || 0) * 60; // Convert hours to minutes
+    }
     
     return {
       hasSufficientTime: availableTime >= totalNeeded,
@@ -434,6 +747,20 @@ function Scheduling() {
       availableTime,
       deficit: Math.max(0, totalNeeded - availableTime)
     };
+  };
+
+  // Pass a handler to update the visible range from the calendar
+  const handleCalendarRangeChange = (range) => {
+    let newStart;
+    if (Array.isArray(range)) {
+      newStart = range[0];
+      setCalendarRange({ start: range[0], end: range[range.length - 1] });
+    } else if (range.start && range.end) {
+      newStart = range.start;
+      setCalendarRange({ start: range.start, end: range.end });
+    }
+    // Only set anchorStartDate the first time
+    setAnchorStartDate(prev => prev || newStart);
   };
 
   return (
@@ -445,19 +772,17 @@ function Scheduling() {
             {/* Student & Subject Selection - Horizontal Layout */}
             <div className="form-row">
               <div className="form-group compact">
-                <label>
-                  Student
-                  <SearchableDropdown
-                    options={students}
-                    value={formData.student}
-                    onChange={(student) => handleSelect('student', student)}
-                    placeholder="Select student..."
-                    isLoading={isLoading.students}
-                    getOptionLabel={(option) => option.name}
-                    getOptionValue={(option) => option.id}
-                  />
-                  {errors.student && <span className="error-message">{errors.student}</span>}
-                </label>
+                <label>Student</label>
+                <SearchableDropdown
+                  options={students}
+                  value={formData.student}
+                  onChange={(student) => handleSelect('student', student)}
+                  placeholder="Select student..."
+                  isLoading={isLoading.students}
+                  getOptionLabel={(option) => option.name}
+                  getOptionValue={(option) => option.id}
+                />
+                {errors.student && <span className="error-message">{errors.student}</span>}
               </div>
               
               <div className="form-group compact">
@@ -475,7 +800,7 @@ function Scheduling() {
               </div>
 
               <div className="form-group compact">
-                <label>Subject</label>
+                <label>Class</label>
                 <SearchableDropdown
                   options={subjects}
                   value={formData.subject}
@@ -523,6 +848,89 @@ function Scheduling() {
                       })}
                     </div>
                   </div>
+                  
+                  <div className="form-group">
+                    <label>Session Type</label>
+                    <div className="session-type-container">
+                      <div className="toggle-switch-container">
+                        <span className={`toggle-label ${formData.sessionType === 'one-time' ? 'active' : ''}`}>
+                          One-time
+                        </span>
+                        <label className="toggle-switch">
+                          <input 
+                            type="checkbox" 
+                            name="sessionType" 
+                            checked={formData.sessionType === 'multiple'} 
+                            onChange={(e) => {
+                              const newSessionType = e.target.checked ? 'multiple' : 'one-time';
+                              const newNumSessions = e.target.checked ? Math.max(1, studentBlockCount) : 1;
+                              
+                              // For one-time sessions, just ensure we have at least one day selected
+                              if (newSessionType === 'one-time') {
+                                const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+                                if (selectedDays === 0) {
+                                  // If no days are selected, default to Monday
+                                  const newPreferences = { ...preferences };
+                                  Object.keys(newPreferences.preferredDays).forEach(day => {
+                                    newPreferences.preferredDays[day] = false;
+                                  });
+                                  newPreferences.preferredDays['mon'] = true;
+                                  setPreferences(newPreferences);
+                                }
+                              }
+                              // For multiple sessions, keep all currently selected days
+                              
+                              handleInputChange({
+                                target: {
+                                  name: 'sessionType',
+                                  value: newSessionType
+                                }
+                              });
+                              handleSessionCountChange(newNumSessions);
+                            }}
+                          />
+                          <span className="toggle-slider"></span>
+                        </label>
+                        <span className={`toggle-label ${formData.sessionType === 'multiple' ? 'active' : ''}`}>
+                          Multiple
+                        </span>
+                      </div>
+                      
+                      {formData.sessionType === 'multiple' && (
+                        <div className="session-count-container">
+                          <label className="session-count-label">Number of Sessions:</label>
+                          <div className="session-count-controls">
+                            <button 
+                              type="button" 
+                              className="session-count-btn minus"
+                              disabled={formData.sessionType === 'one-time'}
+                              onClick={() => {
+                                const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+                                const minSessions = formData.sessionType === 'multiple' ? Math.max(selectedDays, 1) : 1;
+                                const newValue = Math.max(minSessions, (formData.numSessions || 1) - 1);
+                                handleSessionCountChange(newValue);
+                              }}
+                            >
+                              −
+                            </button>
+                            <span className="session-count-display">{formData.numSessions || 1}</span>
+                            <button 
+                              type="button" 
+                              className="session-count-btn plus"
+                              disabled={formData.sessionType === 'one-time'}
+                              onClick={() => {
+                                const newValue = Math.min(50, (formData.numSessions || 1) + 1);
+                                handleSessionCountChange(newValue);
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
                   <div className="form-group time-group">
                     <label>
                       Start Time
@@ -536,18 +944,15 @@ function Scheduling() {
                     </label>
                     <label>
                       Duration
-                      <select 
-                        name="duration" 
-                        value={selectedBlockValues.duration} 
-                        onChange={handleSelectedBlockChange}
-                        className={`${formData.selectedTimeSlot ? 'selected-block' : ''} ${formData.selectedTimeSlot ? 'editable-block' : ''}`}
+                      <div 
+                        className={`duration-display ${formData.selectedTimeSlot ? 'selected-block' : ''}`}
                       >
-                        <option value="60">60 min</option>
-                        <option value="90">90 min</option>
-                        <option value="120">120 min</option>
-                      </select>
+                        {selectedBlockValues.duration} min
+                      </div>
                     </label>
                   </div>
+                  
+
                 </div>
 
                 <h3 className="instructor-list-title">Qualified Instructors</h3>
@@ -564,6 +969,30 @@ function Scheduling() {
               </div>
 
               <div className="calendar-view-container">
+                {/* Add Start Here button */}
+                <button
+                  className="btn start-here-btn"
+                  style={{
+                    marginBottom: '10px',
+                    backgroundColor: '#f59e42', // bright orange
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '10px 20px',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseOver={e => e.currentTarget.style.backgroundColor = '#d97706'}
+                  onMouseOut={e => e.currentTarget.style.backgroundColor = '#f59e42'}
+                  onClick={() => {
+                    setAnchorStartDate(calendarRange.start);
+                    setSelectedTimeSlots([]);
+                  }}
+                >
+                  Reset Blocks
+                </button>
                 <DndProvider backend={HTML5Backend}>
                   <SmartSchedulingCalendar
                     studentPreferences={preferences}
@@ -573,6 +1002,28 @@ function Scheduling() {
                     studentId={formData.student}
                     subjectId={formData.subject}
                     selectedStudent={students.find(s => s.id === formData.student)}
+                    sessionCount={formData.numSessions}
+                    sessionType={formData.sessionType}
+                    calendarRange={calendarRange}
+                    anchorStartDate={anchorStartDate}
+                    onRangeChange={handleCalendarRangeChange}
+                    onEventsUpdate={useCallback((events) => {
+                      // Extract all student preference events (purple/colored blocks) from the calendar
+                      // This excludes instructor availability (green) and existing sessions (yellow)
+                      const preferenceEvents = events.filter(event => event.type === 'preference');
+                      console.log('Preference events:', preferenceEvents);
+                      const timeBlocks = preferenceEvents.map(event => ({
+                        instructor: { id: selectedInstructorId },
+                        date: event.start.toISOString().split('T')[0],
+                        startTime: event.startTime || event.start.toTimeString().slice(0, 5),
+                        endTime: event.endTime || event.end.toTimeString().slice(0, 5),
+                        dayOfWeek: event.dayOfWeek || event.start.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase(),
+                        duration: event.duration,
+                        sessionNumber: event.sessionNumber
+                      }));
+                      console.log('Setting selectedTimeSlots:', timeBlocks);
+                      setSelectedTimeSlots(timeBlocks);
+                    }, [selectedInstructorId])}
                   />
                 </DndProvider>
                 {errors.selectedTimeSlot && <span className="error-message">{errors.selectedTimeSlot}</span>}
@@ -591,7 +1042,7 @@ function Scheduling() {
               <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="3" placeholder="Additional details..." />
             </div>
 
-            <button type="submit" className="btn" disabled={isSubmitting}>
+            <button type="submit" className="btn" disabled={isSubmitting || selectedTimeSlots.length === 0}>
               {isSubmitting ? 'Creating...' : 'Create Class'}
             </button>
           </form>

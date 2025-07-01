@@ -54,6 +54,17 @@ const timePackageService = {
       console.error('Error deleting time package:', error);
       throw error;
     }
+  },
+
+  // Get student time packages (same as getStudentCredits in paymentService)
+  getStudentTimePackages: async (studentId) => {
+    try {
+      const response = await api.get(`/payments/credits/${studentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching student time packages:', error);
+      throw error;
+    }
   }
 };
 

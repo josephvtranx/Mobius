@@ -1,10 +1,10 @@
 .main-instructor-roster {
   width: 100%;
-  background-color: #EAEAEA;
-  border-radius: 4px;
+  background-color: #F9FAFD;
+  border-radius: 0;
   padding: 0;
   margin: 0;
-  height: calc(100vh - 150px);
+  height: 100%;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -14,7 +14,7 @@
 .main-instructor-roster table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #EAEAEA;
+  background-color: #F9FAFD;
   margin: 0;
   padding: 0;
   table-layout: fixed;
@@ -26,8 +26,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background-color: #EAEAEA;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #F9FAFD;
+  box-shadow: none;
 }
 
 .main-instructor-roster tbody {
@@ -1346,8 +1346,8 @@
   border-top: 2px solid #FDBA74 !important;
 }
 
-/* Calendar Event Styles for React Big Calendar */
-.calendar-availability-event {
+/* Calendar Event Styles for React Big Calendar - INSTRUCTOR ROSTER SPECIFIC */
+.main-instructor-roster .calendar-availability-event {
   background-color: #DCF4FF !important;
   color: #1a4b6e !important;
   border: 1px solid #b6e0fe !important;
@@ -1358,7 +1358,7 @@
   font-size: 0.85em !important;
 }
 
-.calendar-class-event {
+.main-instructor-roster .calendar-class-event {
   background-color: #FFEDD5 !important;
   color: #7c3a00 !important;
   border: 1px solid #ffd6a0 !important;
@@ -1369,8 +1369,8 @@
   font-size: 0.85em !important;
 }
 
-/* Override React Big Calendar default styles */
-.rbc-event {
+/* Override React Big Calendar default styles - INSTRUCTOR ROSTER SPECIFIC */
+.main-instructor-roster .rbc-event {
   border-radius: 10px !important;
   font-weight: 600 !important;
   padding: 2px 6px !important;
@@ -1381,16 +1381,16 @@
   justify-content: center !important;
 }
 
-.rbc-event-content {
+.main-instructor-roster .rbc-event-content {
   font-weight: 600 !important;
   font-size: 0.85em !important;
   text-align: center !important;
   width: 100% !important;
 }
 
-/* Ensure events are visible */
-.rbc-event.calendar-availability-event,
-.rbc-event.calendar-class-event {
+/* Ensure events are visible - INSTRUCTOR ROSTER SPECIFIC */
+.main-instructor-roster .rbc-event.calendar-availability-event,
+.main-instructor-roster .rbc-event.calendar-class-event {
   opacity: 1 !important;
   visibility: visible !important;
   display: flex !important;
@@ -1400,11 +1400,11 @@
   margin: 1px 0 !important;
 }
 
-/* Override any conflicting styles */
-.rbc-event.rbc-selected {
+/* Override any conflicting styles - INSTRUCTOR ROSTER SPECIFIC */
+.main-instructor-roster .rbc-event.rbc-selected {
   background-color: inherit !important;
 }
 
-.rbc-event:focus {
+.main-instructor-roster .rbc-event:focus {
   outline: none !important;
 } 

@@ -81,6 +81,7 @@ function ExtendedMenu({ variant = 'operations' }) {
           { label: 'Overview', path: '/operations/finance/overview' },
           { label: 'Income Breakdown', path: '/operations/finance/income' },
           { label: 'Cost Breakdown', path: '/operations/finance/costs' },
+          { label: 'Payments', path: '/operations/finance/payments' },
         ],
       }
     ],

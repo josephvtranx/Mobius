@@ -29,6 +29,7 @@ function Header({ variant = 'teal' }) {
       '/operations/finance/overview': 'Financial Overview',
       '/operations/finance/income': 'Income Breakdown',
       '/operations/finance/costs': 'Cost Breakdown',
+      '/operations/finance/payments': 'Payments',
     };
 
     return routeTitles[path] || 'Møbius Academy';

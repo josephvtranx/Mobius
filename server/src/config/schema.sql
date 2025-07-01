@@ -1,5 +1,5 @@
 -- =============================================
--- PostgreSQL Schema for Mobius (Time-Based Tracking Edition)
+-- PostgreSQL Schema for Mobius (Time-Based Tracking Edition + Industry-Ready Financial Tables)
 -- =============================================
 
 -- 1. USERS
@@ -234,4 +234,70 @@ CREATE TABLE reschedule_requests (
   selected_time  TIMESTAMP,
   status         TEXT CHECK (status IN ('pending','approved','declined','expired')) DEFAULT 'pending',
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 19. OPERATING_EXPENSES
+CREATE TABLE operating_expenses (
+  expense_id     SERIAL PRIMARY KEY,
+  pa_code        TEXT NOT NULL, -- Links to the PA (Private Academy) that incurred the expense
+  category       TEXT NOT NULL CHECK (category IN (
+    'marketing', 'materials', 'rent', 'software', 'utilities', 'admin', 'other'
+  )),
+  amount         NUMERIC NOT NULL CHECK (amount >= 0),
+  expense_date   DATE NOT NULL,
+  description    TEXT,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 20. PAYMENT_METHODS
+CREATE TABLE payment_methods (
+  method_id      SERIAL PRIMARY KEY,
+  method_name    TEXT NOT NULL,  -- e.g., 'credit_card', 'bank_transfer', 'cash', 'check'
+  details        TEXT
+);
+
+-- 21. PAYMENTS
+CREATE TABLE payments (
+  payment_id     SERIAL PRIMARY KEY,
+  student_id     INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+  amount         NUMERIC NOT NULL CHECK (amount >= 0),
+  payment_date   DATE NOT NULL,
+  method_id      INT REFERENCES payment_methods(method_id),
+  description    TEXT,
+  reference      TEXT, -- e.g., Stripe charge ID, check number
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 22. INVOICES
+CREATE TABLE invoices (
+  invoice_id       SERIAL PRIMARY KEY,
+  student_id       INT NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
+  total_amount     NUMERIC NOT NULL CHECK (total_amount >= 0),
+  issued_at        DATE NOT NULL,
+  due_date         DATE,
+  status           TEXT NOT NULL CHECK (status IN ('paid', 'pending', 'overdue', 'canceled')),
+  payment_id       INT REFERENCES payments(payment_id),
+  description      TEXT,
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 23. REFUNDS
+CREATE TABLE refunds (
+  refund_id        SERIAL PRIMARY KEY,
+  payment_id       INT NOT NULL REFERENCES payments(payment_id) ON DELETE CASCADE,
+  amount           NUMERIC NOT NULL CHECK (amount >= 0),
+  refund_date      DATE NOT NULL,
+  reason           TEXT,
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 24. FINANCIAL_PERIODS
+CREATE TABLE financial_periods (
+  period_id        SERIAL PRIMARY KEY,
+  pa_code          TEXT NOT NULL,
+  period_name      TEXT NOT NULL,        -- e.g., '2024-Q2', '2024 Annual'
+  start_date       DATE NOT NULL,
+  end_date         DATE NOT NULL,
+  is_closed        BOOLEAN DEFAULT FALSE,
+  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

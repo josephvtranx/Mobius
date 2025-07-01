@@ -5,7 +5,7 @@ import Modal from '../../../components/Modal';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import subjectService from '../../../services/subjectService';
 import { Calendar, momentLocalizer } from 'react-big-calendar';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
+import '../../../css/react-big-calendar-custom.scss';
 import { addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import instructorService from '../../../services/instructorService';
 import { useMemo } from 'react';

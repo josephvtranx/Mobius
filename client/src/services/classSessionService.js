@@ -70,7 +70,7 @@ const classSessionService = {
     // Get sessions for a specific instructor
     getInstructorSessions: async (instructorId) => {
         try {
-            const response = await api.get(`/classes/instructor/${instructorId}`);
+            const response = await api.get(`/class-sessions/instructor/${instructorId}`);
             return response.data;
         } catch (error) {
             console.error(`Error fetching sessions for instructor ${instructorId}:`, error);

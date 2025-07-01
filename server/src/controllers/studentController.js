@@ -13,26 +13,27 @@ export const getStudentRoster = async (req, res) => {
     const query = `
       WITH student_instructors AS (
         SELECT 
-          ia.student_id,
+          cs.student_id,
           ARRAY_AGG(DISTINCT u.name) as instructor_names
-        FROM instructor_assignments ia
-        JOIN instructors i ON ia.instructor_id = i.instructor_id
+        FROM class_series cs
+        JOIN instructors i ON cs.instructor_id = i.instructor_id
         JOIN users u ON i.instructor_id = u.user_id
-        GROUP BY ia.student_id
+        GROUP BY cs.student_id
       ),
       student_classes AS (
         SELECT 
           cs.student_id,
-          ARRAY_AGG(DISTINCT cs.series_id) as class_ids,
+          ARRAY_AGG(DISTINCT sub.name) as class_names,
           ARRAY_AGG(
             json_build_object(
-              'day', cs.days_of_week,
+              'days', cs.days_of_week,
               'start_time', cs.start_time,
               'end_time', cs.end_time,
-              'status', cs.status
+              'subject_name', sub.name
             )
           ) as schedule
         FROM class_series cs
+        JOIN subjects sub ON cs.subject_id = sub.subject_id
         WHERE cs.status != 'canceled'
         GROUP BY cs.student_id
       ),
@@ -78,7 +79,7 @@ export const getStudentRoster = async (req, res) => {
         ) as parent_phones,
         s.status,
         COALESCE(si.instructor_names, ARRAY[]::text[]) as instructors,
-        COALESCE(sc.class_ids, ARRAY[]::integer[]) as enrolled_classes,
+        COALESCE(sc.class_names, ARRAY[]::text[]) as enrolled_classes,
         COALESCE(sc.schedule, ARRAY[]::json[]) as schedule
       FROM users u
       JOIN students s ON u.user_id = s.student_id
@@ -113,7 +114,15 @@ export const getStudentRoster = async (req, res) => {
       status: student.status || '',
       instructors: student.instructors || [],
       enrolledClasses: student.enrolled_classes || [],
-      schedule: student.schedule || []
+      schedule: (student.schedule || []).map(s => {
+        // s.days is an array of days, join as comma string for display
+        return {
+          days: Array.isArray(s.days) ? s.days.join(', ') : s.days,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          subject_name: s.subject_name
+        };
+      })
     }));
 
     console.log('Sample student data:', students[0]);

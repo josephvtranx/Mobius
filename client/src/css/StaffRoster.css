@@ -1,15 +1,19 @@
 .main-staff-roster {
   width: 100%;
-  background-color: #EAEAEA;
-  border-radius: 4px;
+  background-color: #F9FAFD;
+  border-radius: 0;
   padding: 0;
   margin: 0;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-staff-roster table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #EAEAEA;
+  background-color: #F9FAFD;
   margin: 0;
 }
 
@@ -25,7 +29,7 @@
 }
 
 .main-staff-roster th {
-  background-color: #EAEAEA;
+  background-color: #F9FAFD;
   font-weight: 600;
   color: #333;
   border-bottom: 1px solid #666;

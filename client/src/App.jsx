@@ -35,6 +35,7 @@ import Schedule from './pages/operations/Schedule';
 import Overview from './pages/operations/Financial-Dashboard/Overview';
 import IncomeBreakdown from './pages/operations/Financial-Dashboard/Income-Breakdown';
 import CostBreakdown from './pages/operations/Financial-Dashboard/Cost-Breakdown';
+import Payments from './pages/operations/Financial-Dashboard/Payments';
 
 import './css/index.css';
 import './css/login.css';
@@ -219,6 +220,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <CostBreakdown />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/finance/payments"
+              element={
+                <ProtectedRoute>
+                  <Payments />
                 </ProtectedRoute>
               }
             />

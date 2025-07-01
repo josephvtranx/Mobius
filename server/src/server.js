@@ -17,6 +17,7 @@ import subjectGroupsRouter from './routes/subjectGroups.js';
 import staffRoutes from './routes/staffRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import timePackageRoutes from './routes/timePackageRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 // Initialize express app
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/subject-groups', subjectGroupsRouter);
 app.use('/api/staff', staffRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/time-packages', timePackageRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

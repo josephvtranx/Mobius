@@ -1,11 +1,11 @@
 .main-student-roster {
   width: 100%;
-  background-color: #EAEAEA;
-  border-radius: 4px;
+  background-color: #F9FAFD;
+  border-radius: 0;
   padding: 0;
   margin: 0;
-  height: calc(100vh - 150px); /* Adjust based on header height */
-  overflow: hidden;
+  height: 100%;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
@@ -13,7 +13,7 @@
 .main-student-roster table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #EAEAEA;
+  background-color: #F9FAFD;
   margin: 0;
   table-layout: fixed;
 }
@@ -22,8 +22,8 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  background-color: #EAEAEA;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: #F9FAFD;
+  box-shadow: none;
 }
 
 .main-student-roster thead::before {
@@ -33,7 +33,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #EAEAEA;
+  background-color: #F9FAFD;
   z-index: -1;
 }
 
