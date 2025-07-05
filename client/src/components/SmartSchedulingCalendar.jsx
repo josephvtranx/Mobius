@@ -408,8 +408,8 @@ function SmartSchedulingCalendar({
     // 1. Calculate and add instructor availability events (subtracting scheduled sessions)
     let weekStart = startOfWeek(rangeStart, { weekStartsOn: 0 });
     while (weekStart <= rangeEnd) {
-      const availableSlots = calculateAvailableSlots(availabilityEvents, existingSessions, weekStart);
-      allEvents.push(...availableSlots);
+    const availableSlots = calculateAvailableSlots(availabilityEvents, existingSessions, weekStart);
+    allEvents.push(...availableSlots);
       weekStart = addDays(weekStart, 7);
     }
     // 2. Add existing sessions that fall within the visible range
@@ -511,31 +511,31 @@ function SmartSchedulingCalendar({
                 });
               } else {
                 // Generate new event with default position
-                const [startHour, startMinute] = preferredStartTime.split(':').map(Number);
-                const [endHour, endMinute] = preferredEndTime.split(':').map(Number);
+            const [startHour, startMinute] = preferredStartTime.split(':').map(Number);
+            const [endHour, endMinute] = preferredEndTime.split(':').map(Number);
                 const start = new Date(session.date);
-                start.setHours(startHour, startMinute, 0, 0);
+            start.setHours(startHour, startMinute, 0, 0);
                 const end = new Date(session.date);
-                end.setHours(endHour, endMinute, 0, 0);
-                allEvents.push({
+            end.setHours(endHour, endMinute, 0, 0);
+            allEvents.push({
                   id: eventId,
-                  title: selectedStudent?.name || 'Student',
-                  start,
-                  end,
+              title: selectedStudent?.name || 'Student',
+              start,
+              end,
                   dayOfWeek: session.dayKey,
-                  startTime: preferredStartTime,
-                  endTime: preferredEndTime,
-                  duration,
+              startTime: preferredStartTime,
+              endTime: preferredEndTime,
+              duration,
                   sessionNumber: session.sessionNumber,
-                  type: 'preference',
-                  draggable: true,
+              type: 'preference',
+              draggable: true,
                   resource: { dayOfWeek: session.dayKey, duration, sessionNumber: session.sessionNumber }
-                });
-              }
-            }
+            });
           }
-        });
+        }
       }
+        });
+    }
     }
     setEvents(allEvents);
   }, [studentPreferences, availabilityEvents, existingSessions, selectedStudent, sessionCount, sessionType, visibleRange, anchorStartDate]);

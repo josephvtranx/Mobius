@@ -257,11 +257,11 @@ function Payments() {
 
   const getPaymentMethodIcon = (method) => {
     switch (method) {
-      case 'credit_card': return '💳';
-      case 'bank_transfer': return '🏦';
-      case 'cash': return '💵';
-      case 'online': return '🌐';
-      default: return '💰';
+      case 'credit_card': return 'CC';
+      case 'bank_transfer': return 'BT';
+      case 'cash': return 'CA';
+      case 'online': return 'OL';
+      default: return 'PM';
     }
   };
 
@@ -385,7 +385,7 @@ function Payments() {
               {/* Summary Cards */}
               <div className="summary-cards">
                 <div className="summary-card">
-                  <div className="card-icon">💰</div>
+                  <div className="card-icon revenue-icon">$</div>
                   <div className="card-content">
                     <h3>Total Revenue</h3>
                     <div className="card-value">{formatCurrency(paymentOverview.totalRevenue)}</div>
@@ -393,7 +393,7 @@ function Payments() {
                   </div>
                 </div>
                 <div className="summary-card">
-                  <div className="card-icon">⏳</div>
+                  <div className="card-icon pending-icon">⏱</div>
                   <div className="card-content">
                     <h3>Pending Payments</h3>
                     <div className="card-value">{formatCurrency(paymentOverview.pendingPayments)}</div>
@@ -401,7 +401,7 @@ function Payments() {
                   </div>
                 </div>
                 <div className="summary-card">
-                  <div className="card-icon">⚠️</div>
+                  <div className="card-icon overdue-icon">!</div>
                   <div className="card-content">
                     <h3>Overdue Invoices</h3>
                     <div className="card-value">{formatCurrency(paymentOverview.overdueInvoices)}</div>
@@ -409,7 +409,7 @@ function Payments() {
                   </div>
                 </div>
                 <div className="summary-card">
-                  <div className="card-icon">📊</div>
+                  <div className="card-icon success-icon">%</div>
                   <div className="card-content">
                     <h3>Success Rate</h3>
                     <div className="card-value">{paymentOverview.paymentSuccessRate}%</div>
@@ -556,8 +556,11 @@ function Payments() {
                         <td>{payment.student}</td>
                         <td>{formatCurrency(payment.amount)}</td>
                         <td>
-                          <span className="payment-method">
-                            {getPaymentMethodIcon(payment.method)} {payment.method ? payment.method.replace('_', ' ') : 'N/A'}
+                          <span className="payment-method-badge">
+                            {getPaymentMethodIcon(payment.method)}
+                          </span>
+                          <span className="payment-method-text">
+                            {payment.method ? payment.method.replace('_', ' ') : 'N/A'}
                           </span>
                         </td>
                         <td>{formatDate(payment.date)}</td>
@@ -674,7 +677,7 @@ function Payments() {
               <div className="packages-grid">
                 {creditPackages.length === 0 ? (
                   <div className="empty-state">
-                    <div className="empty-icon">📦</div>
+                    <div className="empty-icon package-icon">PKG</div>
                     <h3>No Credit Packages</h3>
                     <p>Create your first credit package to get started.</p>
                     <button 

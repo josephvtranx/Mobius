@@ -266,7 +266,7 @@ function Overview() {
               
               <div className="data-categories">
                 <div className="uploaded-categories">
-                  <h4>✅ Uploaded Categories</h4>
+                  <h4> Uploaded Categories</h4>
                   <ul>
                     {forecastData.uploadedCategories.map((category, index) => (
                       <li key={index}>{category}</li>
@@ -275,7 +275,7 @@ function Overview() {
                 </div>
                 
                 <div className="missing-categories">
-                  <h4>⚠️ Missing Categories</h4>
+                  <h4> Missing Categories</h4>
                   <ul>
                     {forecastData.missingFields.map((field, index) => (
                       <li key={index}>{field}</li>
@@ -307,7 +307,7 @@ function Overview() {
                 <div className="retention-value">{formatPercentage(retentionData.dropoutRate)}</div>
                 <div className="retention-subtitle">
                   {retentionData.dropoutRate > retentionData.dropoutThreshold 
-                    ? '⚠️ Above threshold - Action needed' 
+                    ? ' Above threshold - Action needed' 
                     : 'Within acceptable range'
                   }
                 </div>

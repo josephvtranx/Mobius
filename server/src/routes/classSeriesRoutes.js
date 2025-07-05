@@ -121,8 +121,8 @@ router.post('/', classSeriesValidation, async (req, res) => {
                 }
                 // Check instructor availability for this session
                 const avail = await client.query(`
-                    SELECT * FROM instructor_availability
-                    WHERE instructor_id = $1
+            SELECT * FROM instructor_availability
+            WHERE instructor_id = $1
                     AND day_of_week = $2
                     AND $3::time >= start_time
                     AND $4::time <= end_time
@@ -134,7 +134,7 @@ router.post('/', classSeriesValidation, async (req, res) => {
                 ]);
                 if (avail.rows.length === 0) {
                     return res.status(400).json({ error: `Instructor is not available for session on ${session.session_date} (${session.start_time} - ${session.end_time})` });
-                }
+        }
                 sessionsToInsert.push({
                     instructor_id,
                     student_id,
@@ -149,24 +149,24 @@ router.post('/', classSeriesValidation, async (req, res) => {
             }
         } else {
             // Fallback: generate sessions from pattern (legacy)
-            let currentDate = new Date(start_date);
-            const endDate = new Date(end_date);
-            while (currentDate <= endDate) {
-                const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
-                if (days_of_week.includes(dayOfWeek)) {
+        let currentDate = new Date(start_date);
+        const endDate = new Date(end_date);
+        while (currentDate <= endDate) {
+            const dayOfWeek = currentDate.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+            if (days_of_week.includes(dayOfWeek)) {
                     sessionsToInsert.push({
-                        instructor_id,
-                        student_id,
-                        subject_id,
-                        session_date: new Date(currentDate),
-                        start_time,
-                        end_time,
-                        location,
-                        status: 'scheduled',
-                        credits_cost: 1
-                    });
-                }
-                currentDate.setDate(currentDate.getDate() + 1);
+                    instructor_id,
+                    student_id,
+                    subject_id,
+                    session_date: new Date(currentDate),
+                    start_time,
+                    end_time,
+                    location,
+                    status: 'scheduled',
+                    credits_cost: 1
+                });
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
             }
         }
 

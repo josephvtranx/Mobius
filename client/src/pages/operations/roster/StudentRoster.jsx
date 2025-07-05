@@ -123,7 +123,76 @@ function StudentRoster() {
 
   const formatSchedule = (schedule) => {
     if (!schedule || schedule.length === 0) return 'No schedule';
-    return schedule.map(s => `${s.day} ${s.start_time}-${s.end_time}`).join(', ');
+    return schedule.map(s => `${s.days} ${s.start_time}-${s.end_time}`).join(', ');
+  };
+
+  const getScheduledDays = (schedule) => {
+    if (!schedule || schedule.length === 0) return new Set();
+    
+    const scheduledDays = new Set();
+    schedule.forEach(s => {
+      if (s.days) {
+        // Handle both string format (comma-separated) and array format
+        const days = typeof s.days === 'string' ? s.days.split(',').map(d => d.trim()) : s.days;
+        days.forEach(day => {
+          // Map day abbreviations to our button format
+          const dayMap = {
+            'mon': 'M',
+            'tue': 'T', 
+            'wed': 'W',
+            'thu': 'Th',
+            'fri': 'F',
+            'sat': 'Sa',
+            'sun': 'Su'
+          };
+          if (dayMap[day.toLowerCase()]) {
+            scheduledDays.add(dayMap[day.toLowerCase()]);
+          }
+        });
+      }
+    });
+    return scheduledDays;
+  };
+
+  const DayButtons = ({ schedule }) => {
+    const scheduledDays = getScheduledDays(schedule);
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    
+    return (
+      <div className="day-buttons-container" style={{
+        display: 'flex',
+        gap: '4px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%'
+      }}>
+        {days.map((day, index) => {
+          const isScheduled = scheduledDays.has(day);
+          return (
+            <div
+              key={index}
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: isScheduled ? '#374151' : '#e5e7eb',
+                color: isScheduled ? 'white' : '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                fontWeight: isScheduled ? '600' : '400',
+                border: '1px solid',
+                borderColor: isScheduled ? '#374151' : '#d1d5db'
+              }}
+              title={isScheduled ? `Has classes on ${day}` : `No classes on ${day}`}
+            >
+              {day}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   if (loading) {
@@ -162,7 +231,7 @@ function StudentRoster() {
               <th>Instructors</th>
               <th>Status</th>
               <th>Enrolled Classes</th>
-              <th>Schedule</th>
+              <th style={{ textAlign: 'center' }}>Schedule</th>
             </tr>
           </thead>
           <tbody>
@@ -190,7 +259,9 @@ function StudentRoster() {
                   <td>{student.instructors.join(', ')}</td>
                   <td>{student.status}</td>
                   <td>{student.enrolledClasses.join(', ')}</td>
-                  <td>{formatSchedule(student.schedule)}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <DayButtons schedule={student.schedule} />
+                  </td>
                 </tr>
                 {expandedRows[student.id] && (
                   <>

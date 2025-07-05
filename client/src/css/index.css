@@ -1822,3 +1822,130 @@ table td {
 .profile-card {
   animation: slideUp 0.4s ease-out;
 }
+
+/* Pending Instructor Confirmations */
+.pending-confirmations {
+  margin-bottom: 2rem;
+}
+
+.section-title-pending {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 3px solid #FEF3C7;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-title-pending::before {
+  content: '';
+  width: 4px;
+  height: 24px;
+  background: linear-gradient(135deg, #F59E0B, #FEF3C7);
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pending-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pending-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.pending-info {
+  flex: 1;
+}
+
+.student-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+}
+
+.subject-info {
+  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.schedule-info {
+  color: #9ca3af;
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+.pending-status {
+  display: flex;
+  align-items: center;
+}
+
+.pending-pill {
+  background: #FEF3C7;
+  color: #D97706;
+  padding: 0.375rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid #FDE68A;
+  display: inline-block;
+  text-align: center;
+  min-width: 60px;
+}
+
+.view-more {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.btn-view-all {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-view-all:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.no-pending {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.loading {
+  text-align: center;
+  padding: 1rem;
+  color: #6b7280;
+}

@@ -611,8 +611,14 @@ function Scheduling() {
 
   // Calculate total time needed for all sessions
   const calculateTotalTimeNeeded = () => {
+    // Use the actual selected time slots from the calendar instead of theoretical calculation
+    if (selectedTimeSlots.length > 0) {
+      return selectedTimeSlots.reduce((total, slot) => total + (slot.duration || preferences.duration), 0);
+    }
+    
+    // Fallback to theoretical calculation if no slots are selected yet
     const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
-    const totalSessions = selectedDays * formData.numSessions;
+    const totalSessions = formData.numSessions || 1;
     return totalSessions * preferences.duration;
   };
 
@@ -1029,6 +1035,53 @@ function Scheduling() {
                 {errors.selectedTimeSlot && <span className="error-message">{errors.selectedTimeSlot}</span>}
               </div>
             </div>
+
+            {/* Time Availability Warning */}
+            {formData.student && selectedTimeSlots.length > 0 && (() => {
+              const timeCheck = checkTimeAvailability();
+              if (!timeCheck.hasSufficientTime) {
+                return (
+                  <div className="time-warning-container" style={{
+                    backgroundColor: '#fef3c7',
+                    border: '1px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    marginBottom: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <div style={{
+                      color: '#d97706',
+                      fontSize: '18px'
+                    }}>
+                      
+                    </div>
+                    <div>
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#92400e',
+                        marginBottom: '4px'
+                      }}>
+                        Insufficient Hours
+                      </div>
+                      <div style={{
+                        color: '#92400e',
+                        fontSize: '14px'
+                      }}>
+                        Student needs {Math.ceil(timeCheck.totalNeeded / 60)} hours but only has {Math.ceil(timeCheck.availableTime / 60)} hours available.
+                        {timeCheck.deficit > 0 && (
+                          <span style={{ fontWeight: '500' }}>
+                            {' '}Additional {Math.ceil(timeCheck.deficit / 60)} hours required.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Bottom Form Fields */}
             <div className="form-group">
