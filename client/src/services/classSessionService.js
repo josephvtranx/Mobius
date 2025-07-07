@@ -76,6 +76,21 @@ const classSessionService = {
             console.error(`Error fetching sessions for instructor ${instructorId}:`, error);
             throw error;
         }
+    },
+
+    // Get sessions for a specific student
+    getStudentSessions: async (studentId, startDate = null, endDate = null) => {
+        try {
+            let url = `/class-sessions?student_id=${studentId}`;
+            if (startDate && endDate) {
+                url += `&start_date=${startDate}&end_date=${endDate}`;
+            }
+            const response = await api.get(url);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching sessions for student ${studentId}:`, error);
+            throw error;
+        }
     }
 };
 

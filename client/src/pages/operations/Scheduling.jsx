@@ -8,8 +8,9 @@ import studentService from '../../services/studentService';
 import instructorService from '../../services/instructorService';
 import subjectService from '../../services/subjectService';
 import classSeriesService from '../../services/classSeriesService';
+import classSessionService from '../../services/classSessionService';
 import timePackageService from '../../services/timePackageService';
-import { startOfWeek, endOfWeek } from 'date-fns';
+import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns';
 
 function Scheduling() {
   // Form state
@@ -61,6 +62,9 @@ function Scheduling() {
 
   // Track the anchor start date for session generation
   const [anchorStartDate, setAnchorStartDate] = useState(calendarRange.start);
+
+  // Track selected student sessions for display
+  const [selectedStudentSessions, setSelectedStudentSessions] = useState([]);
 
   // Data state
   const [students, setStudents] = useState([]);
@@ -237,6 +241,49 @@ function Scheduling() {
     }
   };
 
+  const fetchStudentSessions = async (studentId) => {
+    console.log('fetchStudentSessions called with studentId:', studentId);
+    if (!studentId) {
+      console.log('No studentId provided, clearing sessions');
+      setSelectedStudentSessions([]);
+      return;
+    }
+    
+    try {
+      // Get date range for the visible calendar
+      const startDate = format(calendarRange.start, 'yyyy-MM-dd');
+      const endDate = format(calendarRange.end, 'yyyy-MM-dd');
+      
+      console.log('Fetching sessions for date range:', startDate, 'to', endDate);
+      console.log('Calendar range object:', calendarRange);
+      
+      // First, let's try fetching all sessions for this student without date range to see what they have
+      const allSessions = await classSessionService.getStudentSessions(studentId);
+      console.log('All sessions for student (no date filter):', allSessions);
+      
+      // Log the dates of all sessions to see what date range we should be using
+      if (allSessions && allSessions.length > 0) {
+        console.log('Session dates:');
+        allSessions.forEach((session, index) => {
+          console.log(`Session ${index + 1}: ${session.session_date} (${session.start_time} - ${session.end_time})`);
+        });
+      }
+      
+      // For scheduling purposes, show sessions from a broader date range (4 weeks before + 4 weeks after current week)
+      // This helps users see upcoming sessions when scheduling new ones, regardless of which direction they navigate
+      const extendedStartDate = format(subDays(calendarRange.start, 28), 'yyyy-MM-dd'); // 4 weeks before
+      const extendedEndDate = format(addDays(calendarRange.end, 28), 'yyyy-MM-dd'); // 4 weeks after
+      
+      console.log('Fetching sessions for extended date range:', extendedStartDate, 'to', extendedEndDate);
+      const sessions = await classSessionService.getStudentSessions(studentId, extendedStartDate, extendedEndDate);
+      console.log('Selected student sessions received (with extended date filter):', sessions);
+      setSelectedStudentSessions(sessions);
+    } catch (error) {
+      console.error('Error fetching student sessions:', error);
+      setSelectedStudentSessions([]);
+    }
+  };
+
   // Event handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -352,7 +399,13 @@ function Scheduling() {
   };
 
   const handleSelect = (field, value) => {
+    console.log('handleSelect called with field:', field, 'value:', value);
     setFormData(prev => ({ ...prev, [field]: value.id }));
+
+    if (field === 'student') {
+      console.log('Student selected, fetching sessions for studentId:', value.id);
+      fetchStudentSessions(value.id);
+    }
 
     if (field === 'subjectGroup') {
       fetchSubjects(value.id);
@@ -516,6 +569,14 @@ function Scheduling() {
         // Use the first block's start/end time for the series
         const firstBlock = sortedTimeBlocks[0];
         const lastBlock = sortedTimeBlocks[sortedTimeBlocks.length - 1];
+        
+        // Create sessions array from the selected time blocks
+        const sessions = sortedTimeBlocks.map(timeBlock => ({
+          session_date: timeBlock.date,
+          start_time: timeBlock.startTime,
+          end_time: calculateEndTime(timeBlock.startTime, timeBlock.duration)
+        }));
+        
         const seriesData = {
           subject_id: formData.subject,
           student_id: formData.student,
@@ -527,7 +588,8 @@ function Scheduling() {
           end_time: calculateEndTime(firstBlock.startTime, firstBlock.duration),
           location: formData.location,
           notes: formData.notes,
-          num_sessions
+          num_sessions,
+          sessions // Add the sessions array
         };
         console.log('Sending series data:', seriesData);
         await classSeriesService.createClassSeries(seriesData);
@@ -767,6 +829,11 @@ function Scheduling() {
     }
     // Only set anchorStartDate the first time
     setAnchorStartDate(prev => prev || newStart);
+    
+    // Fetch student sessions for the new range if a student is selected
+    if (formData.student) {
+      fetchStudentSessions(formData.student);
+    }
   };
 
   return (
@@ -975,30 +1042,6 @@ function Scheduling() {
               </div>
 
               <div className="calendar-view-container">
-                {/* Add Start Here button */}
-                <button
-                  className="btn start-here-btn"
-                  style={{
-                    marginBottom: '10px',
-                    backgroundColor: '#f59e42', // bright orange
-                    color: '#fff',
-                    fontWeight: 'bold',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '10px 20px',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s',
-                  }}
-                  onMouseOver={e => e.currentTarget.style.backgroundColor = '#d97706'}
-                  onMouseOut={e => e.currentTarget.style.backgroundColor = '#f59e42'}
-                  onClick={() => {
-                    setAnchorStartDate(calendarRange.start);
-                    setSelectedTimeSlots([]);
-                  }}
-                >
-                  Reset Blocks
-                </button>
                 <DndProvider backend={HTML5Backend}>
                   <SmartSchedulingCalendar
                     studentPreferences={preferences}
@@ -1013,6 +1056,13 @@ function Scheduling() {
                     calendarRange={calendarRange}
                     anchorStartDate={anchorStartDate}
                     onRangeChange={handleCalendarRangeChange}
+                    height={670}
+                    viewMode="scheduling"
+                    selectedStudentSessions={selectedStudentSessions}
+                    onResetBlocks={() => {
+                      setAnchorStartDate(calendarRange.start);
+                      setSelectedTimeSlots([]);
+                    }}
                     onEventsUpdate={useCallback((events) => {
                       // Extract all student preference events (purple/colored blocks) from the calendar
                       // This excludes instructor availability (green) and existing sessions (yellow)

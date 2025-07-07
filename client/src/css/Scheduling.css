@@ -288,6 +288,29 @@ th {
   font-size: 0.875rem;
 }
 
+/* Reset blocks button specific styling */
+.reset-blocks-btn {
+  background-color: #f59e42 !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 3px 6px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+  width: 60px !important;
+  min-width: 60px !important;
+  max-width: 120px !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10) !important;
+  white-space: nowrap !important;
+}
+
+.reset-blocks-btn:hover {
+  background-color: #d97706 !important;
+}
+
 /* Smart Scheduling Interface */
 .smart-scheduling-interface {
   display: grid;
@@ -370,6 +393,7 @@ th {
   border: none;
   overflow: hidden;
   min-height: 800px;
+  position: relative;
 }
 
 /* Preferences Section */

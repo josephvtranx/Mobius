@@ -35,11 +35,17 @@ function SmartSchedulingCalendar({
   onEventsUpdate,
   calendarRange,
   onRangeChange,
-  anchorStartDate
+  anchorStartDate,
+  height = 600,
+  onResetBlocks,
+  viewMode = 'scheduling', // 'scheduling' or 'schedule'
+  currentUserId = null, // For Schedule.jsx to show current user's sessions
+  selectedStudentSessions = [] // For Scheduling.jsx to show selected student's sessions
 }) {
   const [events, setEvents] = useState([]);
   const [availabilityEvents, setAvailabilityEvents] = useState([]);
   const [existingSessions, setExistingSessions] = useState([]);
+  const [formattedSelectedStudentSessions, setFormattedSelectedStudentSessions] = useState([]);
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [availabilityCache, setAvailabilityCache] = useState(new Map());
   const [sessionsCache, setSessionsCache] = useState(new Map());
@@ -132,7 +138,7 @@ function SmartSchedulingCalendar({
       } else {
         // Sort sessions by start time
         const sortedSessions = daySessions.sort((a, b) => 
-          new Date(`2000-01-01T${a.startTime}`) - new Date(`2000-01-01T${b.startTime}`)
+          a.start.getTime() - b.start.getTime()
         );
         
         let currentStart = avail.startMinutes;
@@ -209,10 +215,10 @@ function SmartSchedulingCalendar({
     return availableSlots;
   };
 
-  // Fetch existing sessions for conflict checking
+  // Fetch existing sessions for conflict checking (instructor sessions for scheduling)
   useEffect(() => {
     const fetchExistingSessions = async () => {
-      if (!selectedInstructorId) return;
+      if (!selectedInstructorId || viewMode === 'schedule') return;
       
       try {
         let sessions = sessionsCache.get(selectedInstructorId);
@@ -342,7 +348,224 @@ function SmartSchedulingCalendar({
     };
 
     fetchExistingSessions();
-  }, [selectedInstructorId, sessionsCache]);
+  }, [selectedInstructorId, sessionsCache, viewMode, selectedStudentSessions]);
+
+  // Fetch student sessions for schedule view
+  useEffect(() => {
+    const fetchStudentSessions = async () => {
+      if (viewMode !== 'schedule' || !currentUserId) return;
+      
+      try {
+        // Get date range for the visible calendar
+        const startDate = format(visibleRange.start, 'yyyy-MM-dd');
+        const endDate = format(visibleRange.end, 'yyyy-MM-dd');
+        
+        const sessions = await classSessionService.getStudentSessions(currentUserId, startDate, endDate);
+        console.log('Raw student sessions from API:', sessions);
+        
+        const formattedSessions = sessions
+          .filter(session => session.status === 'scheduled' || session.status === 'in_progress')
+          .map(session => {
+            // Parse the date and time properly
+            let start, end;
+            try {
+              if (session.session_date && session.start_time && session.end_time) {
+                // Validate time formats
+                const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+                
+                if (!timeRegex.test(session.start_time) || !timeRegex.test(session.end_time)) {
+                  console.warn('Invalid time format:', { start_time: session.start_time, end_time: session.end_time });
+                  return null;
+                }
+                
+                // If start_time and end_time include seconds, remove them for consistency
+                const startTime = session.start_time.split(':').slice(0, 2).join(':');
+                const endTime = session.end_time.split(':').slice(0, 2).join(':');
+                
+                // Try different date formats
+                let dateString = session.session_date;
+                
+                // If session_date is a Date object, convert to string
+                if (session.session_date instanceof Date) {
+                  dateString = session.session_date.toISOString().split('T')[0];
+                }
+                
+                // If it's already a string, ensure it's in YYYY-MM-DD format
+                if (typeof dateString === 'string') {
+                  // If it's in a different format, try to parse it
+                  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                    const parsedDate = new Date(dateString);
+                    if (!isNaN(parsedDate.getTime())) {
+                      dateString = parsedDate.toISOString().split('T')[0];
+                    }
+                  }
+                } else if (dateString instanceof Date) {
+                  // If it's already a Date object, convert to string
+                  dateString = dateString.toISOString().split('T')[0];
+                } else {
+                  // If it's null, undefined, or some other type, try to create a valid date
+                  console.warn('Invalid session_date format:', dateString);
+                  return null;
+                }
+                
+                const fullStartString = `${dateString}T${startTime}:00`;
+                const fullEndString = `${dateString}T${endTime}:00`;
+                
+                start = new Date(fullStartString);
+                end = new Date(fullEndString);
+              } else {
+                console.warn('Missing date/time data for session:', session);
+                return null;
+              }
+            } catch (error) {
+              console.error('Error parsing session dates:', error, session);
+              return null;
+            }
+            
+            return {
+              id: `student-session-${session.session_id}`,
+              title: `${session.subject_name} with ${session.instructor.name}`,
+              start,
+              end,
+              resource: session,
+              type: 'student-session',
+              draggable: false,
+              sessionDate: session.session_date,
+              startTime: session.start_time,
+              endTime: session.end_time
+            };
+          })
+          .filter(Boolean) // Remove any null entries
+          .filter(session => {
+            // Additional validation to ensure dates are valid
+            const isValid = session.start && session.end && 
+                           !isNaN(session.start.getTime()) && 
+                           !isNaN(session.end.getTime());
+            if (!isValid) {
+              console.warn('Filtering out session with invalid dates:', session);
+            }
+            return isValid;
+          });
+        
+        console.log('Final formatted student sessions:', formattedSessions);
+        setExistingSessions(formattedSessions);
+      } catch (error) {
+        console.error('Error fetching student sessions:', error);
+        setExistingSessions([]);
+      }
+    };
+
+    fetchStudentSessions();
+  }, [currentUserId, viewMode, visibleRange]);
+
+  // Format selected student sessions for scheduling view
+  useEffect(() => {
+    console.log('Selected student sessions useEffect triggered:', {
+      viewMode,
+      selectedStudentSessions: selectedStudentSessions?.length || 0,
+      sessions: selectedStudentSessions
+    });
+    
+    if (viewMode !== 'scheduling') {
+      console.log('Not in scheduling mode, returning');
+      return;
+    }
+
+    // If no selected student sessions, clear the formatted selected student sessions
+    if (!selectedStudentSessions || selectedStudentSessions.length === 0) {
+      console.log('No selected student sessions, clearing formatted selected student sessions');
+      setFormattedSelectedStudentSessions([]);
+      return;
+    }
+
+    const formattedSessions = selectedStudentSessions
+      .filter(session => session.status === 'scheduled' || session.status === 'in_progress')
+      .map(session => {
+        // Parse the date and time properly
+        let start, end;
+        try {
+          if (session.session_date && session.start_time && session.end_time) {
+            // Validate time formats
+            const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
+            
+            if (!timeRegex.test(session.start_time) || !timeRegex.test(session.end_time)) {
+              console.warn('Invalid time format:', { start_time: session.start_time, end_time: session.end_time });
+              return null;
+            }
+            
+            // If start_time and end_time include seconds, remove them for consistency
+            const startTime = session.start_time.split(':').slice(0, 2).join(':');
+            const endTime = session.end_time.split(':').slice(0, 2).join(':');
+            
+            // Try different date formats
+            let dateString = session.session_date;
+            
+            // If session_date is a Date object, convert to string
+            if (session.session_date instanceof Date) {
+              dateString = session.session_date.toISOString().split('T')[0];
+            }
+            
+            // If it's already a string, ensure it's in YYYY-MM-DD format
+            if (typeof dateString === 'string') {
+              // If it's in a different format, try to parse it
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                const parsedDate = new Date(dateString);
+                if (!isNaN(parsedDate.getTime())) {
+                  dateString = parsedDate.toISOString().split('T')[0];
+                }
+              }
+            } else if (dateString instanceof Date) {
+              // If it's already a Date object, convert to string
+              dateString = dateString.toISOString().split('T')[0];
+            } else {
+              // If it's null, undefined, or some other type, try to create a valid date
+              console.warn('Invalid session_date format:', dateString);
+              return null;
+            }
+            
+            const fullStartString = `${dateString}T${startTime}:00`;
+            const fullEndString = `${dateString}T${endTime}:00`;
+            
+            start = new Date(fullStartString);
+            end = new Date(fullEndString);
+          } else {
+            console.warn('Missing date/time data for session:', session);
+            return null;
+          }
+        } catch (error) {
+          console.error('Error parsing session dates:', error, session);
+          return null;
+        }
+        
+        return {
+          id: `selected-student-session-${session.session_id}`,
+          title: `${session.subject_name} with ${session.instructor.name}`,
+          start,
+          end,
+          resource: session,
+          type: 'selected-student-session',
+          draggable: false,
+          sessionDate: session.session_date,
+          startTime: session.start_time,
+          endTime: session.end_time
+        };
+      })
+      .filter(Boolean) // Remove any null entries
+      .filter(session => {
+        // Additional validation to ensure dates are valid
+        const isValid = session.start && session.end && 
+                       !isNaN(session.start.getTime()) && 
+                       !isNaN(session.end.getTime());
+        if (!isValid) {
+          console.warn('Filtering out session with invalid dates:', session);
+        }
+        return isValid;
+      });
+    
+    console.log('Formatted selected student sessions:', formattedSessions);
+    setFormattedSelectedStudentSessions(formattedSessions);
+    console.log('Formatted selected student sessions state updated');
+  }, [selectedStudentSessions, viewMode]);
 
   // Fetch availability for the selected instructor
   useEffect(() => {
@@ -404,20 +627,41 @@ function SmartSchedulingCalendar({
   // Generate all events (availability, existing sessions, and student preferences) for the visible range
   useEffect(() => {
     const { start: rangeStart, end: rangeEnd } = visibleRange;
+    
+    // Ensure we have valid date objects
+    if (!rangeStart || !rangeEnd || isNaN(rangeStart.getTime()) || isNaN(rangeEnd.getTime())) {
+      console.warn('Invalid date range provided:', { rangeStart, rangeEnd });
+      setEvents([]);
+      return;
+    }
+    
     const allEvents = [];
-    // 1. Calculate and add instructor availability events (subtracting scheduled sessions)
+
+    // Combine instructor sessions and selected student sessions for conflict checking
+    const allScheduledSessions = [...existingSessions, ...formattedSelectedStudentSessions];
+    
+    // 1. Calculate and add instructor availability events (subtracting all scheduled sessions)
+    // Generate availability for all weeks that overlap with the visible range
     let weekStart = startOfWeek(rangeStart, { weekStartsOn: 0 });
-    while (weekStart <= rangeEnd) {
-    const availableSlots = calculateAvailableSlots(availabilityEvents, existingSessions, weekStart);
+    const rangeEndDate = new Date(rangeEnd);
+    
+    while (weekStart < rangeEndDate) {
+      const availableSlots = calculateAvailableSlots(availabilityEvents, allScheduledSessions, weekStart);
     allEvents.push(...availableSlots);
       weekStart = addDays(weekStart, 7);
     }
-    // 2. Add existing sessions that fall within the visible range
+    
+    // 2. Add instructor sessions that fall within the visible range
     allEvents.push(...existingSessions.filter(ev =>
       isWithinInterval(ev.start, { start: rangeStart, end: rangeEnd })
     ));
-    // 3. Add student preference events: generate N sessions from anchorStartDate, only render those in visible range
-    if (studentPreferences && anchorStartDate) {
+    
+    // 3. Add selected student sessions that fall within the visible range
+    allEvents.push(...formattedSelectedStudentSessions.filter(ev =>
+      isWithinInterval(ev.start, { start: rangeStart, end: rangeEnd })
+    ));
+    // 4. Add student preference events: generate N sessions from anchorStartDate, only render those in visible range
+    if (studentPreferences && anchorStartDate && !isNaN(anchorStartDate.getTime())) {
       const { preferredDays, preferredStartTime, duration } = studentPreferences;
       const preferredEndTime = calculateEndTime(preferredStartTime, duration);
       const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
@@ -433,9 +677,14 @@ function SmartSchedulingCalendar({
         let sessionIndex = 0;
         let weekIndex = 0;
         
-        while (sessionIndex < sessionsToShow) {
+        // Safety check to prevent infinite loops
+        const maxWeeks = Math.ceil(sessionsToShow / selectedDays.length) + 10; // Add buffer
+        let weekCount = 0;
+        
+        while (sessionIndex < sessionsToShow && weekCount < maxWeeks) {
           // For each week, try to place sessions on the selected days
           const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+          weekCount++;
           
           // Go through each day of the week
           for (let dayOffset = 0; dayOffset < 7 && sessionIndex < sessionsToShow; dayOffset++) {
@@ -444,7 +693,7 @@ function SmartSchedulingCalendar({
             
             if (selectedDays.includes(dayKey)) {
               sessionDates.push({ 
-                date: new Date(sessionDate), 
+                date: sessionDate, // sessionDate is already a Date object from addDays
                 dayKey,
                 sessionNumber: sessionIndex + 1,
                 weekIndex: weekIndex
@@ -456,13 +705,14 @@ function SmartSchedulingCalendar({
           // Move to next week if we haven't placed all sessions
           if (sessionIndex < sessionsToShow) {
             weekIndex++;
-            currentDate = addDays(weekStart, 7);
+            currentDate = addDays(currentDate, 7); // Use currentDate instead of weekStart
           }
         }
         
         // Only render those sessions that fall within the visible range
         sessionDates.forEach((session) => {
-          if (session.date >= rangeStart && session.date <= rangeEnd) {
+          const sessionDate = new Date(session.date);
+          if (sessionDate >= rangeStart && sessionDate <= rangeEnd) {
             const eventId = `session-${session.sessionNumber}-${session.date.toISOString().split('T')[0]}`;
             
             // Check if we have a modified version of this event
@@ -538,7 +788,7 @@ function SmartSchedulingCalendar({
     }
     }
     setEvents(allEvents);
-  }, [studentPreferences, availabilityEvents, existingSessions, selectedStudent, sessionCount, sessionType, visibleRange, anchorStartDate]);
+  }, [studentPreferences, availabilityEvents, existingSessions, formattedSelectedStudentSessions, selectedStudent, sessionCount, sessionType, visibleRange, anchorStartDate]);
 
   // Notify parent component when events change
   useEffect(() => {
@@ -760,6 +1010,28 @@ function SmartSchedulingCalendar({
       style.fontWeight = '600';
       style.zIndex = 3;
       dataType = 'existing-session';
+    } else if (event.type === 'selected-student-session') {
+      style.backgroundColor = '#fed7aa';
+      style.borderColor = '#ea580c';
+      style.color = '#9a3412';
+      style.borderRadius = '12px';
+      style.cursor = 'default';
+      style.pointerEvents = 'none';
+      style.fontSize = '10px';
+      style.fontWeight = '600';
+      style.zIndex = 3;
+      dataType = 'selected-student-session';
+    } else if (event.type === 'student-session') {
+      style.backgroundColor = '#bfdbfe';
+      style.borderColor = '#2563eb';
+      style.color = '#1e40af';
+      style.borderRadius = '12px';
+      style.cursor = 'default';
+      style.pointerEvents = 'none';
+      style.fontSize = '10px';
+      style.fontWeight = '600';
+      style.zIndex = 3;
+      dataType = 'student-session';
     }
     return {
       style,
@@ -803,7 +1075,7 @@ function SmartSchedulingCalendar({
       }
       
       if (event.type === 'existing-session') {
-        // Render existing sessions with student name and class/subject name
+        // Render existing sessions with time, student name and class/subject name
         const startTime = format(event.start, 'h:mm a');
         const endTime = format(event.end, 'h:mm a');
         const studentName = event.resource?.student?.name || 'Student';
@@ -822,11 +1094,79 @@ function SmartSchedulingCalendar({
             }}
             title={`${studentName}: ${subjectName} (${startTime} - ${endTime})`}
           >
-            <div className="event-title" style={{ fontSize: '10px', fontWeight: '600' }}>
+            <div className="event-time" style={{ color: '#991b1b' }}>
+              {startTime}
+            </div>
+            <div className="event-title">
               {studentName}
             </div>
-            <div style={{ fontSize: '8px', opacity: '0.8' }}>
+            <div className="event-subtitle">
               {subjectName}
+            </div>
+          </div>
+        );
+      }
+      
+      if (event.type === 'selected-student-session') {
+        // Render selected student sessions with time, instructor name and class/subject name
+        const startTime = format(event.start, 'h:mm a');
+        const endTime = format(event.end, 'h:mm a');
+        const instructorName = event.resource?.instructor?.name || 'Instructor';
+        const subjectName = event.resource?.subject_name || 'Class';
+        return (
+          <div 
+            className="calendar-event selected-student-session-event"
+            style={{ 
+              pointerEvents: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              textAlign: 'center',
+              padding: '2px'
+            }}
+            title={`${instructorName}: ${subjectName} (${startTime} - ${endTime})`}
+          >
+            <div className="event-time" style={{ color: '#9a3412' }}>
+              {startTime}
+            </div>
+            <div className="event-title">
+              {instructorName}
+            </div>
+            <div className="event-subtitle">
+              {subjectName}
+            </div>
+          </div>
+        );
+      }
+      
+      if (event.type === 'student-session') {
+        // Render student sessions with custom layout for Schedule.jsx
+        const startTime = format(event.start, 'h:mm a');
+        const endTime = format(event.end, 'h:mm a');
+        const instructorName = event.resource?.instructor?.name || 'Instructor';
+        const subjectName = event.resource?.subject_name || 'Class';
+        const location = event.resource?.location || 'Location TBD';
+        
+        return (
+          <div 
+            className="calendar-event student-session-event"
+            style={{ 
+              pointerEvents: 'none'
+            }}
+            title={`${subjectName} with ${instructorName} at ${location} (${startTime} - ${endTime})`}
+          >
+            <div className="event-class-name">
+              {subjectName}
+            </div>
+            <div className="event-instructor">
+              {instructorName}
+            </div>
+            <div className="event-location">
+              {location}
+            </div>
+            <div className="event-time-range">
+              {startTime} - {endTime}
             </div>
           </div>
         );
@@ -923,7 +1263,7 @@ function SmartSchedulingCalendar({
         events={events}
         startAccessor="start"
         endAccessor="end"
-        style={{ height: 700 }}
+        style={{ height: height }}
         views={['week', 'month']}
         defaultView="week"
         step={15}
@@ -944,8 +1284,8 @@ function SmartSchedulingCalendar({
           if (event.type === 'existing-session') return event.title;
           return event.title;
         }}
-        min={new Date(0, 0, 0, 6, 0, 0)} // 6 AM
-        max={new Date(0, 0, 0, 21, 0, 0)} // 9 PM
+        min={new Date(0, 0, 0, 8, 0, 0)} // 8 AM
+        max={new Date(0, 0, 0, 19, 0, 0)} // 7 PM
         draggableAccessor={(event) => {
           return event.type === 'preference' && event.draggable !== false;
         }}
@@ -958,22 +1298,54 @@ function SmartSchedulingCalendar({
       
       {/* Legend */}
       <div className="calendar-legend">
+        {onResetBlocks && (
+          <button
+            className="btn reset-blocks-btn"
+            style={{
+              backgroundColor: '#f59e42',
+              color: '#fff',
+              fontWeight: 'bold',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              fontSize: '11px',
+              marginRight: '1rem',
+              width: '80px',
+            }}
+            onMouseOver={e => e.currentTarget.style.backgroundColor = '#d97706'}
+            onMouseOut={e => e.currentTarget.style.backgroundColor = '#f59e42'}
+            onClick={onResetBlocks}
+          >
+            Reset Blocks
+          </button>
+        )}
         <div className="legend-item">
           <div className="legend-color availability" style={{ backgroundColor: '#dcfce7', borderColor: '#16a34a' }}></div>
-          <span>Available Time Slots</span>
+          <span>Available</span>
         </div>
         <div className="legend-item">
           <div className="legend-color preference" style={{ backgroundColor: '#c7d2fe', borderColor: '#818cf8' }}></div>
-          <span>Student Preferred (Draggable)</span>
+          <span>Scheduling</span>
         </div>
         <div className="legend-item">
           <div className="legend-color scheduled" style={{ backgroundColor: '#fecaca', borderColor: '#dc2626' }}></div>
-          <span>Scheduled Classes</span>
+          <span>Instructor's Classes</span>
         </div>
+        {viewMode === 'scheduling' && formattedSelectedStudentSessions.length > 0 && (
         <div className="legend-item">
-          <div className="legend-color conflict" style={{ backgroundColor: '#f3f4f6', borderColor: '#9ca3af' }}></div>
-          <span>Unavailable/Conflict</span>
+            <div className="legend-color selected-student" style={{ backgroundColor: '#fed7aa', borderColor: '#ea580c' }}></div>
+            <span>Student's Classes</span>
         </div>
+        )}
+        {viewMode === 'schedule' && (
+          <div className="legend-item">
+            <div className="legend-color student-session" style={{ backgroundColor: '#bfdbfe', borderColor: '#2563eb' }}></div>
+            <span>Your Classes</span>
+          </div>
+        )}
       </div>
     </div>
   );

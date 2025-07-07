@@ -84,40 +84,66 @@ $agenda-title-color: #333;
 }
 
 .smart-scheduling-calendar .rbc-timeslot-group {
-  border-bottom: none;
-  height: 12px;
+  border-bottom: none !important;
+  height: 8px !important;
+  min-height: 8px !important;
   position: relative;
   overflow: visible;
 }
 
 .smart-scheduling-calendar .rbc-time-slot {
-  border-top: none;
-  height: 12px;
-  padding: 0;
-  margin: 0;
+  border-top: none !important;
+  height: 8px !important;
+  min-height: 8px !important;
+  padding: 0 !important;
+  margin: 0 !important;
   box-sizing: border-box;
   position: relative;
   overflow: visible;
 }
 
 .smart-scheduling-calendar .rbc-time-gutter .rbc-timeslot-group {
-  border-right: none;
-  height: 12px;
+  border-right: none !important;
+  height: 8px !important;
+  min-height: 8px !important;
 }
 
 .smart-scheduling-calendar .rbc-time-gutter .rbc-label {
-  padding: 0;
-  margin: 0;
+  padding: 0 !important;
+  margin: 0 !important;
   font-size: 10px;
   color: #6b7280;
   font-weight: 500;
-  line-height: 12px;
+  line-height: 8px !important;
   text-align: left;
   padding-left: 4px;
-  height: 12px;
+  height: 8px !important;
+  min-height: 8px !important;
   display: flex;
   align-items: center;
   box-sizing: border-box;
+}
+
+// Additional overrides for React Big Calendar's default styles
+.rbc-timeslot-group {
+  height: 8px !important;
+  min-height: 8px !important;
+}
+
+.rbc-time-slot {
+  height: 8px !important;
+  min-height: 8px !important;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  height: 8px !important;
+  min-height: 8px !important;
+}
+
+.rbc-time-gutter .rbc-label {
+  height: 8px !important;
+  min-height: 8px !important;
+  line-height: 8px !important;
 }
 
 .smart-scheduling-calendar .rbc-time-header-content {
@@ -418,6 +444,46 @@ $agenda-title-color: #333;
   border-color: #dc2626 !important;
 }
 
+// Selected student sessions (orange background for scheduling view)
+.smart-scheduling-calendar .rbc-event[data-event-type="selected-student-session"],
+.smart-scheduling-calendar .rbc-event.selected-student-session-event {
+  background-color: #fed7aa !important;
+  border-color: #ea580c !important;
+  color: #9a3412 !important;
+  border-radius: 12px !important;
+  cursor: default !important;
+  pointer-events: none !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  z-index: 3 !important;
+}
+
+.smart-scheduling-calendar .rbc-event[data-event-type="selected-student-session"]:hover,
+.smart-scheduling-calendar .rbc-event.selected-student-session-event:hover {
+  background-color: #fed7aa !important;
+  border-color: #ea580c !important;
+}
+
+// Student sessions (blue background for schedule view)
+.smart-scheduling-calendar .rbc-event[data-event-type="student-session"],
+.smart-scheduling-calendar .rbc-event.student-session-event {
+  background-color: #bfdbfe !important;
+  border-color: #2563eb !important;
+  color: #1e40af !important;
+  border-radius: 12px !important;
+  cursor: default !important;
+  pointer-events: none !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  z-index: 3 !important;
+}
+
+.smart-scheduling-calendar .rbc-event[data-event-type="student-session"]:hover,
+.smart-scheduling-calendar .rbc-event.student-session-event:hover {
+  background-color: #bfdbfe !important;
+  border-color: #2563eb !important;
+}
+
 // Drag and drop styling
 .smart-scheduling-calendar .rbc-addons-dnd .rbc-addons-dnd-drag-preview {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
@@ -430,6 +496,37 @@ $agenda-title-color: #333;
   font-size: 10px !important;
   font-weight: 500 !important;
   padding: 2px 4px !important;
+}
+
+// Custom event time styling
+.smart-scheduling-calendar .calendar-event {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 2px !important;
+  min-height: 100% !important;
+}
+
+.smart-scheduling-calendar .calendar-event .event-time {
+  font-size: 8px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  margin-bottom: 1px !important;
+}
+
+.smart-scheduling-calendar .calendar-event .event-title {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  margin-bottom: 1px !important;
+}
+
+.smart-scheduling-calendar .calendar-event .event-subtitle {
+  font-size: 7px !important;
+  opacity: 0.8 !important;
+  line-height: 1 !important;
 }
 
 // Time slot sizing
@@ -447,4 +544,60 @@ $agenda-title-color: #333;
   border-color: #dc2626 !important;
   height: 2px !important;
   z-index: 10 !important;
+}
+
+// Hide default event labels (time labels) for Schedule view
+.smart-scheduling-calendar .rbc-event-label {
+  display: none !important;
+}
+
+// Custom styling for Schedule.jsx events
+.smart-scheduling-calendar .student-session-event {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}
+
+.smart-scheduling-calendar .student-session-event .event-class-name {
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  color: #1e40af !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+}
+
+.smart-scheduling-calendar .student-session-event .event-instructor {
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  color: #374151 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+}
+
+.smart-scheduling-calendar .student-session-event .event-location {
+  font-size: 8px !important;
+  font-weight: 400 !important;
+  color: #6b7280 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  text-align: left !important;
+}
+
+.smart-scheduling-calendar .student-session-event .event-time-range {
+  font-size: 8px !important;
+  font-weight: 400 !important;
+  color: #9ca3af !important;
+  font-style: italic !important;
+  line-height: 1 !important;
+  text-align: left !important;
 } 

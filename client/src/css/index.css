@@ -457,6 +457,13 @@ body {
   border-radius: 25px;
   overflow: auto;
   display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+/* Schedule page specific - no scrolling */
+.main--schedule {
+  overflow: hidden;
 }
 .body--home {
   background-color: #F9FAFD;
@@ -650,7 +657,7 @@ th {
 
 .mcal-sidebar {
     width: 240px;
-    background-color: #EAEAEA;
+    background-color: #F9FAFD;
     padding: 1.5rem 0rem;
     height: 100%; /* Change to 100% to fit inside main */
     overflow-y: auto;
@@ -659,6 +666,19 @@ th {
     flex-direction: column;
     gap: 1.5rem;
     border-radius: 15px; /* Add border radius for consistency */
+    flex-shrink: 0; /* Prevent sidebar from shrinking */
+}
+
+.calendar-view-container {
+    flex: 1;
+    margin-left: 0;
+    background: #FFFFFF;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 
@@ -709,6 +729,58 @@ h3 {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+
+.event-date {
+    font-size: 0.5rem;
+    color: #6B7280;
+    font-weight: 500;
+}
+
+.event-time {
+    font-size: 0.5rem;
+    color: #059669;
+    font-weight: 600;
+}
+
+.event-title {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #1F2937;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.event-location {
+    font-size: 0.5rem;
+    color: #6B7280;
+    margin: 0.25rem 0 0 0;
+    font-style: italic;
+}
+
+.events-loading,
+.events-error,
+.events-empty {
+    text-align: center;
+    padding: 1rem;
+    color: #6B7280;
+    font-size: 0.7rem;
+}
+
+.events-error {
+    color: #DC2626;
+}
+
+.events-empty {
+    color: #9CA3AF;
+    font-style: italic;
+}
+
 
 /* Blocks Section */
 
@@ -717,7 +789,7 @@ h3 {
     /* Space before buttons */
     align-items: flex-end;
     margin-top: auto;
-    background-color: #EAEAEA;
+    background-color: #F9FAFD;
 }
 
 .pending-blocks {
@@ -792,7 +864,7 @@ h4 {
     flex-direction: column;
     gap: 0.75rem;
     padding: 0.4rem;
-    background-color: #EAEAEA;
+    background-color: #F9FAFD;
     border-radius: 8px;
     border: 1px solid #EAECF0;
     align-items: flex-end;
