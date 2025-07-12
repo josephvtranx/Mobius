@@ -37,10 +37,13 @@ const classSeriesService = {
     // Create a one-time class session
     createOneTimeClass: async (classData) => {
         try {
+            console.log('Sending class data:', classData);
             const response = await api.post('/class-sessions', classData);
             return response.data;
         } catch (error) {
             console.error('Error creating one-time class:', error);
+            console.error('Request data:', classData);
+            console.error('Response data:', error.response?.data);
             throw error;
         }
     },

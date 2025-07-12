@@ -1,59 +1,70 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import ProfileCard from '../../components/ProfileCard';
-import SideNav from '../../components/SideNav';
+import React, { useState, useEffect } from 'react';
+import ScheduleViewCalendar from '../../components/ScheduleViewCalendar';
 import Events from '../../components/Events';
 import PendingBlocks from '../../components/PendingBlocks';
-import ActionButtons from '../../components/ActionButtons';
-import SmartSchedulingCalendar from '../../components/SmartSchedulingCalendar';
 import authService from '../../services/authService';
 import { startOfWeek, endOfWeek } from 'date-fns';
+import '../../css/index.css';
+import '../../css/Scheduling.css';
 
 function Schedule() {
-  // Get current user
   const [currentUser, setCurrentUser] = useState(null);
-
-  // Track the visible range for the calendar
   const [calendarRange, setCalendarRange] = useState({
-    start: startOfWeek(new Date(), { weekStartsOn: 0 }),
-    end: endOfWeek(new Date(), { weekStartsOn: 0 })
+    start: startOfWeek(new Date()),
+    end: endOfWeek(new Date())
   });
 
-  // Get current user on component mount
   useEffect(() => {
     const user = authService.getCurrentUser();
+    console.log('Schedule: Current user loaded:', user);
     setCurrentUser(user);
   }, []);
 
-  // Pass a handler to update the visible range from the calendar
-  const handleCalendarRangeChange = (range) => {
-    if (Array.isArray(range)) {
-      setCalendarRange({ start: range[0], end: range[range.length - 1] });
-    } else if (range.start && range.end) {
-      setCalendarRange({ start: range.start, end: range.end });
+  // Debug: Log current user and calendar range
+  useEffect(() => {
+    console.log('Schedule component debug:', {
+      currentUser,
+      calendarRange,
+      currentUserId: currentUser?.user_id
+    });
+  }, [currentUser, calendarRange]);
+
+  // Add error boundary for debugging
+  if (!currentUser) {
+    return (
+      <div className="page-container">
+        <div className="main">
+          <section className="dashboard-main">
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              height: '400px',
+              fontSize: '16px',
+              color: '#6b7280'
+            }}>
+              Loading user data...
+            </div>
+          </section>
+        </div>
+      </div>
+    );
     }
-  };
 
   return (
-    <div className="main main--schedule">
+    <div className="page-container">
+      <div className="main">
+        <section className="dashboard-main">
+          <div style={{ 
+            display: 'flex', 
+            gap: '2rem', 
+            alignItems: 'flex-start',
+            minHeight: 'calc(100vh - 200px)'
+          }}>
+            {/* Sidebar */}
       <aside className="mcal-sidebar">
-        {/* Events Section */}
-        <Events />
-      
-        {/* Pending Blocks */}
-        <div className="blocks-section">
-          <div className="pending-blocks">
-            <div className="pending-title">
-              <h4>Pending Blocks</h4>
-            </div>
-            <div className="pending-item-container">
+              <Events calendarRange={calendarRange} />
               <PendingBlocks />
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
         <div className="sidebar-actions">
           <button className="action-button reschedule">
             <i className="fas fa-calendar-alt"></i>
@@ -72,41 +83,27 @@ function Schedule() {
 
       {/* Calendar View */}
       <div className="calendar-view-container">
-        <DndProvider backend={HTML5Backend}>
-          <SmartSchedulingCalendar
-            studentPreferences={{
-              preferredDays: {
-                mon: false,
-                tue: false,
-                wed: false,
-                thu: false,
-                fri: false,
-                sat: false,
-                sun: false
-              },
-              preferredStartTime: '09:00',
-              duration: 60
-            }}
-            selectedInstructorId={null}
-            onTimeSlotSelect={() => {}}
-            selectedTimeSlot={null}
-            studentId={null}
-            subjectId={null}
-            selectedStudent={null}
-            sessionCount={1}
-            sessionType="one-time"
+              <ScheduleViewCalendar
             calendarRange={calendarRange}
-            anchorStartDate={calendarRange.start}
-            onRangeChange={handleCalendarRangeChange}
-            height={770}
-            viewMode="schedule"
             currentUserId={currentUser?.user_id}
-            onEventsUpdate={useCallback((events) => {
-              // Handle events update if needed
-              console.log('Calendar events updated:', events);
-            }, [])}
-          />
-        </DndProvider>
+              />
+              <div className="calendar-legend">
+                <div className="legend-item legend-scheduled">
+                  <div className="legend-color"></div>
+                  <span>Scheduled</span>
+                </div>
+                <div className="legend-item legend-completed">
+                  <div className="legend-color"></div>
+                  <span>Completed</span>
+                </div>
+                <div className="legend-item legend-pending">
+                  <div className="legend-color"></div>
+                  <span>Pending</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

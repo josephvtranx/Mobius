@@ -1,8 +1,8 @@
 import pool from '../config/db.js';
 
-// Convert day abbreviation to day number (mon=1, tue=2, etc.)
+// Convert day abbreviation to day number (sun=0, mon=1, tue=2, etc.)
 const dayToNumber = (dayAbbr) => {
-    const dayMap = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 };
+    const dayMap = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
     return dayMap[dayAbbr] || 0;
 };
 
@@ -255,8 +255,8 @@ const getInstructorAvailabilityForRange = async (client, instructorId, preferred
         AND (ia.end_date IS NULL OR ia.end_date >= CURRENT_DATE)
         ORDER BY 
             CASE ia.day_of_week 
-                WHEN 'mon' THEN 1 WHEN 'tue' THEN 2 WHEN 'wed' THEN 3 
-                WHEN 'thu' THEN 4 WHEN 'fri' THEN 5 WHEN 'sat' THEN 6 WHEN 'sun' THEN 7 
+                WHEN 'sun' THEN 1 WHEN 'mon' THEN 2 WHEN 'tue' THEN 3 
+                WHEN 'wed' THEN 4 WHEN 'thu' THEN 5 WHEN 'fri' THEN 6 WHEN 'sat' THEN 7 
             END,
             ia.start_time
     `, [instructorId, preferredDays, preferredStartTime, preferredEndTime]);

@@ -1,12 +1,12 @@
-// React Big Calendar CSS Overrides
-// This file overrides React Big Calendar's default styles
+// Schedule View Calendar CSS Overrides
+// This file overrides React Big Calendar's default styles for the schedule view
 
 // ========================================
 // CRITICAL: INCREASE SPECIFICITY FOR OVERRIDES
 // ========================================
 
 // Use more specific selectors to ensure overrides work
-.smart-scheduling-calendar {
+.schedule-view-calendar {
   // Container-level overrides
   .rbc-calendar {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -171,112 +171,83 @@
   }
 
   // ========================================
-  // SPECIFIC EVENT TYPES
+  // SCHEDULE VIEW SPECIFIC EVENT TYPES
   // ========================================
 
-  // Availability events (green background)
-  .rbc-event[data-event-type="availability"],
-  .rbc-event.availability-event {
-    background-color: #22c55e !important;
-    border-color: #16a34a !important;
+  // Scheduled events (blue background)
+  .rbc-event.event-scheduled,
+  .rbc-event[data-event-type="scheduled"] {
+    background-color: #3b82f6 !important;
+    border-color: #2563eb !important;
     color: white !important;
     border-radius: 12px !important;
-    pointer-events: none !important;
     cursor: default !important;
+    pointer-events: none !important;
     font-size: 10px !important;
     font-weight: 500 !important;
   }
 
-  .rbc-event[data-event-type="availability"]:hover,
-  .rbc-event.availability-event:hover {
-    background-color: #22c55e !important;
-    border-color: #16a34a !important;
+  .rbc-event.event-scheduled:hover,
+  .rbc-event[data-event-type="scheduled"]:hover {
+    background-color: #3b82f6 !important;
+    border-color: #2563eb !important;
   }
 
-  // Student preference events (purple background)
-  .rbc-event[data-event-type="preference"],
-  .rbc-event.session-event {
-    background-color: #c7d2fe !important;
-    border-color: #818cf8 !important;
-    color: #3730a3 !important;
+  // Completed events (green background)
+  .rbc-event.event-completed,
+  .rbc-event[data-event-type="completed"] {
+    background-color: #10b981 !important;
+    border-color: #059669 !important;
+    color: white !important;
     border-radius: 12px !important;
-    cursor: grab !important;
+    cursor: default !important;
+    pointer-events: none !important;
     font-size: 10px !important;
     font-weight: 500 !important;
   }
 
-  .rbc-event[data-event-type="preference"]:hover,
-  .rbc-event.session-event:hover {
-    background-color: #a5b4fc !important;
-    border-color: #6366f1 !important;
+  .rbc-event.event-completed:hover,
+  .rbc-event[data-event-type="completed"]:hover {
+    background-color: #10b981 !important;
+    border-color: #059669 !important;
   }
 
-  // Class blocks (scheduled sessions - light red background)
-  .rbc-event[data-event-type="existing-session"],
-  .rbc-event.existing-session-event {
-    background-color: rgb(254, 202, 202) !important;
-    border-color: #dc2626 !important;
-    color: #991b1b !important;
+  // Pending events (yellow background)
+  .rbc-event.event-pending,
+  .rbc-event[data-event-type="pending"] {
+    background-color: #f59e0b !important;
+    border-color: #d97706 !important;
+    color: white !important;
     border-radius: 12px !important;
     cursor: default !important;
     pointer-events: none !important;
     font-size: 10px !important;
-    font-weight: 600 !important;
-    z-index: 3 !important;
+    font-weight: 500 !important;
   }
 
-  .rbc-event[data-event-type="existing-session"]:hover,
-  .rbc-event.existing-session-event:hover {
-    background-color: rgb(254, 202, 202) !important;
-    border-color: #dc2626 !important;
+  .rbc-event.event-pending:hover,
+  .rbc-event[data-event-type="pending"]:hover {
+    background-color: #f59e0b !important;
+    border-color: #d97706 !important;
   }
 
-  // Selected student sessions (orange background for scheduling view)
-  .rbc-event[data-event-type="selected-student-session"],
-  .rbc-event.selected-student-session-event {
-    background-color: #fed7aa !important;
-    border-color: #ea580c !important;
-    color: #9a3412 !important;
+  // Default events (gray background)
+  .rbc-event.event-default,
+  .rbc-event[data-event-type="default"] {
+    background-color: #6b7280 !important;
+    border-color: #4b5563 !important;
+    color: white !important;
     border-radius: 12px !important;
     cursor: default !important;
     pointer-events: none !important;
     font-size: 10px !important;
-    font-weight: 600 !important;
-    z-index: 3 !important;
+    font-weight: 500 !important;
   }
 
-  .rbc-event[data-event-type="selected-student-session"]:hover,
-  .rbc-event.selected-student-session-event:hover {
-    background-color: #fed7aa !important;
-    border-color: #ea580c !important;
-  }
-
-  // Student sessions (blue background for schedule view)
-  .rbc-event[data-event-type="student-session"],
-  .rbc-event.student-session-event {
-    background-color: #bfdbfe !important;
-    border-color: #2563eb !important;
-    color: #1e40af !important;
-    border-radius: 12px !important;
-    cursor: default !important;
-    pointer-events: none !important;
-    font-size: 10px !important;
-    font-weight: 600 !important;
-    z-index: 3 !important;
-  }
-
-  .rbc-event[data-event-type="student-session"]:hover,
-  .rbc-event.student-session-event:hover {
-    background-color: #bfdbfe !important;
-    border-color: #2563eb !important;
-  }
-
-  // ========================================
-  // DRAG AND DROP STYLING
-  // ========================================
-  .rbc-addons-dnd .rbc-addons-dnd-drag-preview {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    border-radius: 12px !important;
+  .rbc-event.event-default:hover,
+  .rbc-event[data-event-type="default"]:hover {
+    background-color: #6b7280 !important;
+    border-color: #4b5563 !important;
   }
 
   // ========================================
@@ -332,7 +303,7 @@
   // ========================================
   // SCHEDULE VIEW SPECIFIC STYLING
   // ========================================
-  .student-session-event {
+  .schedule-session-event {
     border-radius: 0 !important;
     box-shadow: none !important;
     margin: 0 !important;
@@ -346,7 +317,7 @@
     text-align: left !important;
   }
 
-  .student-session-event .event-class-name {
+  .schedule-session-event .event-class-name {
     font-size: 8px !important;
     font-weight: 700 !important;
     color: #1e40af !important;
@@ -355,7 +326,7 @@
     text-align: left !important;
   }
 
-  .student-session-event .event-instructor {
+  .schedule-session-event .event-instructor {
     font-size: 8px !important;
     font-weight: 700 !important;
     color: #374151 !important;
@@ -364,7 +335,7 @@
     text-align: left !important;
   }
 
-  .student-session-event .event-location {
+  .schedule-session-event .event-location {
     font-size: 8px !important;
     font-weight: 400 !important;
     color: #6b7280 !important;
@@ -373,7 +344,7 @@
     text-align: left !important;
   }
 
-  .student-session-event .event-time-range {
+  .schedule-session-event .event-time-range {
     font-size: 8px !important;
     font-weight: 400 !important;
     color: #9ca3af !important;
@@ -518,39 +489,24 @@
     border: 1px solid #d1d5db !important;
   }
 
-  .legend-color.availability {
-    background-color: #dcfce7 !important;
-    border-color: #16a34a !important;
-  }
-
-  .legend-color.preference {
-    background-color: #c7d2fe !important;
-    border-color: #818cf8 !important;
-  }
-
   .legend-color.scheduled {
-    background-color: #fecaca !important;
-    border-color: #dc2626 !important;
-  }
-
-  .legend-color.conflict {
-    background-color: #f3f4f6 !important;
-    border-color: #9ca3af !important;
-  }
-
-  .legend-color.pending {
-    background-color: #fef3c7 !important;
-    border-color: #f59e0b !important;
-  }
-
-  .legend-color.upcoming {
-    background-color: #dbeafe !important;
-    border-color: #3b82f6 !important;
+    background-color: #3b82f6 !important;
+    border-color: #2563eb !important;
   }
 
   .legend-color.completed {
-    background-color: #dcfce7 !important;
-    border-color: #16a34a !important;
+    background-color: #10b981 !important;
+    border-color: #059669 !important;
+  }
+
+  .legend-color.pending {
+    background-color: #f59e0b !important;
+    border-color: #d97706 !important;
+  }
+
+  .legend-color.default {
+    background-color: #6b7280 !important;
+    border-color: #4b5563 !important;
   }
 
   // ========================================
@@ -594,7 +550,7 @@
 }
 
 // ========================================
-// GLOBAL OVERRIDES (for components outside .smart-scheduling-calendar)
+// GLOBAL OVERRIDES (for components outside .schedule-view-calendar)
 // ========================================
 
 // Additional overrides for React Big Calendar's default styles
@@ -617,12 +573,4 @@
   height: 8px !important;
   min-height: 8px !important;
   line-height: 8px !important;
-} 
-
-.smart-scheduling-calendar .rbc-event.past-event,
-.smart-scheduling-calendar .rbc-event[data-past="true"] {
-  background-color: #9ca3af !important; /* Tailwind gray-400 */
-  border-color: #6b7280 !important;     /* Tailwind gray-500 */
-  color: #f3f4f6 !important;            /* Tailwind gray-100 */
-  opacity: 1 !important;
 } 

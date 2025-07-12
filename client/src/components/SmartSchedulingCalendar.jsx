@@ -5,6 +5,11 @@ import { format, parse, startOfWeek, getDay, addDays, addMinutes, differenceInMi
 import { enUS } from 'date-fns/locale';
 import instructorService from '../services/instructorService';
 import classSessionService from '../services/classSessionService';
+
+// Import React Big Calendar default styles FIRST
+import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+// Then import your custom overrides
 import '../css/react-big-calendar-custom.scss';
 
 const locales = {
@@ -82,9 +87,49 @@ function SmartSchedulingCalendar({
     console.log('calculateAvailableSlots called with:', {
       availabilityBlocks: availabilityBlocks.length,
       scheduledSessions: scheduledSessions.length,
-      weekStart
+      weekStart,
+      viewMode
     });
     
+    // For Schedule page, we want to show the user's sessions as time blocks
+    if (viewMode === 'schedule') {
+      // Convert scheduled sessions to time blocks
+      scheduledSessions.forEach(session => {
+        if (session.start && session.end && !isNaN(session.start.getTime()) && !isNaN(session.end.getTime())) {
+          const sessionStatus = session.resource?.status || 'scheduled';
+          const now = new Date();
+          const isPast = session.end < now;
+          
+          // Determine the type based on status and time
+          let blockType = 'availability'; // Default
+          if (sessionStatus === 'pending') {
+            blockType = 'pending';
+          } else if (sessionStatus === 'completed' || isPast) {
+            blockType = 'completed';
+          } else {
+            blockType = 'upcoming';
+          }
+          
+          availableSlots.push({
+            id: `session-${session.id}`,
+            title: session.title || 'Session',
+            start: session.start,
+            end: session.end,
+            type: blockType,
+            draggable: false,
+            interactive: false,
+            selectable: false,
+            resizable: false,
+            resource: session.resource,
+            dayIdx: session.start.getDay()
+          });
+        }
+      });
+      
+      return availableSlots;
+    }
+    
+    // For Scheduling page, use the original logic
     availabilityBlocks.forEach(avail => {
       const dayIdx = avail.dayIdx;
       const eventDate = addDays(weekStart, dayIdx);
@@ -979,6 +1024,11 @@ function SmartSchedulingCalendar({
   const eventStyleGetter = useCallback((event) => {
     const style = {};
     let dataType = '';
+    let className = '';
+    const now = new Date();
+    // Determine if event is in the past
+    const isPast = event.end < now;
+    
     if (event.type === 'availability') {
       style.backgroundColor = '#CEECEA';
       style.borderColor = '#16a34a';
@@ -988,7 +1038,6 @@ function SmartSchedulingCalendar({
       style.cursor = 'default';
       style.fontSize = '10px';
       style.fontWeight = '500';
-      // Do NOT set position, width, left, right, etc.
       dataType = 'availability';
     } else if (event.type === 'preference') {
       style.backgroundColor = '#c7d2fe';
@@ -1022,8 +1071,53 @@ function SmartSchedulingCalendar({
       style.zIndex = 3;
       dataType = 'selected-student-session';
     } else if (event.type === 'student-session') {
-      style.backgroundColor = '#bfdbfe';
-      style.borderColor = '#2563eb';
+      // For Schedule page, color based on session status
+      if (viewMode === 'schedule') {
+        const sessionStatus = event.resource?.status;
+        if (sessionStatus === 'pending') {
+          style.backgroundColor = '#fef3c7';
+          style.borderColor = '#f59e0b';
+          style.color = '#92400e';
+          dataType = 'pending';
+        } else if (sessionStatus === 'completed' || isPast) {
+          style.backgroundColor = '#dcfce7';
+          style.borderColor = '#16a34a';
+          style.color = '#166534';
+          dataType = 'completed';
+        } else {
+          // Upcoming sessions
+          style.backgroundColor = '#dbeafe';
+          style.borderColor = '#3b82f6';
+          style.color = '#1e40af';
+          dataType = 'upcoming';
+        }
+      } else {
+        // For Scheduling page, use the original blue color
+        style.backgroundColor = '#bfdbfe';
+        style.borderColor = '#2563eb';
+        style.color = '#1e40af';
+        dataType = 'student-session';
+      }
+      style.borderRadius = '12px';
+      style.cursor = 'default';
+      style.pointerEvents = 'none';
+      style.fontSize = '10px';
+      style.fontWeight = '600';
+      style.zIndex = 3;
+    } else if (event.type === 'pending') {
+      style.backgroundColor = '#fef3c7';
+      style.borderColor = '#f59e0b';
+      style.color = '#92400e';
+      style.borderRadius = '12px';
+      style.cursor = 'default';
+      style.pointerEvents = 'none';
+      style.fontSize = '10px';
+      style.fontWeight = '600';
+      style.zIndex = 3;
+      dataType = 'pending';
+    } else if (event.type === 'upcoming') {
+      style.backgroundColor = '#dbeafe';
+      style.borderColor = '#3b82f6';
       style.color = '#1e40af';
       style.borderRadius = '12px';
       style.cursor = 'default';
@@ -1031,13 +1125,31 @@ function SmartSchedulingCalendar({
       style.fontSize = '10px';
       style.fontWeight = '600';
       style.zIndex = 3;
-      dataType = 'student-session';
+      dataType = 'upcoming';
+    } else if (event.type === 'completed') {
+      style.backgroundColor = '#dcfce7';
+      style.borderColor = '#16a34a';
+      style.color = '#166534';
+      style.borderRadius = '12px';
+      style.cursor = 'default';
+      style.pointerEvents = 'none';
+      style.fontSize = '10px';
+      style.fontWeight = '600';
+      style.zIndex = 3;
+      dataType = 'completed';
+    }
+    
+    // Add past-event class and data-past attribute if event is in the past
+    if (isPast) {
+      className += ' past-event';
     }
     return {
       style,
-      'data-event-type': dataType
+      className,
+      'data-event-type': dataType,
+      'data-past': isPast ? 'true' : undefined
     };
-  }, []);
+  }, [viewMode]);
 
   // Custom event component
   const components = {
@@ -1068,6 +1180,49 @@ function SmartSchedulingCalendar({
               Available
             </div>
             <div style={{ fontSize: '8px', opacity: '0.8' }}>
+              {startTime} - {endTime}
+            </div>
+          </div>
+        );
+      }
+      
+      if (event.type === 'pending' || event.type === 'upcoming' || event.type === 'completed') {
+        // Render session blocks for Schedule page
+        const startTime = format(event.start, 'h:mm a');
+        const endTime = format(event.end, 'h:mm a');
+        const subjectName = event.resource?.subject_name || 'Class';
+        const studentName = event.resource?.student?.name || 'Student';
+        const location = event.resource?.location || 'Location TBD';
+        
+        let statusText = '';
+        if (event.type === 'pending') statusText = 'Pending';
+        else if (event.type === 'upcoming') statusText = 'Upcoming';
+        else if (event.type === 'completed') statusText = 'Completed';
+        
+        return (
+          <div 
+            className={`calendar-event ${event.type}-event`}
+            style={{ 
+              pointerEvents: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              textAlign: 'center',
+              padding: '2px'
+            }}
+            title={`${subjectName} with ${studentName} at ${location} (${startTime} - ${endTime})`}
+          >
+            <div className="event-status" style={{ fontSize: '8px', fontWeight: '600', marginBottom: '2px' }}>
+              {statusText}
+            </div>
+            <div className="event-title" style={{ fontSize: '9px', fontWeight: '600' }}>
+              {subjectName}
+            </div>
+            <div className="event-subtitle" style={{ fontSize: '8px', opacity: '0.8' }}>
+              {studentName}
+            </div>
+            <div className="event-time" style={{ fontSize: '7px', opacity: '0.7' }}>
               {startTime} - {endTime}
             </div>
           </div>
@@ -1322,29 +1477,45 @@ function SmartSchedulingCalendar({
             Reset Blocks
           </button>
         )}
-        <div className="legend-item">
-          <div className="legend-color availability" style={{ backgroundColor: '#dcfce7', borderColor: '#16a34a' }}></div>
-          <span>Available</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-color preference" style={{ backgroundColor: '#c7d2fe', borderColor: '#818cf8' }}></div>
-          <span>Scheduling</span>
-        </div>
-        <div className="legend-item">
-          <div className="legend-color scheduled" style={{ backgroundColor: '#fecaca', borderColor: '#dc2626' }}></div>
-          <span>Instructor's Classes</span>
-        </div>
-        {viewMode === 'scheduling' && formattedSelectedStudentSessions.length > 0 && (
-        <div className="legend-item">
-            <div className="legend-color selected-student" style={{ backgroundColor: '#fed7aa', borderColor: '#ea580c' }}></div>
-            <span>Student's Classes</span>
-        </div>
-        )}
-        {viewMode === 'schedule' && (
-          <div className="legend-item">
-            <div className="legend-color student-session" style={{ backgroundColor: '#bfdbfe', borderColor: '#2563eb' }}></div>
-            <span>Your Classes</span>
-          </div>
+        
+        {viewMode === 'scheduling' ? (
+          // Legend for Scheduling page
+          <>
+            <div className="legend-item">
+              <div className="legend-color availability" style={{ backgroundColor: '#dcfce7', borderColor: '#16a34a' }}></div>
+              <span>Available</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color preference" style={{ backgroundColor: '#c7d2fe', borderColor: '#818cf8' }}></div>
+              <span>Scheduling</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color scheduled" style={{ backgroundColor: '#fecaca', borderColor: '#dc2626' }}></div>
+              <span>Instructor's Classes</span>
+            </div>
+            {formattedSelectedStudentSessions.length > 0 && (
+              <div className="legend-item">
+                <div className="legend-color selected-student" style={{ backgroundColor: '#fed7aa', borderColor: '#ea580c' }}></div>
+                <span>Student's Classes</span>
+              </div>
+            )}
+          </>
+        ) : (
+          // Legend for Schedule page
+          <>
+            <div className="legend-item">
+              <div className="legend-color pending" style={{ backgroundColor: '#fef3c7', borderColor: '#f59e0b' }}></div>
+              <span>Pending</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color upcoming" style={{ backgroundColor: '#dbeafe', borderColor: '#3b82f6' }}></div>
+              <span>Upcoming</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-color completed" style={{ backgroundColor: '#dcfce7', borderColor: '#16a34a' }}></div>
+              <span>Completed</span>
+            </div>
+          </>
         )}
       </div>
     </div>

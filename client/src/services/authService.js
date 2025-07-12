@@ -73,6 +73,11 @@ const authService = {
         return JSON.parse(localStorage.getItem('user'));
     },
 
+    // Set current user
+    setCurrentUser: (user) => {
+        localStorage.setItem('user', JSON.stringify(user));
+    },
+
     // Check if user is authenticated
     isAuthenticated: () => {
         return !!localStorage.getItem('token');

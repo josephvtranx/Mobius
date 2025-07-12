@@ -18,6 +18,9 @@ import staffRoutes from './routes/staffRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import timePackageRoutes from './routes/timePackageRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Initialize express app
 const app = express();
@@ -30,6 +33,11 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Serve static files from uploads directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -55,6 +63,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/time-packages', timePackageRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

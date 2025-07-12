@@ -66,6 +66,8 @@ export const authenticateToken = async (req, res, next) => {
     }
 };
 
+export default authenticateToken;
+
 // Role-based authorization middleware
 export const authorizeRole = (...roles) => {
     return async (req, res, next) => {

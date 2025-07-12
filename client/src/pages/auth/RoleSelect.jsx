@@ -1,126 +1,235 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUserGraduate, FaChalkboardTeacher, FaUserTie } from 'react-icons/fa';
+import { FaUserGraduate, FaChalkboardTeacher, FaUserShield, FaArrowRight } from 'react-icons/fa';
 
 function RoleSelect() {
   const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState('student');
+  const [email, setEmail] = useState('');
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   const roles = [
     {
       id: 'student',
       name: 'Student',
-      description: 'Join as a student to access courses and track your progress',
       icon: FaUserGraduate,
-      path: '/auth/register/student'
     },
     {
       id: 'instructor',
       name: 'Instructor',
-      description: 'Join as an instructor to teach and manage courses',
       icon: FaChalkboardTeacher,
-      path: '/auth/register/instructor'
     },
     {
-      id: 'staff',
-      name: 'Staff',
-      description: 'Join as staff to manage operations and scheduling',
-      icon: FaUserTie,
-      path: '/auth/register/staff'
-    }
+      id: 'admin',
+      name: 'Admin',
+      icon: FaUserShield,
+    },
   ];
 
+  const handleContinue = (e) => {
+    e.preventDefault();
+    // Keep backend logic: navigate to the correct registration page
+    if (selectedRole === 'student') navigate('/auth/register/student');
+    else if (selectedRole === 'instructor') navigate('/auth/register/instructor');
+    else if (selectedRole === 'admin') navigate('/auth/register/staff'); // Assuming admin uses staff registration
+  };
+
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>Choose Your Role</h1>
-          <p>Select how you'll be using Møbius Academy</p>
+    <div style={{ minHeight: '100vh', background: '#eaf9fc', position: 'relative', paddingTop: 50, overflow: 'hidden' }}>
+      {/* Main card */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          maxWidth: 1350,
+          width: '95vw',
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          marginTop: 0,
+          background: '#fff',
+          borderRadius: 24,
+          boxShadow: '0 8px 32px rgba(30,58,76,0.08)',
+          overflow: 'hidden',
+          minHeight: 700,
+          position: 'relative',
+        }}
+      >
+        {/* Left column: Form */}
+        <div
+          style={{
+            flex: 1,
+            padding: '40px 80px 40px 160px',
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+          }}
+        >
+          {/* KakaoTalk button */}
+          <button
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#fff',
+              color: '#181600',
+              border: 'none',
+              borderRadius: 12,
+              fontWeight: 600,
+              fontSize: 16,
+              padding: '12px 0',
+              marginBottom: 24,
+              cursor: 'pointer',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)', // more pronounced shadow
+              transition: 'box-shadow 0.2s',
+            }}
+            onClick={() => window.open('https://accounts.kakao.com/login', '_blank')}
+          >
+            <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png" alt="KakaoTalk" style={{ height: 24, marginRight: 12 }} />
+            Sign in with KakaoTalk
+          </button>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', margin: '16px 0 24px 0' }}>
+            <div style={{ flex: 1, height: 1, background: '#eaf0f4' }} />
+            <span style={{ margin: '0 16px', color: '#b0b4c0', fontSize: 13 }}>or</span>
+            <div style={{ flex: 1, height: 1, background: '#eaf0f4' }} />
+          </div>
+
+          {/* Role selection */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 10, color: '#1e3a4c' }}>Who are you?</div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              {roles.map((role) => (
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => setSelectedRole(role.id)}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    padding: '12px 0',
+                    borderRadius: 10,
+                    border: selectedRole === role.id ? '2.5px solid #3ed4df' : '2px solid #e2e8f0',
+                    background: selectedRole === role.id ? '#eaf9fc' : '#fff',
+                    color: selectedRole === role.id ? '#1e3a4c' : '#718096',
+                    fontWeight: 500,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <role.icon style={{ fontSize: 22, marginBottom: 6, color: selectedRole === role.id ? '#3ed4df' : '#b0b4c0' }} />
+                  {role.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Email input */}
+          <form onSubmit={handleContinue} style={{ width: '100%' }}>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Enter your work email address."
+              style={{
+                width: '100%',
+                padding: '8px 16px',         // slimmer input
+                borderRadius: 18,            // more rounded
+                border: '2px solid #e2e8f0',
+                fontSize: 14,
+                marginBottom: 22,
+                marginTop: 8,
+                outline: 'none',
+                color: '#1e3a4c',
+                background: '#fafdff',
+                transition: 'border 0.2s',
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                background: '#44C3C3', // updated color
+                color: '#fff',
+                border: 'none',
+                borderRadius: 12,
+                fontWeight: 700,
+                fontSize: 18,
+                padding: '15px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                cursor: 'pointer',
+                marginBottom: 18,
+                boxShadow: '0 2px 8px rgba(62,212,223,0.08)',
+                transition: 'background 0.2s',
+              }}
+            >
+              Continue <FaArrowRight style={{ fontSize: 20 }} />
+            </button>
+          </form>
+
+          {/* Privacy disclaimer */}
+          <div style={{ fontSize: 12, color: '#b0b4c0', marginTop: 'auto', textAlign: 'center' }}>
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </div>
         </div>
 
-        <div className="role-selection">
-          {roles.map((role) => (
-            <button
-              key={role.id}
-              onClick={() => navigate(role.path)}
-              className="role-select-button"
-            >
-              <role.icon className="role-icon" aria-hidden="true" />
-              <div className="role-text">
-                <div className="role-name">{role.name}</div>
-                <div className="role-description">{role.description}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="form-links">
-          <div className="form-switch">
-            Already have an account?{' '}
-            <button
-              onClick={() => navigate('/auth/login')}
-              className="switch-button"
-            >
-              Sign in
-            </button>
+        {/* Right column: Welcome */}
+        <div
+          style={{
+            flex: 1,
+            padding: '40px 32px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            minWidth: 0,
+            marginTop: '-80px',
+          }}
+        >
+          <div style={{ fontSize: 28, fontWeight: 700, color: '#1e3a4c', marginBottom: 18 }}>
+            Welcome to Möbius
+          </div>
+          <div style={{ color: '#6b7280', fontSize: 16, lineHeight: 1.7, maxWidth: 440 }}>
+            <p>Möbius is a radically new type of educational resource. Built on an entirely new type of data architecture to increase operational efficiency, you’ll have scheduling systems, studen profiles and records of every performance metric within your  institution workspace in minutes, always live updated in real-time.</p>
+            <p>You’ll be able to hyperoptimize your student management 
+            exactly as you want it.</p>
+            <p style={{ marginTop: 18, fontWeight: 500 }}>Let’s begin.</p>
           </div>
         </div>
       </div>
 
+      {/* Responsive styles */}
       <style>{`
-        .role-selection {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          margin-bottom: 24px;
+        @media (max-width: 900px) {
+          .onboard-card {
+            flex-direction: column !important;
+            min-height: unset !important;
+          }
         }
-
-        .role-select-button {
-          display: flex;
-          align-items: center;
-          width: 100%;
-          padding: 20px;
-          border: 2px solid #e2e8f0;
-          border-radius: 12px;
-          background-color: white;
-          text-align: left;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .role-select-button:hover {
-          border-color: #4299e1;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(66, 153, 225, 0.15);
-        }
-
-        .role-icon {
-          width: 32px;
-          height: 32px;
-          margin-right: 20px;
-          color: #4299e1;
-          flex-shrink: 0;
-        }
-
-        .role-text {
-          flex: 1;
-        }
-
-        .role-name {
-          font-weight: 600;
-          font-size: 18px;
-          color: #2d3748;
-          margin-bottom: 4px;
-        }
-
-        .role-description {
-          font-size: 14px;
-          color: #718096;
-          line-height: 1.4;
-        }
-
-        .form-links {
-          margin-top: 24px;
-          text-align: center;
+        @media (max-width: 600px) {
+          .onboard-card {
+            margin-top: 32px !important;
+            border-radius: 12px !important;
+            box-shadow: 0 2px 12px rgba(30,58,76,0.10) !important;
+          }
+          .onboard-header {
+            left: 16px !important;
+            top: 16px !important;
+          }
         }
       `}</style>
     </div>

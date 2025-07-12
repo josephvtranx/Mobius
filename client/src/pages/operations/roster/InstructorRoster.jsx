@@ -4,34 +4,10 @@ import '../../../css/InstructorRoster.css';
 import Modal from '../../../components/Modal';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import subjectService from '../../../services/subjectService';
-import { Calendar, momentLocalizer } from 'react-big-calendar';
-import '../../../css/react-big-calendar-custom.scss';
-import { addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns';
 import instructorService from '../../../services/instructorService';
 import { useMemo } from 'react';
-import moment from 'moment';
-import { FaRegCalendarAlt } from 'react-icons/fa';
 
-const localizer = momentLocalizer(moment);
 
-function CalendarEvent({ event }) {
-  return (
-    <div className={`calendar-event ${event.type}`.trim()}>
-      <span className="event-pill">{event.type === 'availability' ? 'Available' : 'Class'}</span>
-      {event.type === 'class' && (
-        <span className="event-title">{event.title}</span>
-      )}
-    </div>
-  );
-}
-
-function CalendarHeader({ label, date }) {
-  const today = new Date();
-  const isToday = isSameDay(date, today);
-  return (
-    <span className={isToday ? 'day-pill today' : 'day-pill'}>{label}</span>
-  );
-}
 
 function InstructorRoster() {
   const [instructors, setInstructors] = useState([]);
@@ -57,13 +33,9 @@ function InstructorRoster() {
 
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  // Add state for schedule modal
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedInstructor, setSelectedInstructor] = useState(null);
-  const [calendarEvents, setCalendarEvents] = useState([]);
-  const [calendarLoading, setCalendarLoading] = useState(false);
 
-  // Fetch availability data when row expands
+
+  // Fetch availability data for a specific instructor (used for updates)
   const fetchAvailabilityData = async (instructorId) => {
     try {
       // Find the instructor to get the instructorId
@@ -120,6 +92,45 @@ function InstructorRoster() {
         });
         setInstructors(processedData);
         setError(null);
+        
+        // Fetch availability data for all instructors
+        const availabilityPromises = processedData.map(async (instructor) => {
+          if (instructor.instructorId) {
+            try {
+              const [availabilityRes, unavailabilityRes] = await Promise.all([
+                axios.get(`/api/instructors/${instructor.instructorId}/availability`),
+                axios.get(`/api/instructors/${instructor.instructorId}/unavailability`)
+              ]);
+              
+              return {
+                instructorId: instructor.id,
+                availability: availabilityRes.data,
+                unavailability: unavailabilityRes.data
+              };
+            } catch (error) {
+              console.error(`Error fetching availability for instructor ${instructor.name}:`, error);
+              return {
+                instructorId: instructor.id,
+                availability: [],
+                unavailability: []
+              };
+            }
+          }
+          return null;
+        });
+        
+        const availabilityResults = await Promise.all(availabilityPromises);
+        const availabilityMap = {};
+        availabilityResults.forEach(result => {
+          if (result) {
+            availabilityMap[result.instructorId] = {
+              availability: result.availability,
+              unavailability: result.unavailability
+            };
+          }
+        });
+        
+        setAvailabilityData(availabilityMap);
       } catch (err) {
         setError('Failed to fetch instructor data. Please try again later.');
         console.error('Error fetching instructors:', err);
@@ -259,19 +270,10 @@ function InstructorRoster() {
   };
 
   const toggleRow = (id) => {
-    setExpandedRows(prev => {
-      const newExpanded = {
-        ...prev,
-        [id]: !prev[id]
-      };
-      
-      // Fetch availability data when expanding
-      if (newExpanded[id]) {
-        fetchAvailabilityData(id);
-      }
-      
-      return newExpanded;
-    });
+    setExpandedRows(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   };
 
   // Availability management functions
@@ -382,106 +384,77 @@ function InstructorRoster() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Open schedule modal and fetch events
-  const handleViewSchedule = async (instructor) => {
-    setSelectedInstructor(instructor);
-    setShowScheduleModal(true);
-    setCalendarLoading(true);
-    try {
-      // Get current week (Mon-Sun)
-      const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-      
-      // Fetch availability using instructorId
-      const availability = await instructorService.getInstructorAvailability(instructor.instructorId);
-      
-      // Fetch class sessions using instructorId
-      const sessions = await instructorService.getInstructorSchedule(
-        instructor.instructorId,
-        weekStart.toISOString().slice(0, 10),
-        weekEnd.toISOString().slice(0, 10)
-      );
-      
-      // Transform availability to events - create events for 6 months (26 weeks)
-      const availabilityEvents = [];
-      const dayMap = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 };
-      
-      (availability || []).forEach((slot) => {
-        const dayIdx = dayMap[slot.day_of_week];
-        if (dayIdx === undefined) {
-          return;
-        }
-        
-        // Create events for 26 weeks (6 months) starting from current week
-        for (let weekOffset = 0; weekOffset < 26; weekOffset++) {
-          const weekStartDate = addDays(weekStart, weekOffset * 7);
-          const slotDate = addDays(weekStartDate, dayIdx);
-          
-          // Check if this date is within any date restrictions
-          let shouldInclude = true;
-          
-          if (slot.start_date) {
-            const startDate = new Date(slot.start_date);
-            if (slotDate < startDate) {
-              shouldInclude = false;
-            }
-          }
-          
-          if (slot.end_date) {
-            const endDate = new Date(slot.end_date);
-            if (slotDate > endDate) {
-              shouldInclude = false;
-            }
-          }
-          
-          if (shouldInclude) {
-            const [startHour, startMinute] = slot.start_time.split(':');
-            const [endHour, endMinute] = slot.end_time.split(':');
-            const start = new Date(slotDate);
-            start.setHours(Number(startHour), Number(startMinute), 0, 0);
-            const end = new Date(slotDate);
-            end.setHours(Number(endHour), Number(endMinute), 0, 0);
-            
-            const event = {
-              title: 'Available',
-              start,
-              end,
-              allDay: false,
-              type: 'availability',
-            };
-            availabilityEvents.push(event);
-          }
-        }
-      });
-      
-      // Transform sessions to events
-      const sessionEvents = (sessions || []).map((session) => {
-        const [startHour, startMinute] = session.start_time.split(':');
-        const [endHour, endMinute] = session.end_time.split(':');
-        const date = new Date(session.session_date);
-        const start = new Date(date);
-        start.setHours(Number(startHour), Number(startMinute), 0, 0);
-        const end = new Date(date);
-        end.setHours(Number(endHour), Number(endMinute), 0, 0);
-        const event = {
-          title: `${session.student_name} – ${session.subject_name}`,
-          start,
-          end,
-          allDay: false,
-          type: 'class',
-        };
-        return event;
-      });
-      
-      setCalendarEvents([...availabilityEvents, ...sessionEvents]);
-    } catch (err) {
-      console.error('Error fetching schedule data:', err);
-      setCalendarEvents([]);
-    } finally {
-      setCalendarLoading(false);
+  // Get availability days for an instructor
+  const getAvailabilityDays = (instructorId) => {
+    const instructorData = availabilityData[instructorId];
+    if (!instructorData || !instructorData.availability || instructorData.availability.length === 0) {
+      return new Set();
     }
+    
+    const availableDays = new Set();
+    instructorData.availability.forEach(slot => {
+      if (slot.status === 'active') {
+        // Map day abbreviations to our button format
+        const dayMap = {
+          'sun': 'S',
+          'mon': 'M',
+          'tue': 'T', 
+          'wed': 'W',
+          'thu': 'Th',
+          'fri': 'F',
+          'sat': 'Sa'
+        };
+        if (dayMap[slot.day_of_week]) {
+          availableDays.add(dayMap[slot.day_of_week]);
+        }
+      }
+    });
+    return availableDays;
   };
+
+  // Availability Day Buttons Component
+  const AvailabilityDayButtons = ({ instructorId }) => {
+    const availableDays = getAvailabilityDays(instructorId);
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    
+    return (
+      <div className="day-buttons-container" style={{
+        display: 'flex',
+        gap: '3px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%'
+      }}>
+        {days.map((day, index) => {
+          const isAvailable = availableDays.has(day);
+          return (
+            <div
+              key={index}
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                backgroundColor: isAvailable ? '#6b7280' : '#e5e7eb',
+                color: isAvailable ? 'white' : '#6b7280',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                fontWeight: isAvailable ? '600' : '400',
+                border: '1px solid',
+                borderColor: isAvailable ? '#6b7280' : '#d1d5db'
+              }}
+              title={isAvailable ? `Available on ${day}` : `Not available on ${day}`}
+            >
+              {day}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+
 
   if (loading) {
     return (
@@ -520,7 +493,7 @@ function InstructorRoster() {
               </th>
               <th>Total Hours</th>
               <th>Currently Teaching</th>
-              <th>Schedule</th>
+              <th style={{ textAlign: 'center' }}>Availability</th>
               <th>Edit</th>
             </tr>
           </thead>
@@ -563,16 +536,8 @@ function InstructorRoster() {
                       )}
                     </div>
                 </td>
-                <td>
-                    <button 
-                      className="view-schedule-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewSchedule(instructor);
-                      }}
-                    >
-                      View
-                    </button>
+                <td style={{ textAlign: 'center' }}>
+                  <AvailabilityDayButtons instructorId={instructor.id} />
                 </td>
                 <td>
                     <button 
@@ -769,70 +734,7 @@ function InstructorRoster() {
         </table>
       </div>
 
-      {/* Schedule Modal */}
-      {showScheduleModal && (
-        <Modal isOpen={showScheduleModal} onClose={() => setShowScheduleModal(false)}>
-          <div className="modal-header schedule-modal-header">
-            <FaRegCalendarAlt style={{ fontSize: 28, color: '#2563eb', marginRight: 12 }} />
-            <div>
-              <h2 style={{ margin: 0 }}>Weekly Schedule for {selectedInstructor?.name}</h2>
-              <div className="modal-subtitle">Mon–Sun, 8 AM–10 PM</div>
-            </div>
-            <button className="close-button modern-close" onClick={() => setShowScheduleModal(false)}>&times;</button>
-          </div>
-          <div className="modal-body schedule-modal-body">
-            {calendarLoading ? (
-              <div>Loading schedule...</div>
-            ) : (
-              <div className="calendar-wrapper">
-                <Calendar
-                  localizer={localizer}
-                  events={calendarEvents}
-                  defaultView="week"
-                  views={['week']}
-                  min={new Date(1970, 1, 1, 8, 0)}
-                  max={new Date(1970, 1, 1, 22, 0)}
-                  style={{ height: 600, background: 'transparent' }}
-                  eventPropGetter={(event) => {
-                    if (event.type === 'availability') {
-                      return {
-                        className: 'calendar-availability-event',
-                        style: {
-                          backgroundColor: '#DCF4FF',
-                          color: '#1a4b6e',
-                          border: '1px solid #b6e0fe',
-                          fontWeight: 600,
-                          borderRadius: 10,
-                          boxShadow: '0 1px 4px #b6e0fe33',
-                        },
-                      };
-                    }
-                    if (event.type === 'class') {
-                      return {
-                        className: 'calendar-class-event',
-                        style: {
-                          backgroundColor: '#FFEDD5',
-                          color: '#7c3a00',
-                          border: '1px solid #ffd6a0',
-                          fontWeight: 600,
-                          borderRadius: 10,
-                          boxShadow: '0 1px 4px #ffd6a033',
-                        },
-                      };
-                    }
-                    return {};
-                  }}
-                  components={{ event: CalendarEvent, week: { header: CalendarHeader } }}
-                  formats={{
-                    dayHeaderFormat: 'EEE d',
-                    timeGutterFormat: 'h:mm a',
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
+
 
       {/* Edit Modal using Modal component */}
       <Modal

@@ -1,20 +1,32 @@
 import express from 'express';
-import { body } from 'express-validator';
+import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Validation middleware
+// Validation middleware for new TIMESTAMPTZ fields
 const sessionValidation = [
     body('instructor_id').isInt().withMessage('Instructor ID must be a valid integer'),
     body('student_id').isInt().withMessage('Student ID must be a valid integer'),
     body('subject_id').isInt().withMessage('Subject ID must be a valid integer'),
-    body('session_date').isDate().withMessage('Session date must be a valid date'),
-    body('start_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid start time format'),
-    body('end_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid end time format'),
+    body('session_start').isISO8601().withMessage('Session start must be a valid ISO 8601 timestamp'),
+    body('session_end').isISO8601().withMessage('Session end must be a valid ISO 8601 timestamp'),
     body('location').optional().isString().withMessage('Location must be a string')
 ];
+
+// Error handling middleware for validation
+const handleValidationErrors = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        console.log('Validation errors:', errors.array());
+        return res.status(400).json({ 
+            error: 'Validation failed',
+            details: errors.array()
+        });
+    }
+    next();
+};
 
 // Get all class sessions with filters
 router.get('/', async (req, res) => {
@@ -54,13 +66,13 @@ router.get('/', async (req, res) => {
         let paramCount = 1;
 
         if (start_date) {
-            query += ` AND cs.session_date >= $${paramCount}`;
+            query += ` AND cs.session_start >= $${paramCount}::timestamptz`;
             params.push(start_date);
             paramCount++;
         }
 
         if (end_date) {
-            query += ` AND cs.session_date <= $${paramCount}`;
+            query += ` AND cs.session_end <= $${paramCount}::timestamptz`;
             params.push(end_date);
             paramCount++;
         }
@@ -82,7 +94,7 @@ router.get('/', async (req, res) => {
             params.push(status);
         }
 
-        query += ` ORDER BY cs.session_date, cs.start_time`;
+        query += ` ORDER BY cs.session_start`;
 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -134,21 +146,53 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new class session
-router.post('/', authenticateToken, sessionValidation, async (req, res) => {
+router.post('/', authenticateToken, sessionValidation, handleValidationErrors, async (req, res) => {
     try {
+        console.log('Received session creation request:', req.body);
+        
         const {
             instructor_id,
             student_id,
             subject_id,
-            session_date,
-            start_time,
-            end_time,
+            session_start,
+            session_end,
             location
         } = req.body;
 
+        // Debug: Log the received data
+        console.log('Parsed session data:', {
+            instructor_id,
+            student_id,
+            subject_id,
+            session_start,
+            session_end,
+            location
+        });
+
+        // Validate that all required fields are present
+        if (!instructor_id || !student_id || !subject_id || !session_start || !session_end) {
+            console.log('Missing required fields:', { instructor_id, student_id, subject_id, session_start, session_end });
+            return res.status(400).json({ 
+                error: 'Missing required fields',
+                required: ['instructor_id', 'student_id', 'subject_id', 'session_start', 'session_end'],
+                received: { instructor_id, student_id, subject_id, session_start, session_end }
+            });
+        }
+
         // Validate time range
-        if (start_time >= end_time) {
-            return res.status(400).json({ error: 'Start time must be before end time' });
+        const startDate = new Date(session_start);
+        const endDate = new Date(session_end);
+        
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            return res.status(400).json({ 
+                error: 'Invalid date format for session_start or session_end',
+                session_start,
+                session_end
+            });
+        }
+        
+        if (startDate >= endDate) {
+            return res.status(400).json({ error: 'Session start must be before session end' });
         }
 
         // Check if instructor exists and is active
@@ -202,78 +246,174 @@ router.post('/', authenticateToken, sessionValidation, async (req, res) => {
             return res.status(400).json({ error: 'Instructor is not qualified to teach this subject' });
         }
 
-        // Check instructor availability
+        // Check instructor availability using the new TIMESTAMPTZ fields
+        // Extract day of week from session_start - convert to local time first
+        const sessionStartDate = new Date(session_start);
+        const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
+        
+        // Convert UTC to local time for day calculation
+        const localDate = new Date(sessionStartDate.getTime() - (sessionStartDate.getTimezoneOffset() * 60000));
+        const dayOfWeek = dayMap[localDate.getDay()];
+        
+        // Extract time components from session_start and session_end
+        // Convert UTC to local time for availability checking
+        const localStartTime = new Date(session_start);
+        const localEndTime = new Date(session_end);
+        const startTime = localStartTime.toTimeString().slice(0, 5);
+        const endTime = localEndTime.toTimeString().slice(0, 5);
+        const sessionDate = localStartTime.toISOString().split('T')[0];
+        
+        console.log(`[DEBUG] Session start: ${session_start}`);
+        console.log(`[DEBUG] Session end: ${session_end}`);
+        console.log(`[DEBUG] UTC day: ${sessionStartDate.getDay()}`);
+        console.log(`[DEBUG] Local day: ${localDate.getDay()}`);
+        console.log(`[DEBUG] Day of week: ${dayOfWeek}`);
+        console.log(`[DEBUG] Start time: ${startTime}`);
+        console.log(`[DEBUG] End time: ${endTime}`);
+        console.log(`[DEBUG] Session date: ${sessionDate}`);
+        
         const instructorAvailability = await pool.query(`
             WITH availability_check AS (
                 SELECT * FROM instructor_availability
                 WHERE instructor_id = $1
-                AND day_of_week = LOWER(to_char($2::date, 'Dy'))
-                AND $3::time BETWEEN start_time AND end_time
-                AND $4::time BETWEEN start_time AND end_time
+                AND day_of_week = $2
+                AND status = 'active'
+                AND (
+                    -- Session start time is within availability
+                    ($3::time >= start_time AND $3::time < end_time)
+                    OR
+                    -- Session end time is within availability
+                    ($4::time > start_time AND $4::time <= end_time)
+                    OR
+                    -- Session completely contains availability
+                    ($3::time <= start_time AND $4::time >= end_time)
+                )
+                AND (start_date IS NULL OR start_date <= $5::date)
+                AND (end_date IS NULL OR end_date >= $5::date)
             ),
             unavailability_check AS (
                 SELECT * FROM instructor_unavailability
                 WHERE instructor_id = $1
-                AND $2::date BETWEEN DATE(start_datetime) AND DATE(end_datetime)
-                AND $3::time BETWEEN CAST(start_datetime AS time) AND CAST(end_datetime AS time)
-                AND $4::time BETWEEN CAST(start_datetime AS time) AND CAST(end_datetime AS time)
+                AND $6::timestamptz BETWEEN start_datetime AND end_datetime
+                AND (
+                    ($3::time, $4::time) OVERLAPS (
+                        CAST(start_datetime AS time), 
+                        CAST(end_datetime AS time)
+                    )
+                )
             )
             SELECT * FROM availability_check
             WHERE NOT EXISTS (
                 SELECT 1 FROM unavailability_check
             )
-        `, [instructor_id, session_date, start_time, end_time]);
+        `, [instructor_id, dayOfWeek, startTime, endTime, sessionDate, session_start]);
 
         if (instructorAvailability.rows.length === 0) {
-            return res.status(400).json({ error: 'Instructor is not available at this time' });
+            console.log(`[DEBUG] Availability check failed for instructor ${instructor_id} on ${sessionDate} (${startTime} - ${endTime})`);
+            
+            const allAvail = await pool.query(`
+                SELECT * FROM instructor_availability 
+                WHERE instructor_id = $1 AND day_of_week = $2
+            `, [instructor_id, dayOfWeek]);
+            console.log(`[DEBUG] All availability for instructor ${instructor_id} on ${dayOfWeek}:`, allAvail.rows);
+            
+            return res.status(400).json({ 
+                error: 'Instructor is not available at this time',
+                debug: {
+                    dayOfWeek,
+                    instructorId: instructor_id,
+                    sessionDate,
+                    startTime,
+                    endTime,
+                    availableSlots: allAvail.rows
+                }
+            });
         }
 
-        // Check for scheduling conflicts
+        // Check for scheduling conflicts using TIMESTAMPTZ
         const conflicts = await pool.query(`
-            SELECT * FROM class_sessions
-            WHERE (instructor_id = $1 OR student_id = $2)
-            AND session_date = $3
+            SELECT 
+                cs.*,
+                CASE 
+                    WHEN cs.instructor_id = $1 THEN 'instructor'
+                    WHEN cs.student_id = $2 THEN 'student'
+                END as conflict_type
+            FROM class_sessions cs
+            WHERE (cs.instructor_id = $1 OR cs.student_id = $2)
             AND (
-                ($4::time, $5::time) OVERLAPS (start_time, end_time)
+                ($3::timestamptz, $4::timestamptz) OVERLAPS (cs.session_start, cs.session_end)
             )
-            AND status NOT IN ('canceled', 'completed')
-        `, [instructor_id, student_id, session_date, start_time, end_time]);
+            AND cs.status NOT IN ('canceled', 'completed')
+        `, [instructor_id, student_id, session_start, session_end]);
 
         if (conflicts.rows.length > 0) {
-            return res.status(400).json({ error: 'Time slot conflicts with existing session' });
+            const conflictDetails = conflicts.rows.map(conflict => ({
+                session_id: conflict.session_id,
+                conflict_type: conflict.conflict_type,
+                session_start: conflict.session_start,
+                session_end: conflict.session_end,
+                status: conflict.status
+            }));
+            
+            console.log('Scheduling conflicts found:', conflictDetails);
+            
+            return res.status(400).json({ 
+                error: 'Time slot conflicts with existing session',
+                conflicts: conflictDetails
+            });
         }
 
-        // Create session (no credit deduction at scheduling time)
-        const result = await pool.query(`
-            INSERT INTO class_sessions (
+        // Create session using new TIMESTAMPTZ fields
+        try {
+            console.log('Attempting to create session with data:', {
                 instructor_id,
                 student_id,
                 subject_id,
-                session_date,
-                start_time,
-                end_time,
-                location,
-                status
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, 'scheduled')
-            RETURNING *
-        `, [instructor_id, student_id, subject_id, session_date, start_time, end_time, location]);
+                session_start,
+                session_end,
+                location
+            });
+            
+            // Extract old format fields for backward compatibility
+            const sessionDate = new Date(session_start).toISOString().split('T')[0];
+            const startTime = new Date(session_start).toTimeString().slice(0, 5);
+            const endTime = new Date(session_end).toTimeString().slice(0, 5);
+            
+            const result = await pool.query(`
+                INSERT INTO class_sessions (
+                    instructor_id,
+                    student_id,
+                    subject_id,
+                    session_date,
+                    start_time,
+                    end_time,
+                    session_start,
+                    session_end,
+                    location,
+                    status
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::timestamptz, $9, 'pending')
+                RETURNING *
+            `, [instructor_id, student_id, subject_id, sessionDate, startTime, endTime, session_start, session_end, location]);
 
-        // Create instructor unavailability for this specific session
-        const sessionStartDateTime = `${session_date} ${start_time}`;
-        const sessionEndDateTime = `${session_date} ${end_time}`;
-        
-        await pool.query(`
-            INSERT INTO instructor_unavailability (
-                instructor_id,
-                start_datetime,
-                end_datetime,
-                reason
-            )
-            VALUES ($1, $2::timestamp, $3::timestamp, $4)
-        `, [instructor_id, sessionStartDateTime, sessionEndDateTime, `Scheduled class session ${result.rows[0].session_id}`]);
+            console.log('Session created successfully:', result.rows[0]);
 
-        res.status(201).json(result.rows[0]);
+            // Create instructor unavailability for this specific session
+            await pool.query(`
+                INSERT INTO instructor_unavailability (
+                    instructor_id,
+                    start_datetime,
+                    end_datetime,
+                    reason
+                )
+                VALUES ($1, $2::timestamptz, $3::timestamptz, $4)
+            `, [instructor_id, session_start, session_end, `Scheduled class session ${result.rows[0].session_id}`]);
+
+            res.status(201).json(result.rows[0]);
+        } catch (dbError) {
+            console.error('Database error creating session:', dbError);
+            throw dbError;
+        }
     } catch (error) {
         console.error('Error creating class session:', error);
         res.status(500).json({ error: 'Failed to create class session' });
@@ -286,7 +426,13 @@ router.patch('/:id/status', async (req, res) => {
         const { id } = req.params;
         const { status, cancellation_reason } = req.body;
 
-        if (!['scheduled', 'completed', 'canceled', 'rescheduled'].includes(status)) {
+        // Map 'confirmed' to 'scheduled' for class sessions
+        let mappedStatus = status;
+        if (status === 'confirmed') {
+            mappedStatus = 'scheduled';
+        }
+
+        if (!['scheduled', 'completed', 'canceled', 'rescheduled', 'pending', 'declined'].includes(mappedStatus)) {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
@@ -297,23 +443,20 @@ router.patch('/:id/status', async (req, res) => {
                 cancellation_reason = $2
             WHERE session_id = $3
             RETURNING *
-        `, [status, cancellation_reason, id]);
+        `, [mappedStatus, cancellation_reason, id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Class session not found' });
         }
 
         // If session is canceled or completed, remove the unavailability record
-        if (status === 'canceled' || status === 'completed') {
+        if (mappedStatus === 'canceled' || mappedStatus === 'completed') {
             await pool.query(`
                 DELETE FROM instructor_unavailability
                 WHERE instructor_id = $1
                 AND reason LIKE $2
             `, [result.rows[0].instructor_id, `Scheduled class session ${id}%`]);
         }
-
-        // Note: No credit refund logic here since credits are only deducted when attendance is marked
-        // If a session is canceled before attendance is marked, no credits were deducted
 
         res.json(result.rows[0]);
     } catch (error) {
@@ -331,7 +474,7 @@ router.post('/:id/attendance', async (req, res) => {
         // Check if session exists and is scheduled for today or in the past
         const sessionCheck = await pool.query(`
             SELECT * FROM class_sessions
-            WHERE session_id = $1 AND session_date <= CURRENT_DATE
+            WHERE session_id = $1 AND session_start <= NOW()
         `, [id]);
 
         if (sessionCheck.rows.length === 0) {
@@ -380,11 +523,11 @@ router.get('/instructor/:instructorId', async (req, res) => {
         const params = [instructorId];
 
         if (startDate && endDate) {
-            query += ` AND cs.session_date BETWEEN $2 AND $3`;
+            query += ` AND cs.session_start >= $2::timestamptz AND cs.session_end <= $3::timestamptz`;
             params.push(startDate, endDate);
         }
 
-        query += ` ORDER BY cs.session_date ASC, cs.start_time ASC`;
+        query += ` ORDER BY cs.session_start ASC`;
 
         const result = await pool.query(query, params);
         res.json(result.rows);

@@ -1,5 +1,6 @@
 -- =============================================
 -- PostgreSQL Schema for Mobius (Time-Based Tracking Edition + Industry-Ready Financial Tables)
+-- UPDATED: Uses TIMESTAMPTZ for all relevant columns
 -- =============================================
 
 -- 1. USERS
@@ -11,8 +12,9 @@ CREATE TABLE users (
   phone          TEXT,
   role           TEXT    NOT NULL CHECK (role IN ('student','staff','instructor','admin')),
   is_active      BOOLEAN NOT NULL DEFAULT TRUE,
-  last_login     TIMESTAMP,
-  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  last_login     TIMESTAMPTZ, -- updated
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  profile_pic_url TEXT
 );
 
 -- 2. GUARDIANS
@@ -63,7 +65,7 @@ CREATE TABLE instructors (
 CREATE TABLE instructor_availability (
   availability_id SERIAL PRIMARY KEY,
   instructor_id   INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
-  day_of_week     TEXT NOT NULL CHECK (day_of_week IN ('mon','tue','wed','thu','fri','sat','sun')),
+  day_of_week     TEXT NOT NULL CHECK (day_of_week IN ('sun','mon','tue','wed','thu','fri','sat')),
   start_time      TIME NOT NULL,
   end_time        TIME NOT NULL,
   start_date      DATE,
@@ -77,8 +79,8 @@ CREATE TABLE instructor_availability (
 CREATE TABLE instructor_unavailability (
   unavail_id     SERIAL PRIMARY KEY,
   instructor_id  INT NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
-  start_datetime TIMESTAMP NOT NULL,
-  end_datetime   TIMESTAMP NOT NULL,
+  start_datetime TIMESTAMPTZ NOT NULL, -- updated
+  end_datetime   TIMESTAMPTZ NOT NULL, -- updated
   reason         TEXT,
   CHECK (end_datetime > start_datetime)
 );
@@ -137,28 +139,36 @@ CREATE TABLE class_series (
   created_by_staff_id  INT     REFERENCES staff(staff_id),
   start_date           DATE    NOT NULL,
   end_date             DATE,
-  days_of_week         TEXT[]  NOT NULL CHECK (days_of_week <@ ARRAY['mon','tue','wed','thu','fri','sat','sun']),
+  days_of_week         TEXT[]  NOT NULL CHECK (days_of_week <@ ARRAY['sun','mon','tue','wed','thu','fri','sat']),
   start_time           TIME    NOT NULL,
   end_time             TIME    NOT NULL,
   num_sessions         INT     NOT NULL,
   location             TEXT,
-  status               TEXT DEFAULT 'pending' CHECK (status IN ('pending','confirmed','in_progress','completed','canceled')),
-  instructor_confirmation_status TEXT DEFAULT 'pending' CHECK (instructor_confirmation_status IN ('pending','accepted','declined')),
+  status               TEXT DEFAULT 'pending' CHECK (
+                          status IN ('pending','confirmed','in_progress','completed','canceled','declined')
+                        ),
   notes                TEXT
 );
 
 -- 11. CLASS_SESSIONS
+-- Recommended: add session_start/session_end as TIMESTAMPTZ if you want to track moments precisely
 CREATE TABLE class_sessions (
   session_id                 SERIAL PRIMARY KEY,
   series_id                  INT REFERENCES class_series(series_id),
   instructor_id              INT     NOT NULL REFERENCES instructors(instructor_id) ON DELETE CASCADE,
   student_id                 INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
   subject_id                 INT     NOT NULL REFERENCES subjects(subject_id) ON DELETE CASCADE,
+  -- Option 1: traditional columns (date + time)
   session_date               DATE    NOT NULL,
   start_time                 TIME    NOT NULL,
   end_time                   TIME    NOT NULL,
+  -- Option 2: best practice columns (moment in time, with zone)
+  session_start              TIMESTAMPTZ,  -- recommended for new/future use
+  session_end                TIMESTAMPTZ,  -- recommended for new/future use
   location                   TEXT,
-  status                     TEXT    NOT NULL CHECK (status IN ('scheduled','completed','canceled','rescheduled')) DEFAULT 'scheduled',
+  status                     TEXT    NOT NULL CHECK (
+                          status IN ('pending','scheduled','completed','canceled','rescheduled','declined')
+                        ) DEFAULT 'pending',
   cancellation_reason        TEXT,
   rescheduled_to_session_id  INT     REFERENCES class_sessions(session_id) ON DELETE SET NULL,
   matched_availability_id    INT     REFERENCES instructor_availability(availability_id)
@@ -177,10 +187,11 @@ CREATE TABLE attendance (
 CREATE TABLE time_logs (
   log_id                   SERIAL PRIMARY KEY,
   staff_id                 INT     NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
-  clock_in                 TIMESTAMP NOT NULL,
-  clock_out                TIMESTAMP,
+  clock_in                 TIMESTAMPTZ NOT NULL, -- updated
+  clock_out                TIMESTAMPTZ, -- updated
   associated_session_id    INT     REFERENCES class_sessions(session_id) ON DELETE SET NULL,
-  notes                    TEXT
+  notes                    TEXT,
+  generated_at             TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 14. TIME_PACKAGES
@@ -197,7 +208,7 @@ CREATE TABLE student_time_packages (
   purchase_id        SERIAL PRIMARY KEY,
   student_id         INT     NOT NULL REFERENCES students(student_id) ON DELETE CASCADE,
   time_package_id    INT     NOT NULL REFERENCES time_packages(time_package_id) ON DELETE RESTRICT,
-  purchase_date      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  purchase_date      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   minutes_remaining  INT     NOT NULL CHECK (minutes_remaining >= 0),
   expiration_date    DATE,
   hours_total        NUMERIC GENERATED ALWAYS AS (minutes_remaining / 60.0) STORED
@@ -210,7 +221,7 @@ CREATE TABLE time_deductions (
   session_id      INT     NOT NULL REFERENCES class_sessions(session_id) ON DELETE CASCADE,
   time_package_id INT     NOT NULL REFERENCES student_time_packages(purchase_id) ON DELETE CASCADE,
   minutes_used    INT     NOT NULL CHECK (minutes_used > 0),
-  deducted_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  deducted_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 17. PAYROLL
@@ -221,7 +232,7 @@ CREATE TABLE payroll (
   pay_period_start  DATE    NOT NULL,
   pay_period_end    DATE    NOT NULL,
   total_pay         NUMERIC NOT NULL CHECK (total_pay >= 0),
-  generated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  generated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 18. RESCHEDULE REQUESTS
@@ -231,9 +242,9 @@ CREATE TABLE reschedule_requests (
   student_id     INT NOT NULL REFERENCES students(student_id),
   instructor_id  INT NOT NULL REFERENCES instructors(instructor_id),
   proposed_times JSONB,
-  selected_time  TIMESTAMP,
+  selected_time  TIMESTAMPTZ,
   status         TEXT CHECK (status IN ('pending','approved','declined','expired')) DEFAULT 'pending',
-  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 19. OPERATING_EXPENSES
@@ -246,7 +257,7 @@ CREATE TABLE operating_expenses (
   amount         NUMERIC NOT NULL CHECK (amount >= 0),
   expense_date   DATE NOT NULL,
   description    TEXT,
-  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 20. PAYMENT_METHODS
@@ -265,7 +276,7 @@ CREATE TABLE payments (
   method_id      INT REFERENCES payment_methods(method_id),
   description    TEXT,
   reference      TEXT, -- e.g., Stripe charge ID, check number
-  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at     TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 22. INVOICES
@@ -278,7 +289,7 @@ CREATE TABLE invoices (
   status           TEXT NOT NULL CHECK (status IN ('paid', 'pending', 'overdue', 'canceled')),
   payment_id       INT REFERENCES payments(payment_id),
   description      TEXT,
-  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 23. REFUNDS
@@ -288,7 +299,7 @@ CREATE TABLE refunds (
   amount           NUMERIC NOT NULL CHECK (amount >= 0),
   refund_date      DATE NOT NULL,
   reason           TEXT,
-  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 24. FINANCIAL_PERIODS
@@ -299,5 +310,5 @@ CREATE TABLE financial_periods (
   start_date       DATE NOT NULL,
   end_date         DATE NOT NULL,
   is_closed        BOOLEAN DEFAULT FALSE,
-  created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at       TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

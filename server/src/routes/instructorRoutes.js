@@ -14,7 +14,7 @@ const instructorValidation = [
 ];
 
 const availabilityValidation = [
-    body('day_of_week').isIn(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'])
+    body('day_of_week').isIn(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
         .withMessage('Valid day of week is required'),
     body('start_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
         .withMessage('Start time must be in HH:MM format'),
@@ -207,13 +207,13 @@ router.get('/:id/availability', async (req, res) => {
             WHERE instructor_id = $1
             ORDER BY 
                 CASE day_of_week
-                    WHEN 'mon' THEN 1
-                    WHEN 'tue' THEN 2
-                    WHEN 'wed' THEN 3
-                    WHEN 'thu' THEN 4
-                    WHEN 'fri' THEN 5
-                    WHEN 'sat' THEN 6
-                    WHEN 'sun' THEN 7
+                    WHEN 'sun' THEN 1
+                    WHEN 'mon' THEN 2
+                    WHEN 'tue' THEN 3
+                    WHEN 'wed' THEN 4
+                    WHEN 'thu' THEN 5
+                    WHEN 'fri' THEN 6
+                    WHEN 'sat' THEN 7
                 END,
                 start_time
         `, [id]);
@@ -354,30 +354,69 @@ router.get('/:id/schedule', async (req, res) => {
         const { id } = req.params;
         let { start_date, end_date } = req.query;
 
-        // Default to current week (Mon-Sun)
+        // Default to current week (Sun-Sat)
         const now = new Date();
-        if (!start_date) start_date = format(startOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-        if (!end_date) end_date = format(endOfWeek(now, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        if (!start_date) start_date = format(startOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
+        if (!end_date) end_date = format(endOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
 
-        const result = await pool.query(`
+        // Get individual sessions using new TIMESTAMPTZ fields
+        const sessionsResult = await pool.query(`
             SELECT 
                 cs.session_id,
-                cs.session_date,
-                cs.start_time,
-                cs.end_time,
+                cs.session_start,
+                cs.session_end,
                 cs.status,
                 u_s.name as student_name,
-                sub.name as subject_name
+                sub.name as subject_name,
+                'session' as type
             FROM class_sessions cs
             JOIN students s ON cs.student_id = s.student_id
             JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             WHERE cs.instructor_id = $1
-              AND cs.session_date >= $2
-              AND cs.session_date <= $3
+              AND cs.session_start >= $2::timestamptz
+              AND cs.session_end <= $3::timestamptz
               AND cs.status IN ('scheduled', 'completed', 'in_progress')
-            ORDER BY cs.session_date, cs.start_time
         `, [id, start_date, end_date]);
+
+        // Get class series (keeping old format for now since class_series table might not be updated yet)
+        const seriesResult = await pool.query(`
+            SELECT 
+                cs.series_id as session_id,
+                cs.start_date as session_date,
+                cs.start_time,
+                cs.end_time,
+                cs.status,
+                u_s.name as student_name,
+                sub.name as subject_name,
+                'series' as type
+            FROM class_series cs
+            JOIN students s ON cs.student_id = s.student_id
+            JOIN users u_s ON s.student_id = u_s.user_id
+            JOIN subjects sub ON cs.subject_id = sub.subject_id
+            WHERE cs.instructor_id = $1
+              AND cs.start_date <= $3
+              AND (cs.end_date IS NULL OR cs.end_date >= $2)
+              AND cs.status IN ('confirmed', 'in_progress', 'pending')
+        `, [id, start_date, end_date]);
+
+        // Combine and sort results
+        const allClasses = [...sessionsResult.rows, ...seriesResult.rows];
+        const result = {
+            rows: allClasses.sort((a, b) => {
+                // Handle both old and new format
+                const aDate = a.session_start ? new Date(a.session_start) : new Date(a.session_date);
+                const bDate = b.session_start ? new Date(b.session_start) : new Date(b.session_date);
+                const dateComparison = aDate - bDate;
+                if (dateComparison !== 0) return dateComparison;
+                
+                // For old format, compare times
+                if (a.start_time && b.start_time) {
+                    return a.start_time.localeCompare(b.start_time);
+                }
+                return 0;
+            })
+        };
 
         res.json(result.rows);
     } catch (error) {

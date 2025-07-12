@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import authService from '../services/authService';
-import eventService from '../services/eventService';
-import { format } from 'date-fns';
+import classSessionService from '../services/classSessionService';
+import { formatLocalTime } from '../utils/timeUtils';
+import '../css/Scheduling.css';
 
-function Events() {
+const Events = ({ calendarRange }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,27 +12,18 @@ function Events() {
     const fetchEvents = async () => {
       try {
         setLoading(true);
-        setError(null);
+        const response = await classSessionService.getAllSessions();
         
-        const currentUser = authService.getCurrentUser();
-        if (!currentUser) {
-          setError('No user found');
-          return;
+        // Filter events based on calendar range if provided
+        let filteredEvents = response;
+        if (calendarRange && calendarRange.start && calendarRange.end) {
+          filteredEvents = response.filter(event => {
+            const eventStart = new Date(event.session_start);
+            return eventStart >= calendarRange.start && eventStart <= calendarRange.end;
+          });
         }
-
-        // Get upcoming events for the next 7 days
-        const userEvents = await eventService.getUpcomingEvents(
-          currentUser.user_id, 
-          currentUser.role
-        );
-
-        // Sort events by date and time
-        const sortedEvents = userEvents
-          .filter(event => event.status === 'scheduled' || event.status === 'in_progress')
-          .sort((a, b) => new Date(a.start) - new Date(b.start))
-          .slice(0, 10); // Limit to 10 events for display
-
-        setEvents(sortedEvents);
+        
+        setEvents(filteredEvents);
       } catch (err) {
         console.error('Error fetching events:', err);
         setError('Failed to load events');
@@ -42,86 +33,38 @@ function Events() {
     };
 
     fetchEvents();
-  }, []);
+  }, [calendarRange]);
 
-  const formatEventTime = (startTime) => {
-    try {
-      const [hours, minutes] = startTime.split(':');
-      const date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      return format(date, 'h:mm a');
-    } catch (error) {
-      return startTime;
-    }
-  };
-
-  const formatEventDate = (dateString) => {
-    try {
-      const date = new Date(dateString);
-      return format(date, 'MMM d');
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  const getEventTitle = (event) => {
-    const currentUser = authService.getCurrentUser();
-    
-    switch (currentUser?.role) {
-      case 'student':
-        return `${event.title} with ${event.instructorName || 'Instructor'}`;
-      case 'instructor':
-        return `${event.title} - ${event.studentName || 'Student'}`;
-      case 'staff':
-        return `${event.title} - ${event.instructorName || 'Instructor'} & ${event.studentName || 'Student'}`;
-      default:
-        return event.title;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="events-section">
-        <h3>Events</h3>
-        <div className="events-loading">Loading events...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="events-section">
-        <h3>Events</h3>
-        <div className="events-error">{error}</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="events-loading">Loading events...</div>;
+  if (error) return <div className="events-error">{error}</div>;
 
   return (
     <div className="events-section">
-      <h3>Events</h3>
+      <h3>Upcoming Events</h3>
       {events.length === 0 ? (
-        <div className="events-empty">
-          <p>No upcoming events</p>
-        </div>
+        <p className="events-empty">No events scheduled</p>
       ) : (
-        <ul className="events-list">
+      <ul className="events-list">
           {events.map((event) => (
-            <li key={event.id} className="event-item">
+            <li key={event.session_id} className="event-item">
               <div className="event-header">
-                <span className="event-date">{formatEventDate(event.date)}</span>
-                <span className="event-time">{formatEventTime(event.startTime)}</span>
+                <span className="event-date">
+                  {new Date(event.session_start).toLocaleDateString()}
+                </span>
+                <span className="event-time">
+                  {formatLocalTime(event.session_start)}
+                </span>
               </div>
-              <h4 className="event-title">{getEventTitle(event)}</h4>
-              {event.location && (
-                <p className="event-location">{event.location}</p>
-              )}
-            </li>
+              <div className="event-title">{event.subject_name}</div>
+              <div className="event-location">
+                {event.student?.name || 'Unknown'} with {event.instructor?.name || 'Unknown'}
+              </div>
+        </li>
           ))}
-        </ul>
+      </ul>
       )}
     </div>
   );
-}
+};
 
 export default Events; 

@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import SideNav from './components/SideNav';
 import Header from './components/Header';
 import Home from './pages/Home';
+import Landing from './pages/Landing';
 import Login from './pages/auth/Login';
 import RoleSelect from './pages/auth/RoleSelect';
 import StudentRegistration from './pages/auth/StudentRegistration';
@@ -55,17 +56,18 @@ function App() {
 function AppContent() {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
-  const variant = location.pathname === '/home' || location.pathname.startsWith('/operations') ? 'orange' : 'teal';
+  const isLandingPage = location.pathname === '/';
+  const variant = isAuthRoute ? 'auth' : (location.pathname === '/home' || location.pathname.startsWith('/operations') ? 'orange' : 'teal');
 
   return (
     <div className="app">
-      {/* Header - Show on all pages except home */}
-      {location.pathname !== '/home' && <Header variant={variant} />}
+      {/* Header - Show on all pages except home and landing */}
+      {location.pathname !== '/home' && !isLandingPage && <Header variant={variant} />}
       
       {/* Main content area */}
       <div className={`main-content ${isAuthRoute ? 'auth-layout' : 'app-layout'}`}>
-        {/* Navigation and Profile - Only show on non-auth routes */}
-        {!isAuthRoute && (
+        {/* Navigation and Profile - Only show on non-auth routes and not landing */}
+        {!isAuthRoute && !isLandingPage && (
           <>
             <nav className="side-nav-container">
               <SideNav />
@@ -77,18 +79,15 @@ function AppContent() {
         {/* Routes */}
         <div className="content-area">
           <Routes>
+            {/* Landing page */}
+            <Route path="/" element={<Landing />} />
+            
             {/* Auth routes */}
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/role-select" element={<RoleSelect />} />
             <Route path="/auth/register/student" element={<StudentRegistration />} />
             <Route path="/auth/register/instructor" element={<InstructorRegistration />} />
             <Route path="/auth/register/staff" element={<StaffRegistration />} />
-            
-            {/* Root path redirects to login */}
-            <Route
-              path="/"
-              element={<Navigate to="/auth/login" replace />}
-            />
 
             {/* Redirect /login to /auth/login */}
             <Route
@@ -228,6 +227,16 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Payments />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Profile route */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

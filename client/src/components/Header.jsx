@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 
-function Header({ variant = 'teal' }) {
+function Header({ variant = 'default' }) {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
   const user = authService.getCurrentUser();
@@ -30,6 +30,7 @@ function Header({ variant = 'teal' }) {
       '/operations/finance/income': 'Income Breakdown',
       '/operations/finance/costs': 'Cost Breakdown',
       '/operations/finance/payments': 'Payments',
+      '/profile': 'Profile Settings',
     };
 
     return routeTitles[path] || 'Møbius Academy';
@@ -38,6 +39,30 @@ function Header({ variant = 'teal' }) {
   // Determine title color based on variant
   const titleColorClass = variant === 'teal' ? 'title--teal' : 'title--orange';
 
+  if (variant === 'auth') {
+    return (
+      <header
+        className="header header--auth"
+        style={{
+          width: '100%',
+          background: '#eaf9fc',
+          padding: '24px 0 16px 0',
+          boxShadow: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          position: 'relative',
+          zIndex: 20,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', marginLeft: 40 }}>
+          <img src="/logo.png" alt="Mobius Logo" style={{ height: 40 }} />
+        </div>
+      </header>
+    );
+  }
+
+  // Default header (existing app header)
   return (
     <header className={`header ${isAuthRoute ? 'header--auth' : ''}`}>
       {/* Logo - Always show */}

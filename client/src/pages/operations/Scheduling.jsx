@@ -11,8 +11,11 @@ import classSeriesService from '../../services/classSeriesService';
 import classSessionService from '../../services/classSessionService';
 import timePackageService from '../../services/timePackageService';
 import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns';
+import { createSessionTimestamps } from '../../utils/timeUtils';
 
 function Scheduling() {
+  // Tab state
+  const [activeTab, setActiveTab] = useState('scheduling');
   // Form state
   const [formData, setFormData] = useState({
     student: '',
@@ -207,6 +210,18 @@ function Scheduling() {
     setIsLoadingPending(true);
     try {
       const data = await classSeriesService.getPendingClassSeries();
+      console.log('[DEBUG] Pending classes data received:', data);
+      console.log('[DEBUG] Number of pending classes:', data.length);
+      data.forEach((item, index) => {
+        console.log(`[DEBUG] Item ${index}:`, {
+          series_id: item.series_id,
+          session_id: item.session_id,
+          student: item.student?.name,
+          instructor: item.instructor?.name,
+          subject: item.subject_name,
+          status: item.status
+        });
+      });
       setPendingClasses(data);
     } catch (error) {
       console.error('Error fetching pending classes:', error);
@@ -454,11 +469,21 @@ function Scheduling() {
     if (!formData.location) newErrors.location = 'Location is required';
     if (!formData.numSessions || formData.numSessions < 1) newErrors.numSessions = 'Number of sessions must be at least 1';
 
-    // Prevent scheduling in the past
+    // Prevent scheduling in the past - simplified local time approach
     const now = new Date();
+    
     for (const block of allTimeBlocks) {
-      // block.date is yyyy-mm-dd, block.startTime is HH:mm
-      const blockDateTime = new Date(`${block.date}T${block.startTime}`);
+      // Create datetime string in local timezone
+      const blockDateTimeString = `${block.date}T${block.startTime}`;
+      const blockDateTime = new Date(blockDateTimeString);
+      
+      console.log('Simple date validation:', {
+        blockDateTimeString,
+        blockDateTime,
+        now,
+        isPast: blockDateTime < now
+      });
+      
       if (blockDateTime < now) {
         newErrors.pastDate = 'Cannot schedule a class in the past.';
         break;
@@ -543,9 +568,6 @@ function Scheduling() {
     setIsSubmitting(true);
     try {
       const selectedDays = getSelectedDays();
-      const startTime = selectedBlockValues.startTime;
-      const duration = selectedBlockValues.duration;
-      const endTime = calculateEndTime(startTime, duration);
       const allTimeBlocks = selectedTimeSlots;
       console.log('All time blocks found:', allTimeBlocks);
       console.log('Selected time slots state:', selectedTimeSlots);
@@ -559,6 +581,7 @@ function Scheduling() {
         }
         return new Date(a.date) - new Date(b.date);
       });
+      
       if (formData.sessionType === 'multiple') {
         // Create a class series and all sessions
         // Gather info for the series
@@ -568,7 +591,6 @@ function Scheduling() {
         const num_sessions = sortedTimeBlocks.length;
         // Use the first block's start/end time for the series
         const firstBlock = sortedTimeBlocks[0];
-        const lastBlock = sortedTimeBlocks[sortedTimeBlocks.length - 1];
         
         // Create sessions array from the selected time blocks
         const sessions = sortedTimeBlocks.map(timeBlock => ({
@@ -580,7 +602,7 @@ function Scheduling() {
         const seriesData = {
           subject_id: formData.subject,
           student_id: formData.student,
-          instructor_id: selectedInstructorId,
+          instructor_id: selectedInstructorId, // Add instructor assignment
           start_date,
           end_date,
           days_of_week: daysOfWeek,
@@ -594,20 +616,26 @@ function Scheduling() {
         console.log('Sending series data:', seriesData);
         await classSeriesService.createClassSeries(seriesData);
       } else {
-        // One-time session: create individual class session
+        // One-time session: create individual class session using classSessionService
         const sessionPromises = sortedTimeBlocks.map(async (timeBlock, index) => {
           const sessionEndTime = calculateEndTime(timeBlock.startTime, timeBlock.duration);
-          return classSeriesService.createOneTimeClass({
-            instructor_id: selectedInstructorId,
-            student_id: formData.student,
-            subject_id: formData.subject,
-            session_date: timeBlock.date,
-            start_time: timeBlock.startTime,
-            end_time: sessionEndTime,
-            location: formData.location,
-            notes: formData.notes,
-            series_id: null // Will be updated when we implement series grouping
-          });
+          
+          // Use utility function to create TIMESTAMPTZ timestamps
+          const timestamps = createSessionTimestamps(
+            timeBlock.date, 
+            timeBlock.startTime, 
+            timeBlock.duration
+          );
+          
+          const sessionData = {
+            instructor_id: parseInt(selectedInstructorId),
+            student_id: parseInt(formData.student),
+            subject_id: parseInt(formData.subject),
+            ...timestamps,
+            location: formData.location
+          };
+          console.log('Creating session with TIMESTAMPTZ data:', sessionData);
+          return classSessionService.createSession(sessionData);
         });
         await Promise.all(sessionPromises);
       }
@@ -630,7 +658,7 @@ function Scheduling() {
         sessionType: 'one-time' 
       });
       setPreferences({
-        preferredDays: { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false },
+        preferredDays: { sun: false, mon: false, tue: false, wed: false, thu: false, fri: false, sat: false },
         preferredStartTime: '09:00',
         duration: 60
       });
@@ -644,7 +672,20 @@ function Scheduling() {
       await fetchPendingClasses();
     } catch (error) {
       console.error('Error creating class:', error);
-      alert(error.response?.data?.error || 'Failed to create class');
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
+      
+      // Show detailed conflict information if available
+      if (error.response?.data?.conflicts) {
+        const conflicts = error.response.data.conflicts;
+        let conflictMessage = 'Time slot conflicts with existing sessions:\n\n';
+        conflicts.forEach(conflict => {
+          conflictMessage += `- ${conflict.conflict_type} conflict: ${conflict.session_date} ${conflict.start_time}-${conflict.end_time} (${conflict.status})\n`;
+        });
+        alert(conflictMessage);
+      } else {
+        alert(error.response?.data?.error || 'Failed to create class');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -653,9 +694,20 @@ function Scheduling() {
   // Pending class actions
   const handleEdit = (id) => console.log('Edit class:', id);
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this class series?')) {
+    if (window.confirm('Are you sure you want to delete this class?')) {
       try {
-        await classSeriesService.deleteClassSeries(id);
+        // Check if it's a single session or class series by looking at the pending classes
+        const classItem = pendingClasses.find(item => (item.session_id || item.series_id) === id);
+        const isSingleSession = classItem?.session_id !== undefined;
+        
+        if (isSingleSession) {
+          // Delete single session
+          await classSessionService.deleteSession(id);
+        } else {
+          // Delete class series
+          await classSeriesService.deleteClassSeries(id);
+        }
+        
         fetchPendingClasses();
         
         // Refresh calendar data to show updated availability
@@ -663,10 +715,10 @@ function Scheduling() {
           window.refreshCalendarData();
         }
         
-        alert('Class series deleted successfully');
+        alert('Class deleted successfully');
       } catch (error) {
-        console.error('Error deleting class series:', error);
-        alert(error.response?.data?.error || 'Failed to delete class series');
+        console.error('Error deleting class:', error);
+        alert(error.response?.data?.error || 'Failed to delete class');
       }
     }
   };
@@ -836,371 +888,447 @@ function Scheduling() {
     }
   };
 
+  // Move this to the top level
+  const handleEventsUpdate = useCallback((events) => {
+    // Extract all student preference events (purple/colored blocks) from the calendar
+    // This excludes instructor availability (green) and existing sessions (yellow)
+    const preferenceEvents = events.filter(event => event.type === 'preference');
+    console.log('Preference events:', preferenceEvents);
+    
+    // Debug: Log the first event to see its structure
+    if (preferenceEvents.length > 0) {
+      console.log('First preference event details:', {
+        event: preferenceEvents[0],
+        startTime: preferenceEvents[0].startTime,
+        startTimeString: preferenceEvents[0].start.toTimeString(),
+        startTimeStringSlice: preferenceEvents[0].start.toTimeString().slice(0, 5),
+        start: preferenceEvents[0].start,
+        end: preferenceEvents[0].end
+      });
+    }
+    
+    const timeBlocks = preferenceEvents.map(event => ({
+      instructor: { id: selectedInstructorId },
+      date: event.start.toISOString().split('T')[0],
+      startTime: event.startTime || event.start.toTimeString().slice(0, 5),
+      endTime: event.endTime || event.end.toTimeString().slice(0, 5),
+      dayOfWeek: event.dayOfWeek || event.start.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase(),
+      duration: event.duration,
+      sessionNumber: event.sessionNumber
+    }));
+    console.log('Setting selectedTimeSlots:', timeBlocks);
+    setSelectedTimeSlots(timeBlocks);
+  }, [selectedInstructorId]);
+
   return (
     <div className="page-container">
       <div className="main">
         <section className="dashboard-main">
-          
-          <form className="create-class-form" onSubmit={handleSubmit}>
-            {/* Student & Subject Selection - Horizontal Layout */}
-            <div className="form-row">
-              <div className="form-group compact">
-                <label>Student</label>
-                <SearchableDropdown
-                  options={students}
-                  value={formData.student}
-                  onChange={(student) => handleSelect('student', student)}
-                  placeholder="Select student..."
-                  isLoading={isLoading.students}
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                />
-                {errors.student && <span className="error-message">{errors.student}</span>}
-              </div>
-              
-              <div className="form-group compact">
-                <label>Subject Group</label>
-                <SearchableDropdown
-                  options={subjectGroups}
-                  value={formData.subjectGroup}
-                  onChange={(value) => handleSelect('subjectGroup', value)}
-                  placeholder="Select group"
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                  className={errors.subjectGroup ? 'error' : ''}
-                />
-                {errors.subjectGroup && <span className="error-message">{errors.subjectGroup}</span>}
-              </div>
+          {/* Tab Switcher */}
+          <div className="scheduling-tabs" style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+            <button
+              className={`tab${activeTab === 'scheduling' ? ' active' : ''}`}
+              onClick={() => setActiveTab('scheduling')}
+              style={{
+                padding: '8px 20px',
+                borderRadius: '6px 6px 0 0',
+                border: 'none',
+                background: activeTab === 'scheduling' ? '#f3f4f6' : '#e5e7eb',
+                fontWeight: 600,
+                color: activeTab === 'scheduling' ? '#1e293b' : '#6b7280',
+                borderBottom: activeTab === 'scheduling' ? '2px solid #3b82f6' : '2px solid transparent',
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              Scheduling
+            </button>
+            <button
+              className={`tab${activeTab === 'confirmations' ? ' active' : ''}`}
+              onClick={() => setActiveTab('confirmations')}
+              style={{
+                padding: '8px 20px',
+                borderRadius: '6px 6px 0 0',
+                border: 'none',
+                background: activeTab === 'confirmations' ? '#f3f4f6' : '#e5e7eb',
+                fontWeight: 600,
+                color: activeTab === 'confirmations' ? '#1e293b' : '#6b7280',
+                borderBottom: activeTab === 'confirmations' ? '2px solid #3b82f6' : '2px solid transparent',
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              Pending Instructor Confirmations
+            </button>
+          </div>
 
-              <div className="form-group compact">
-                <label>Class</label>
-                <SearchableDropdown
-                  options={subjects}
-                  value={formData.subject}
-                  onChange={(value) => handleSelect('subject', value)}
-                  placeholder="Select subject"
-                  getOptionLabel={(option) => option.name}
-                  getOptionValue={(option) => option.id}
-                  className={errors.subject ? 'error' : ''}
-                  disabled={!formData.subjectGroup}
-                />
-                {errors.subject && <span className="error-message">{errors.subject}</span>}
-              </div>
-            </div>
-            
-            {/* Main Scheduling Interface */}
-            <div className="smart-scheduling-interface">
-              <div className="instructor-list-container">
-                <h3 className="instructor-list-title">Student Preferences</h3>
-                <div className="preferences-container">
-                  <div className="form-group">
-                    <label>Preferred Days</label>
-                    <div className="day-checkboxes">
-                      {Object.entries(preferences.preferredDays).map(([day, checked]) => {
-                        const dayLabels = {
-                          mon: 'M',
-                          tue: 'T', 
-                          wed: 'W',
-                          thu: 'Th',
-                          fri: 'F',
-                          sat: 'Sa',
-                          sun: 'Su'
-                        };
-                        return (
-                          <label key={day} className={`day-checkbox ${checked ? 'selected' : ''}`}>
-                            <input 
-                              type="checkbox" 
-                              name="preferredDays" 
-                              value={day} 
-                              checked={checked} 
-                              onChange={handlePreferencesChange}
-                            />
-                            <span className="day-label">{dayLabels[day]}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
+          {/* Scheduling Tab Content */}
+          {activeTab === 'scheduling' && (
+            <>
+              <form className="create-class-form" onSubmit={handleSubmit}>
+                {/* Student & Subject Selection - Horizontal Layout */}
+                <div className="form-row">
+                  <div className="form-group compact">
+                    <label>Student</label>
+                    <SearchableDropdown
+                      options={students}
+                      value={formData.student}
+                      onChange={(student) => handleSelect('student', student)}
+                      placeholder="Select student..."
+                      isLoading={isLoading.students}
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                    />
+                    {errors.student && <span className="error-message">{errors.student}</span>}
                   </div>
                   
-                  <div className="form-group">
-                    <label>Session Type</label>
-                    <div className="session-type-container">
-                      <div className="toggle-switch-container">
-                        <span className={`toggle-label ${formData.sessionType === 'one-time' ? 'active' : ''}`}>
-                          One-time
-                        </span>
-                        <label className="toggle-switch">
-                          <input 
-                            type="checkbox" 
-                            name="sessionType" 
-                            checked={formData.sessionType === 'multiple'} 
-                            onChange={(e) => {
-                              const newSessionType = e.target.checked ? 'multiple' : 'one-time';
-                              const newNumSessions = e.target.checked ? Math.max(1, studentBlockCount) : 1;
-                              
-                              // For one-time sessions, just ensure we have at least one day selected
-                              if (newSessionType === 'one-time') {
-                                const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
-                                if (selectedDays === 0) {
-                                  // If no days are selected, default to Monday
-                                  const newPreferences = { ...preferences };
-                                  Object.keys(newPreferences.preferredDays).forEach(day => {
-                                    newPreferences.preferredDays[day] = false;
-                                  });
-                                  newPreferences.preferredDays['mon'] = true;
-                                  setPreferences(newPreferences);
-                                }
-                              }
-                              // For multiple sessions, keep all currently selected days
-                              
-                              handleInputChange({
-                                target: {
-                                  name: 'sessionType',
-                                  value: newSessionType
-                                }
-                              });
-                              handleSessionCountChange(newNumSessions);
-                            }}
-                          />
-                          <span className="toggle-slider"></span>
-                        </label>
-                        <span className={`toggle-label ${formData.sessionType === 'multiple' ? 'active' : ''}`}>
-                          Multiple
-                        </span>
+                  <div className="form-group compact">
+                    <label>Subject Group</label>
+                    <SearchableDropdown
+                      options={subjectGroups}
+                      value={formData.subjectGroup}
+                      onChange={(value) => handleSelect('subjectGroup', value)}
+                      placeholder="Select group"
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      className={errors.subjectGroup ? 'error' : ''}
+                    />
+                    {errors.subjectGroup && <span className="error-message">{errors.subjectGroup}</span>}
+                  </div>
+
+                  <div className="form-group compact">
+                    <label>Class</label>
+                    <SearchableDropdown
+                      options={subjects}
+                      value={formData.subject}
+                      onChange={(value) => handleSelect('subject', value)}
+                      placeholder="Select subject"
+                      getOptionLabel={(option) => option.name}
+                      getOptionValue={(option) => option.id}
+                      className={errors.subject ? 'error' : ''}
+                      disabled={!formData.subjectGroup}
+                    />
+                    {errors.subject && <span className="error-message">{errors.subject}</span>}
+                  </div>
+                </div>
+                
+                {/* Main Scheduling Interface */}
+                <div className="smart-scheduling-interface">
+                  <div className="instructor-list-container">
+                    <h3 className="instructor-list-title">Student Preferences</h3>
+                    <div className="preferences-container">
+                      <div className="form-group">
+                        <label>Preferred Days</label>
+                        <div className="day-checkboxes">
+                          {Object.entries(preferences.preferredDays).map(([day, checked]) => {
+                            const dayLabels = {
+                              mon: 'M',
+                              tue: 'T', 
+                              wed: 'W',
+                              thu: 'Th',
+                              fri: 'F',
+                              sat: 'Sa',
+                              sun: 'Su'
+                            };
+                            return (
+                              <label key={day} className={`day-checkbox ${checked ? 'selected' : ''}`}>
+                                <input 
+                                  type="checkbox" 
+                                  name="preferredDays" 
+                                  value={day} 
+                                  checked={checked} 
+                                  onChange={handlePreferencesChange}
+                                />
+                                <span className="day-label">{dayLabels[day]}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
                       
-                      {formData.sessionType === 'multiple' && (
-                        <div className="session-count-container">
-                          <label className="session-count-label">Number of Sessions:</label>
-                          <div className="session-count-controls">
-                            <button 
-                              type="button" 
-                              className="session-count-btn minus"
-                              disabled={formData.sessionType === 'one-time'}
-                              onClick={() => {
-                                const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
-                                const minSessions = formData.sessionType === 'multiple' ? Math.max(selectedDays, 1) : 1;
-                                const newValue = Math.max(minSessions, (formData.numSessions || 1) - 1);
-                                handleSessionCountChange(newValue);
-                              }}
-                            >
-                              −
-                            </button>
-                            <span className="session-count-display">{formData.numSessions || 1}</span>
-                            <button 
-                              type="button" 
-                              className="session-count-btn plus"
-                              disabled={formData.sessionType === 'one-time'}
-                              onClick={() => {
-                                const newValue = Math.min(50, (formData.numSessions || 1) + 1);
-                                handleSessionCountChange(newValue);
-                              }}
-                            >
-                              +
-                            </button>
+                      <div className="form-group">
+                        <label>Session Type</label>
+                        <div className="session-type-container">
+                          <div className="toggle-switch-container">
+                            <span className={`toggle-label ${formData.sessionType === 'one-time' ? 'active' : ''}`}>
+                              One-time
+                            </span>
+                            <label className="toggle-switch">
+                              <input 
+                                type="checkbox" 
+                                name="sessionType" 
+                                checked={formData.sessionType === 'multiple'} 
+                                onChange={(e) => {
+                                  const newSessionType = e.target.checked ? 'multiple' : 'one-time';
+                                  const newNumSessions = e.target.checked ? Math.max(1, studentBlockCount) : 1;
+                                  
+                                  // For one-time sessions, just ensure we have at least one day selected
+                                  if (newSessionType === 'one-time') {
+                                    const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+                                    if (selectedDays === 0) {
+                                      // If no days are selected, default to Monday
+                                      const newPreferences = { ...preferences };
+                                      Object.keys(newPreferences.preferredDays).forEach(day => {
+                                        newPreferences.preferredDays[day] = false;
+                                      });
+                                      newPreferences.preferredDays['mon'] = true;
+                                      setPreferences(newPreferences);
+                                    }
+                                  }
+                                  // For multiple sessions, keep all currently selected days
+                                  
+                                  handleInputChange({
+                                    target: {
+                                      name: 'sessionType',
+                                      value: newSessionType
+                                    }
+                                  });
+                                  handleSessionCountChange(newNumSessions);
+                                }}
+                              />
+                              <span className="toggle-slider"></span>
+                            </label>
+                            <span className={`toggle-label ${formData.sessionType === 'multiple' ? 'active' : ''}`}>
+                              Multiple
+                            </span>
+                          </div>
+                          
+                          {formData.sessionType === 'multiple' && (
+                            <div className="session-count-container">
+                              <label className="session-count-label">Number of Sessions:</label>
+                              <div className="session-count-controls">
+                                <button 
+                                  type="button" 
+                                  className="session-count-btn minus"
+                                  disabled={formData.sessionType === 'one-time'}
+                                  onClick={() => {
+                                    const selectedDays = Object.values(preferences.preferredDays).filter(Boolean).length;
+                                    const minSessions = formData.sessionType === 'multiple' ? Math.max(selectedDays, 1) : 1;
+                                    const newValue = Math.max(minSessions, (formData.numSessions || 1) - 1);
+                                    handleSessionCountChange(newValue);
+                                  }}
+                                >
+                                  −
+                                </button>
+                                <span className="session-count-display">{formData.numSessions || 1}</span>
+                                <button 
+                                  type="button" 
+                                  className="session-count-btn plus"
+                                  disabled={formData.sessionType === 'one-time'}
+                                  onClick={() => {
+                                    const newValue = Math.min(50, (formData.numSessions || 1) + 1);
+                                    handleSessionCountChange(newValue);
+                                  }}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="form-group time-group">
+                        <label>
+                          Start Time
+                          <input 
+                            type="time" 
+                            name="preferredStartTime" 
+                            value={selectedBlockValues.startTime} 
+                            onChange={handleSelectedBlockChange} 
+                            className={`${formData.selectedTimeSlot ? 'selected-block' : ''} ${formData.selectedTimeSlot ? 'editable-block' : ''}`}
+                          />
+                        </label>
+                        <label>
+                          Duration
+                          <div 
+                            className={`duration-display ${formData.selectedTimeSlot ? 'selected-block' : ''}`}
+                          >
+                            {selectedBlockValues.duration} min
+                          </div>
+                        </label>
+                      </div>
+                      
+
+                    </div>
+
+                    <h3 className="instructor-list-title">Qualified Instructors</h3>
+                    {errors.instructor && <span className="error-message">{errors.instructor}</span>}
+                    <div className="instructor-list">
+                      {getFilteredInstructors().map(instructor => (
+                        <div key={instructor.id}
+                          className={`instructor-list-item ${selectedInstructorId === instructor.id ? 'selected' : ''}`}
+                          onClick={() => setSelectedInstructorId(instructor.id)}>
+                          <span className="instructor-name">{instructor.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="calendar-view-container">
+                    <DndProvider backend={HTML5Backend}>
+                      <SmartSchedulingCalendar
+                        studentPreferences={preferences}
+                        selectedInstructorId={selectedInstructorId}
+                        onTimeSlotSelect={handleTimeSlotSelect}
+                        selectedTimeSlot={formData.selectedTimeSlot}
+                        studentId={formData.student}
+                        subjectId={formData.subject}
+                        selectedStudent={students.find(s => s.id === formData.student)}
+                        sessionCount={formData.numSessions}
+                        sessionType={formData.sessionType}
+                        calendarRange={calendarRange}
+                        anchorStartDate={anchorStartDate}
+                        onRangeChange={handleCalendarRangeChange}
+                        height={670}
+                        viewMode="scheduling"
+                        selectedStudentSessions={selectedStudentSessions}
+                        onResetBlocks={() => {
+                          setAnchorStartDate(calendarRange.start);
+                          setSelectedTimeSlots([]);
+                        }}
+                        onEventsUpdate={handleEventsUpdate}
+                      />
+                    </DndProvider>
+                    {errors.selectedTimeSlot && <span className="error-message">{errors.selectedTimeSlot}</span>}
+                  </div>
+                </div>
+
+                {/* Time Availability Warning */}
+                {formData.student && selectedTimeSlots.length > 0 && (() => {
+                  const timeCheck = checkTimeAvailability();
+                  if (!timeCheck.hasSufficientTime) {
+                    return (
+                      <div className="time-warning-container" style={{
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #f59e0b',
+                        borderRadius: '8px',
+                        padding: '12px 16px',
+                        marginBottom: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}>
+                        <div style={{
+                          color: '#d97706',
+                          fontSize: '18px'
+                        }}>
+                          
+                        </div>
+                        <div>
+                          <div style={{
+                            fontWeight: '600',
+                            color: '#92400e',
+                            marginBottom: '4px'
+                          }}>
+                            Insufficient Hours
+                          </div>
+                          <div style={{
+                            color: '#92400e',
+                            fontSize: '14px'
+                          }}>
+                            Student needs {Math.ceil(timeCheck.totalNeeded / 60)} hours but only has {Math.ceil(timeCheck.availableTime / 60)} hours available.
+                            {timeCheck.deficit > 0 && (
+                              <span style={{ fontWeight: '500' }}>
+                                {' '}Additional {Math.ceil(timeCheck.deficit / 60)} hours required.
+                              </span>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="form-group time-group">
-                    <label>
-                      Start Time
-                      <input 
-                        type="time" 
-                        name="preferredStartTime" 
-                        value={selectedBlockValues.startTime} 
-                        onChange={handleSelectedBlockChange} 
-                        className={`${formData.selectedTimeSlot ? 'selected-block' : ''} ${formData.selectedTimeSlot ? 'editable-block' : ''}`}
-                      />
-                    </label>
-                    <label>
-                      Duration
-                      <div 
-                        className={`duration-display ${formData.selectedTimeSlot ? 'selected-block' : ''}`}
-                      >
-                        {selectedBlockValues.duration} min
                       </div>
-                    </label>
-                  </div>
-                  
+                    );
+                  }
+                  return null;
+                })()}
 
+                {/* Bottom Form Fields */}
+                <div className="form-group">
+                  <label>Location</label>
+                  <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g. Zoom, Room A" className={errors.location ? 'error' : ''} />
+                  {errors.location && <span className="error-message">{errors.location}</span>}
                 </div>
 
-                <h3 className="instructor-list-title">Qualified Instructors</h3>
-                {errors.instructor && <span className="error-message">{errors.instructor}</span>}
-                <div className="instructor-list">
-                  {getFilteredInstructors().map(instructor => (
-                    <div key={instructor.id}
-                      className={`instructor-list-item ${selectedInstructorId === instructor.id ? 'selected' : ''}`}
-                      onClick={() => setSelectedInstructorId(instructor.id)}>
-                      <span className="instructor-name">{instructor.name}</span>
-                    </div>
-                  ))}
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="3" placeholder="Additional details..." />
                 </div>
-              </div>
 
-              <div className="calendar-view-container">
-                <DndProvider backend={HTML5Backend}>
-                  <SmartSchedulingCalendar
-                    studentPreferences={preferences}
-                    selectedInstructorId={selectedInstructorId}
-                    onTimeSlotSelect={handleTimeSlotSelect}
-                    selectedTimeSlot={formData.selectedTimeSlot}
-                    studentId={formData.student}
-                    subjectId={formData.subject}
-                    selectedStudent={students.find(s => s.id === formData.student)}
-                    sessionCount={formData.numSessions}
-                    sessionType={formData.sessionType}
-                    calendarRange={calendarRange}
-                    anchorStartDate={anchorStartDate}
-                    onRangeChange={handleCalendarRangeChange}
-                    height={670}
-                    viewMode="scheduling"
-                    selectedStudentSessions={selectedStudentSessions}
-                    onResetBlocks={() => {
-                      setAnchorStartDate(calendarRange.start);
-                      setSelectedTimeSlots([]);
-                    }}
-                    onEventsUpdate={useCallback((events) => {
-                      // Extract all student preference events (purple/colored blocks) from the calendar
-                      // This excludes instructor availability (green) and existing sessions (yellow)
-                      const preferenceEvents = events.filter(event => event.type === 'preference');
-                      console.log('Preference events:', preferenceEvents);
-                      const timeBlocks = preferenceEvents.map(event => ({
-                        instructor: { id: selectedInstructorId },
-                        date: event.start.toISOString().split('T')[0],
-                        startTime: event.startTime || event.start.toTimeString().slice(0, 5),
-                        endTime: event.endTime || event.end.toTimeString().slice(0, 5),
-                        dayOfWeek: event.dayOfWeek || event.start.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase(),
-                        duration: event.duration,
-                        sessionNumber: event.sessionNumber
-                      }));
-                      console.log('Setting selectedTimeSlots:', timeBlocks);
-                      setSelectedTimeSlots(timeBlocks);
-                    }, [selectedInstructorId])}
-                  />
-                </DndProvider>
-                {errors.selectedTimeSlot && <span className="error-message">{errors.selectedTimeSlot}</span>}
-              </div>
-            </div>
+                <button type="submit" className="btn" disabled={isSubmitting || selectedTimeSlots.length === 0}>
+                  {isSubmitting ? 'Creating...' : 'Create Class'}
+                </button>
+              </form>
+            </>
+          )}
 
-            {/* Time Availability Warning */}
-            {formData.student && selectedTimeSlots.length > 0 && (() => {
-              const timeCheck = checkTimeAvailability();
-              if (!timeCheck.hasSufficientTime) {
-                return (
-                  <div className="time-warning-container" style={{
-                    backgroundColor: '#fef3c7',
-                    border: '1px solid #f59e0b',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    marginBottom: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                  }}>
-                    <div style={{
-                      color: '#d97706',
-                      fontSize: '18px'
-                    }}>
-                      
-                    </div>
-                    <div>
-                      <div style={{
-                        fontWeight: '600',
-                        color: '#92400e',
-                        marginBottom: '4px'
-                      }}>
-                        Insufficient Hours
-                      </div>
-                      <div style={{
-                        color: '#92400e',
-                        fontSize: '14px'
-                      }}>
-                        Student needs {Math.ceil(timeCheck.totalNeeded / 60)} hours but only has {Math.ceil(timeCheck.availableTime / 60)} hours available.
-                        {timeCheck.deficit > 0 && (
-                          <span style={{ fontWeight: '500' }}>
-                            {' '}Additional {Math.ceil(timeCheck.deficit / 60)} hours required.
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
-            {/* Bottom Form Fields */}
-            <div className="form-group">
-              <label>Location</label>
-              <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g. Zoom, Room A" className={errors.location ? 'error' : ''} />
-              {errors.location && <span className="error-message">{errors.location}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Notes</label>
-              <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows="3" placeholder="Additional details..." />
-            </div>
-
-            <button type="submit" className="btn" disabled={isSubmitting || selectedTimeSlots.length === 0}>
-              {isSubmitting ? 'Creating...' : 'Create Class'}
-            </button>
-          </form>
-
-          <hr className="divider" />
-
-          <section className="pending-classes">
-            <h2 className="title">Pending Instructor Confirmations</h2>
-            <div className="table-container">
-              {isLoadingPending ? <div className="loading">Loading...</div> : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Instructor</th>
-                      <th>Subject</th>
-                      <th>Start</th>
-                      <th>Days</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingClasses.map(classItem => (
-                      <tr key={classItem.series_id}>
-                        <td>{classItem.student.name}</td>
-                        <td>{classItem.instructor.name}</td>
-                        <td>{classItem.subject_name}</td>
-                        <td>{new Date(classItem.start_date).toLocaleDateString()}</td>
-                        <td>{classItem.days_of_week.join(', ')}</td>
-                        <td>
-                          <span className={`status-badge ${classItem.status.toLowerCase()}`}>{classItem.status}</span>
-                        </td>
-                        <td>
-                          <div className="action-buttons">
-                            <button className="btn-icon" onClick={() => handleEdit(classItem.series_id)} title="Edit">
-                              <i className="fas fa-edit"></i>
-                            </button>
-                            <button className="btn-icon delete" onClick={() => handleDelete(classItem.series_id)} title="Delete">
-                              <i className="fas fa-trash"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {pendingClasses.length === 0 && (
+          {/* Confirmations Tab Content */}
+          {activeTab === 'confirmations' && (
+            <section className="pending-classes">
+              <h2 className="title">Pending Instructor Confirmations</h2>
+              <div className="table-container">
+                {isLoadingPending ? <div className="loading">Loading...</div> : (
+                  <table>
+                    <thead>
                       <tr>
-                        <td colSpan="7" className="no-data">No pending classes found</td>
+                        <th>Student</th>
+                        <th>Instructor</th>
+                        <th>Subject</th>
+                        <th>Start</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </section>
+                    </thead>
+                    <tbody>
+                      {pendingClasses.map(classItem => {
+                        // Use session_id for single sessions, series_id for class series
+                        const itemId = classItem.session_id || classItem.series_id;
+                        const isSingleSession = classItem.session_id !== undefined;
+                        
+                        return (
+                          <tr key={itemId}>
+                            <td>{classItem.student?.name || 'Unknown'}</td>
+                            <td>{classItem.instructor?.name || 'Unknown'}</td>
+                            <td>{classItem.subject_name}</td>
+                            <td>{new Date(classItem.start_date).toLocaleDateString()}</td>
+                            <td>
+                              {isSingleSession ? 
+                                // For single sessions, show the day of the week
+                                new Date(classItem.start_date).toLocaleDateString('en-US', { weekday: 'short' }) :
+                                // For class series, show the days array
+                                (Array.isArray(classItem.days_of_week) ? classItem.days_of_week.join(', ') : classItem.days_of_week || 'N/A')
+                              }
+                            </td>
+                            <td>
+                              <span className={`status-badge ${classItem.status?.toLowerCase() || 'unknown'}`}>
+                                {classItem.status || 'Unknown'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                <button className="btn-icon" onClick={() => handleEdit(itemId)} title="Edit">
+                                  <i className="fas fa-edit"></i>
+                                </button>
+                                <button className="btn-icon delete" onClick={() => handleDelete(itemId)} title="Delete">
+                                  <i className="fas fa-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {pendingClasses.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="no-data">No pending classes found</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          )}
         </section>
       </div>
     </div>

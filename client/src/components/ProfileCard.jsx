@@ -1,12 +1,50 @@
 // src/components/ProfileCard.jsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import uploadService from '../services/uploadService';
 
 function ProfileCard() {
   const navigate = useNavigate();
-  const user = authService.getCurrentUser();
+  const [user, setUser] = useState(authService.getCurrentUser());
+
+  // Listen for changes in user data (e.g., when profile picture is updated)
+  useEffect(() => {
+    const checkUserUpdate = () => {
+      const currentUser = authService.getCurrentUser();
+      if (currentUser && (!user || currentUser.profile_pic_url !== user.profile_pic_url)) {
+        setUser(currentUser);
+      }
+    };
+
+    // Check for updates more frequently
+    const interval = setInterval(checkUserUpdate, 500);
+
+    // Listen for custom profile update events
+    const handleProfileUpdate = () => {
+      const updatedUser = authService.getCurrentUser();
+      setUser(updatedUser);
+    };
+
+    // Listen for storage events (when localStorage is updated from other tabs/windows)
+    const handleStorageChange = (e) => {
+      if (e.key === 'user') {
+        const updatedUser = JSON.parse(e.newValue);
+        setUser(updatedUser);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('profile-updated', handleProfileUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('profile-updated', handleProfileUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [user]);
 
   const handleLogout = () => {
     authService.logout();
@@ -14,7 +52,7 @@ function ProfileCard() {
   };
 
   const handleSettings = () => {
-    navigate('/profile/settings');
+    navigate('/profile');
   };
 
   if (!user) {
@@ -27,11 +65,18 @@ function ProfileCard() {
     return `${formattedRole} @ Møbius Academy`;
   };
 
+  // Debug logging
+  console.log('ProfileCard user data:', user);
+  console.log('Profile picture URL:', user.profile_pic_url);
+
+  // Get the full URL for the profile picture
+  const profilePictureUrl = uploadService.getProfilePictureUrl(user.profile_pic_url) || '/me.jpg';
+
   return (
     <div className="profile-card">
       <div className="profile-header">
         <img 
-          src={user.profile_pic || '/default-avatar.png'} 
+          src={profilePictureUrl} 
           alt={`${user.name}'s profile`} 
           className="profile-pic" 
         />
