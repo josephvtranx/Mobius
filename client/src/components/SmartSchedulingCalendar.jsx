@@ -5,6 +5,7 @@ import { format, parse, startOfWeek, getDay, addDays, addMinutes, differenceInMi
 import { enUS } from 'date-fns/locale';
 import instructorService from '../services/instructorService';
 import classSessionService from '../services/classSessionService';
+import { toUtcIso, isoToLocal } from '../lib/time.js';
 
 // Import React Big Calendar default styles FIRST
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -344,8 +345,8 @@ function SmartSchedulingCalendar({
                 
                 console.log(`Attempting to parse: start="${fullStartString}", end="${fullEndString}"`);
                 
-                start = new Date(fullStartString);
-                end = new Date(fullEndString);
+                start = isoToLocal(fullStartString).toJSDate();
+                end = isoToLocal(fullEndString).toJSDate();
                 
                 console.log(`Parsed dates - session_date: ${dateString}, start_time: ${startTime}, end_time: ${endTime}`);
                 console.log(`Created start: ${start}, end: ${end}`);
@@ -456,8 +457,8 @@ function SmartSchedulingCalendar({
                 const fullStartString = `${dateString}T${startTime}:00`;
                 const fullEndString = `${dateString}T${endTime}:00`;
                 
-                start = new Date(fullStartString);
-                end = new Date(fullEndString);
+                start = isoToLocal(fullStartString).toJSDate();
+                end = isoToLocal(fullEndString).toJSDate();
               } else {
                 console.warn('Missing date/time data for session:', session);
                 return null;
@@ -529,30 +530,14 @@ function SmartSchedulingCalendar({
         // Parse the date and time properly
         let start, end;
         try {
+          // Use local time construction
           if (session.session_date && session.start_time && session.end_time) {
-            // Validate time formats
-            const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
-            
-            if (!timeRegex.test(session.start_time) || !timeRegex.test(session.end_time)) {
-              console.warn('Invalid time format:', { start_time: session.start_time, end_time: session.end_time });
-              return null;
-            }
-            
-            // If start_time and end_time include seconds, remove them for consistency
-            const startTime = session.start_time.split(':').slice(0, 2).join(':');
-            const endTime = session.end_time.split(':').slice(0, 2).join(':');
-            
-            // Try different date formats
+            // Extract date parts
             let dateString = session.session_date;
-            
-            // If session_date is a Date object, convert to string
             if (session.session_date instanceof Date) {
               dateString = session.session_date.toISOString().split('T')[0];
             }
-            
-            // If it's already a string, ensure it's in YYYY-MM-DD format
             if (typeof dateString === 'string') {
-              // If it's in a different format, try to parse it
               if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
                 const parsedDate = new Date(dateString);
                 if (!isNaN(parsedDate.getTime())) {
@@ -560,19 +545,16 @@ function SmartSchedulingCalendar({
                 }
               }
             } else if (dateString instanceof Date) {
-              // If it's already a Date object, convert to string
               dateString = dateString.toISOString().split('T')[0];
             } else {
-              // If it's null, undefined, or some other type, try to create a valid date
               console.warn('Invalid session_date format:', dateString);
               return null;
             }
-            
-            const fullStartString = `${dateString}T${startTime}:00`;
-            const fullEndString = `${dateString}T${endTime}:00`;
-            
-            start = new Date(fullStartString);
-            end = new Date(fullEndString);
+            const [year, month, day] = dateString.split('-').map(Number);
+            const [startHour, startMinute] = session.start_time.split(':').map(Number);
+            const [endHour, endMinute] = session.end_time.split(':').map(Number);
+            start = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
+            end = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
           } else {
             console.warn('Missing date/time data for session:', session);
             return null;
@@ -833,6 +815,7 @@ function SmartSchedulingCalendar({
     }
     }
     setEvents(allEvents);
+    console.log('All events being passed to calendar:', allEvents);
   }, [studentPreferences, availabilityEvents, existingSessions, formattedSelectedStudentSessions, selectedStudent, sessionCount, sessionType, visibleRange, anchorStartDate]);
 
   // Notify parent component when events change

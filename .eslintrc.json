@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "no-restricted-globals": [
+      "error",
+      { "name": "Date", "message": "Use time.ts helpers instead" }
+    ],
+    "no-restricted-imports": ["error", { "patterns": ["moment"] }]
+  }
+} 

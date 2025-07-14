@@ -7,6 +7,8 @@ import {
     validateSchedulingRequest,
     findSmartSchedulingMatches
 } from '../helpers/timeSlotHelpers.js';
+import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { requireUtcIso } from '../middleware/requireUtcIso.js';
 const router = express.Router();
 
 // Validation middleware
@@ -174,8 +176,81 @@ router.get('/pending', async (req, res) => {
     }
 });
 
+// Get all class series and all single class sessions (for class history)
+router.get('/all', async (req, res) => {
+    try {
+        // Fetch all class series
+        const seriesResult = await pool.query(`
+            SELECT 
+                cs.*, 
+                json_build_object(
+                    'instructor_id', i.instructor_id,
+                    'name', u_i.name,
+                    'email', u_i.email
+                ) as instructor,
+                json_build_object(
+                    'student_id', s.student_id,
+                    'name', u_s.name,
+                    'email', u_s.email
+                ) as student,
+                sub.name as subject_name
+            FROM class_series cs
+            JOIN instructors i ON cs.instructor_id = i.instructor_id
+            JOIN users u_i ON i.instructor_id = u_i.user_id
+            JOIN students s ON cs.student_id = s.student_id
+            JOIN users u_s ON s.student_id = u_s.user_id
+            JOIN subjects sub ON cs.subject_id = sub.subject_id
+            ORDER BY cs.start_date DESC
+        `);
+
+        // Fetch all single class sessions (not part of a series)
+        const singleResult = await pool.query(`
+            SELECT 
+                cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, cs.session_date as start_date, cs.session_date as end_date,
+                ARRAY[LOWER(TO_CHAR(cs.session_date, 'Dy'))] as days_of_week,
+                cs.start_time, cs.end_time, cs.location, cs.status,
+                json_build_object(
+                    'instructor_id', i.instructor_id,
+                    'name', u_i.name,
+                    'email', u_i.email
+                ) as instructor,
+                json_build_object(
+                    'student_id', s.student_id,
+                    'name', u_s.name,
+                    'email', u_s.email
+                ) as student,
+                sub.name as subject_name
+            FROM class_sessions cs
+            JOIN instructors i ON cs.instructor_id = i.instructor_id
+            JOIN users u_i ON i.instructor_id = u_i.user_id
+            JOIN students s ON cs.student_id = s.student_id
+            JOIN users u_s ON s.student_id = u_s.user_id
+            JOIN subjects sub ON cs.subject_id = sub.subject_id
+            WHERE cs.series_id IS NULL
+            ORDER BY cs.session_date DESC
+        `);
+
+        // Map single sessions to match class series structure
+        const singleSessions = singleResult.rows.map(row => ({
+            ...row,
+            series_id: null, // For consistency
+            num_sessions: 1,
+            // days_of_week is already an array
+        }));
+
+        // Combine and return
+        const combined = [...seriesResult.rows, ...singleSessions];
+        // Sort by start_date descending (in case)
+        combined.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+        res.json(combined);
+    } catch (error) {
+        console.error('Error fetching all class series and sessions:', error);
+        res.status(500).json({ error: 'Failed to fetch all class series and sessions' });
+    }
+});
+
 // Create new class series
-router.post('/', classSeriesValidation, async (req, res) => {
+router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), classSeriesValidation, async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');

@@ -58,7 +58,11 @@ const instructorValidation = [
 const staffValidation = [
     ...baseValidation,
     body('age').isInt({ min: 18 }).withMessage('Staff must be at least 18 years old'),
-    body('gender').isIn(['male', 'female', 'other']).withMessage('Invalid gender')
+    body('gender').isIn(['male', 'female', 'other']).withMessage('Invalid gender'),
+    body('department').notEmpty().withMessage('Department is required'),
+    body('employment_status').optional().isIn(['full_time', 'part_time', 'contract', 'temporary']).withMessage('Invalid employment status'),
+    body('salary').optional().isFloat({ min: 0 }).withMessage('Salary must be a positive number'),
+    body('hourly_rate').optional().isFloat({ min: 0 }).withMessage('Hourly rate must be a positive number')
 ];
 
 const changePasswordValidation = [

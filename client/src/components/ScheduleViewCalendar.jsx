@@ -6,6 +6,7 @@ import classSessionService from '../services/classSessionService';
 import authService from '../services/authService';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../css/schedule-view-calendar.scss';
+import { toUtcIso, isoToLocal } from '../lib/time.js';
 
 const locales = {
   'en-US': enUS
@@ -226,34 +227,34 @@ function ScheduleViewCalendar({ calendarRange, currentUserId }) {
           
           try {
             // Parse the TIMESTAMPTZ fields properly
-            const sessionStart = new Date(session.session_start);
-            const sessionEnd = new Date(session.session_end);
+            start = isoToLocal(session.session_start).toJSDate();
+            end = isoToLocal(session.session_end).toJSDate();
             const status = session.status || 'scheduled';
             
             // Validate dates
-            if (isNaN(sessionStart.getTime()) || isNaN(sessionEnd.getTime())) {
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
               console.warn('Invalid date/time for session:', session);
               return null;
             }
 
             // Use the same time positioning logic as SmartSchedulingCalendar
             // Create new Date objects to avoid timezone issues
-            start = new Date(sessionStart);
-            end = new Date(sessionEnd);
+            // start = new Date(sessionStart);
+            // end = new Date(sessionEnd);
             
             // Ensure we preserve the exact time but handle timezone correctly
             // This is the key fix - we need to set the time components explicitly
-            const startHours = sessionStart.getHours();
-            const startMinutes = sessionStart.getMinutes();
-            const endHours = sessionEnd.getHours();
-            const endMinutes = sessionEnd.getMinutes();
+            const startHours = start.getHours();
+            const startMinutes = start.getMinutes();
+            const endHours = end.getHours();
+            const endMinutes = end.getMinutes();
             
             // Set the time components explicitly to avoid timezone conversion issues
             start.setHours(startHours, startMinutes, 0, 0);
             end.setHours(endHours, endMinutes, 0, 0);
             
             console.log('Session time positioning:', {
-              original: { start: sessionStart, end: sessionEnd },
+              original: { start: session.session_start, end: session.session_end },
               processed: { start, end },
               hours: { start: startHours, end: endHours },
               minutes: { start: startMinutes, end: endMinutes }

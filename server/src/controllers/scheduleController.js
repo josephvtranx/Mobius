@@ -5,12 +5,12 @@ import {
     checkInstructorConflict,
     checkStudentConflict
 } from '../helpers/conflictCheck.js';
-import moment from 'moment';
+import { assertUtcIso, toUtcIso } from "../lib/time.js";
 
 // Helper function to get the next date for a given day of the week
 const getNextDateForDay = (day) => {
     const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = moment();
+    const today = toUtcIso(new Date());
     const targetDayIndex = daysOfWeek.indexOf(day);
 
     if (targetDayIndex === -1) {
@@ -18,15 +18,15 @@ const getNextDateForDay = (day) => {
     }
 
     // Calculate the difference in days
-    const currentDayIndex = today.isoWeekday() % 7;
+    const currentDayIndex = today.getDay(); // getDay() returns 0 for Sunday, 1 for Monday, etc.
     let daysUntilTarget = (targetDayIndex - currentDayIndex + 7) % 7;
 
     // If the target day is today but the time has passed, move to next week
-    if (daysUntilTarget === 0 && today.isAfter(today.clone().endOf('day'))) {
+    if (daysUntilTarget === 0 && today.getTime() >= today.setHours(0, 0, 0, 0)) { // Check if current time is past midnight today
         daysUntilTarget = 7;
     }
 
-    return today.add(daysUntilTarget, 'days').format('YYYY-MM-DD');
+    return toUtcIso(new Date(today.getTime() + daysUntilTarget * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
 };
 
 // Get all classes
@@ -87,17 +87,17 @@ const createClass = async (req, res) => {
             const { date, start_time, end_time } = slot;
         
             // Extract date part and parse timestamps
-            const dateOnly = typeof date === 'string' ? date.split('T')[0] : moment(date).format("YYYY-MM-DD");
-            const startMoment = moment(`${dateOnly} ${start_time}`, "YYYY-MM-DD HH:mm:ss");
-            const endMoment = moment(`${dateOnly} ${end_time}`, "YYYY-MM-DD HH:mm:ss");
+            const dateOnly = typeof date === 'string' ? date.split('T')[0] : date;
+            const startMoment = assertUtcIso(`${dateOnly} ${start_time}`);
+            const endMoment = assertUtcIso(`${dateOnly} ${end_time}`);
         
             if (!startMoment.isValid() || !endMoment.isValid()) {
                 console.error("Invalid date or time format:", { dateOnly, start_time, end_time });
                 continue;
             }
         
-            console.log("Start moment:", startMoment.format("YYYY-MM-DD HH:mm:ss"));
-            console.log("End moment:", endMoment.format("YYYY-MM-DD HH:mm:ss"));
+            console.log("Start moment:", startMoment.toISOString());
+            console.log("End moment:", endMoment.toISOString());
         
             // Iterate through possible start times within this slot
             let currentStart = startMoment.clone();
@@ -106,12 +106,12 @@ const createClass = async (req, res) => {
                 const requiredEndMoment = currentStart.clone().add(duration, 'hours');
         
                 if (requiredEndMoment.isAfter(endMoment)) {
-                    console.log("Required end time exceeds available slot:", requiredEndMoment.format("YYYY-MM-DD HH:mm:ss"));
+                    console.log("Required end time exceeds available slot:", requiredEndMoment.toISOString());
                     break; // Stop if the class would exceed the slot's end time
                 }
         
-                const startTimestamp = currentStart.format("YYYY-MM-DD HH:mm:ss");
-                const endTimestamp = requiredEndMoment.format("YYYY-MM-DD HH:mm:ss");
+                const startTimestamp = currentStart.toISOString();
+                const endTimestamp = requiredEndMoment.toISOString();
         
                 console.log("Checking instructor conflicts for:", { startTimestamp, endTimestamp });
         

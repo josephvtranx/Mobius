@@ -68,6 +68,17 @@ const classSeriesService = {
             console.error('Error deleting class series:', error);
             throw error;
         }
+    },
+
+    // Get all classes (series + single sessions)
+    getAllClasses: async () => {
+        try {
+            const response = await api.get('/class-series/all');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching all classes:', error);
+            throw error;
+        }
     }
 };
 

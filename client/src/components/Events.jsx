@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import classSessionService from '../services/classSessionService';
-import { formatLocalTime } from '../utils/timeUtils';
+import { formatLocalTime, isoToLocal } from '../lib/time.js';
 import '../css/Scheduling.css';
 
 const Events = ({ calendarRange }) => {
@@ -18,7 +18,7 @@ const Events = ({ calendarRange }) => {
         let filteredEvents = response;
         if (calendarRange && calendarRange.start && calendarRange.end) {
           filteredEvents = response.filter(event => {
-            const eventStart = new Date(event.session_start);
+            const eventStart = isoToLocal(event.session_start).toJSDate();
             return eventStart >= calendarRange.start && eventStart <= calendarRange.end;
           });
         }
@@ -49,7 +49,7 @@ const Events = ({ calendarRange }) => {
             <li key={event.session_id} className="event-item">
               <div className="event-header">
                 <span className="event-date">
-                  {new Date(event.session_start).toLocaleDateString()}
+                  {isoToLocal(event.session_start).toJSDate().toLocaleDateString()}
                 </span>
                 <span className="event-time">
                   {formatLocalTime(event.session_start)}

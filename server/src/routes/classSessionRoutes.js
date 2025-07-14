@@ -2,6 +2,8 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { requireUtcIso } from '../middleware/requireUtcIso.js';
 
 const router = express.Router();
 
@@ -146,7 +148,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new class session
-router.post('/', authenticateToken, sessionValidation, handleValidationErrors, async (req, res) => {
+router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end']), sessionValidation, handleValidationErrors, async (req, res) => {
     try {
         console.log('Received session creation request:', req.body);
         
@@ -180,8 +182,8 @@ router.post('/', authenticateToken, sessionValidation, handleValidationErrors, a
         }
 
         // Validate time range
-        const startDate = new Date(session_start);
-        const endDate = new Date(session_end);
+        const startDate = toUtcIso(session_start);
+        const endDate = toUtcIso(session_end);
         
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
             return res.status(400).json({ 
@@ -248,7 +250,7 @@ router.post('/', authenticateToken, sessionValidation, handleValidationErrors, a
 
         // Check instructor availability using the new TIMESTAMPTZ fields
         // Extract day of week from session_start - convert to local time first
-        const sessionStartDate = new Date(session_start);
+        const sessionStartDate = toUtcIso(session_start);
         const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
         
         // Convert UTC to local time for day calculation
@@ -257,8 +259,8 @@ router.post('/', authenticateToken, sessionValidation, handleValidationErrors, a
         
         // Extract time components from session_start and session_end
         // Convert UTC to local time for availability checking
-        const localStartTime = new Date(session_start);
-        const localEndTime = new Date(session_end);
+        const localStartTime = toUtcIso(session_start);
+        const localEndTime = toUtcIso(session_end);
         const startTime = localStartTime.toTimeString().slice(0, 5);
         const endTime = localEndTime.toTimeString().slice(0, 5);
         const sessionDate = localStartTime.toISOString().split('T')[0];
@@ -375,41 +377,41 @@ router.post('/', authenticateToken, sessionValidation, handleValidationErrors, a
             });
             
             // Extract old format fields for backward compatibility
-            const sessionDate = new Date(session_start).toISOString().split('T')[0];
-            const startTime = new Date(session_start).toTimeString().slice(0, 5);
-            const endTime = new Date(session_end).toTimeString().slice(0, 5);
+            const sessionDate = toUtcIso(session_start).toISOString().split('T')[0];
+            const startTime = toUtcIso(session_start).toTimeString().slice(0, 5);
+            const endTime = toUtcIso(session_end).toTimeString().slice(0, 5);
             
             const result = await pool.query(`
-                INSERT INTO class_sessions (
-                    instructor_id,
-                    student_id,
-                    subject_id,
-                    session_date,
-                    start_time,
-                    end_time,
+            INSERT INTO class_sessions (
+                instructor_id,
+                student_id,
+                subject_id,
+                session_date,
+                start_time,
+                end_time,
                     session_start,
                     session_end,
-                    location,
-                    status
-                )
+                location,
+                status
+            )
                 VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::timestamptz, $9, 'pending')
-                RETURNING *
+            RETURNING *
             `, [instructor_id, student_id, subject_id, sessionDate, startTime, endTime, session_start, session_end, location]);
 
             console.log('Session created successfully:', result.rows[0]);
 
-            // Create instructor unavailability for this specific session
-            await pool.query(`
-                INSERT INTO instructor_unavailability (
-                    instructor_id,
-                    start_datetime,
-                    end_datetime,
-                    reason
-                )
+        // Create instructor unavailability for this specific session
+        await pool.query(`
+            INSERT INTO instructor_unavailability (
+                instructor_id,
+                start_datetime,
+                end_datetime,
+                reason
+            )
                 VALUES ($1, $2::timestamptz, $3::timestamptz, $4)
             `, [instructor_id, session_start, session_end, `Scheduled class session ${result.rows[0].session_id}`]);
 
-            res.status(201).json(result.rows[0]);
+        res.status(201).json(result.rows[0]);
         } catch (dbError) {
             console.error('Database error creating session:', dbError);
             throw dbError;
@@ -495,6 +497,24 @@ router.post('/:id/attendance', async (req, res) => {
     } catch (error) {
         console.error('Error marking attendance:', error);
         res.status(500).json({ error: 'Failed to mark attendance' });
+    }
+});
+
+// Add DELETE endpoint for single class session
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(
+            'DELETE FROM class_sessions WHERE session_id = $1 RETURNING *',
+            [id]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Class session not found' });
+        }
+        res.json({ message: 'Class session deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting class session:', error);
+        res.status(500).json({ error: 'Failed to delete class session' });
     }
 });
 

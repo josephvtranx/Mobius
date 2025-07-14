@@ -2,6 +2,8 @@ import express from 'express';
 import { body } from 'express-validator';
 import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { requireUtcIso } from '../middleware/requireUtcIso.js';
 
 const router = express.Router();
 
@@ -15,8 +17,8 @@ const attendanceValidation = [
 
 // Helper function to calculate session duration in minutes
 const calculateSessionDuration = (startTime, endTime) => {
-    const start = new Date(`2000-01-01T${startTime}`);
-    const end = new Date(`2000-01-01T${endTime}`);
+    const start = toUtcIso(new Date(`2000-01-01T${startTime}`));
+    const end = toUtcIso(new Date(`2000-01-01T${endTime}`));
     return Math.round((end - start) / (1000 * 60)); // Convert to minutes
 };
 

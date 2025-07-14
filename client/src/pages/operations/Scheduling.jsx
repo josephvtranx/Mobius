@@ -11,7 +11,7 @@ import classSeriesService from '../../services/classSeriesService';
 import classSessionService from '../../services/classSessionService';
 import timePackageService from '../../services/timePackageService';
 import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns';
-import { createSessionTimestamps } from '../../utils/timeUtils';
+import { createSessionTimestamps, toUtcIso, isoToLocal } from '../../lib/time.js';
 
 function Scheduling() {
   // Tab state
@@ -98,6 +98,14 @@ function Scheduling() {
   const [timePackages, setTimePackages] = useState([]);
   const [studentTimePackages, setStudentTimePackages] = useState([]);
   const [selectedTimePackage, setSelectedTimePackage] = useState(null);
+
+  // Add state for class history
+  const [classHistory, setClassHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Add state for expanded rows and series sessions cache
+  const [expandedHistoryRows, setExpandedHistoryRows] = useState({});
+  const [seriesSessionsCache, setSeriesSessionsCache] = useState({});
 
   // Fetch initial data
   useEffect(() => {
@@ -920,6 +928,71 @@ function Scheduling() {
     setSelectedTimeSlots(timeBlocks);
   }, [selectedInstructorId]);
 
+  // Fetch all classes for class history
+  const fetchClassHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      // You may need to adjust this service call to fetch all classes (sessions + series)
+      // For now, let's assume classSeriesService.getAllClasses() returns all classes
+      const data = await classSeriesService.getAllClasses();
+      setClassHistory(data);
+    } catch (error) {
+      console.error('Error fetching class history:', error);
+      setClassHistory([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // Fetch class history on mount
+  useEffect(() => {
+    fetchClassHistory();
+  }, []);
+
+  // Add a handler for deleting from class history
+  const handleDeleteHistory = async (id) => {
+    if (window.confirm('Are you sure you want to delete this class?')) {
+      try {
+        // Check if it's a single session or class series by looking at the class history
+        const classItem = classHistory.find(item => (item.session_id || item.series_id) === id);
+        const isSingleSession = classItem?.session_id !== undefined;
+        if (isSingleSession) {
+          await classSessionService.deleteSession(id);
+        } else {
+          await classSeriesService.deleteClassSeries(id);
+        }
+        fetchClassHistory();
+        if (window.refreshCalendarData) {
+          window.refreshCalendarData();
+        }
+        alert('Class deleted successfully');
+      } catch (error) {
+        console.error('Error deleting class:', error);
+        alert(error.response?.data?.error || 'Failed to delete class');
+      }
+    }
+  };
+
+  // Function to toggle expanded row
+  const toggleHistoryRow = async (itemId, isSeries, seriesId) => {
+    setExpandedHistoryRows(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
+    // If it's a series and not already cached, fetch its sessions
+    if (isSeries && !seriesSessionsCache[seriesId]) {
+      try {
+        const sessions = await classSessionService.getAllSessions();
+        // Filter for this series
+        const filtered = sessions.filter(s => s.series_id === seriesId);
+        setSeriesSessionsCache(prev => ({ ...prev, [seriesId]: filtered }));
+      } catch (error) {
+        console.error('Error fetching sessions for series', seriesId, error);
+        setSeriesSessionsCache(prev => ({ ...prev, [seriesId]: [] }));
+      }
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="main">
@@ -961,6 +1034,24 @@ function Scheduling() {
               }}
             >
               Pending Instructor Confirmations
+            </button>
+            <button
+              className={`tab${activeTab === 'history' ? ' active' : ''}`}
+              onClick={() => setActiveTab('history')}
+              style={{
+                padding: '8px 20px',
+                borderRadius: '6px 6px 0 0',
+                border: 'none',
+                background: activeTab === 'history' ? '#f3f4f6' : '#e5e7eb',
+                fontWeight: 600,
+                color: activeTab === 'history' ? '#1e293b' : '#6b7280',
+                borderBottom: activeTab === 'history' ? '2px solid #3b82f6' : '2px solid transparent',
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              Class History
             </button>
           </div>
 
@@ -1328,6 +1419,125 @@ function Scheduling() {
               )}
             </div>
           </section>
+          )}
+
+          {/* Class History Tab Content */}
+          {activeTab === 'history' && (
+            <section className="class-history">
+              <h2 className="title">Class History</h2>
+              <div className="table-container">
+                {isLoadingHistory ? <div className="loading">Loading...</div> : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Instructor</th>
+                        <th>Subject</th>
+                        <th>Start</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {classHistory.map(classItem => {
+                        const itemId = classItem.session_id || classItem.series_id;
+                        const isSingleSession = classItem.session_id !== undefined;
+                        const isSeries = !isSingleSession;
+                        // Determine row color based on status
+                        let rowColor = '';
+                        const status = (classItem.status || '').toLowerCase();
+                        if (status === 'pending') rowColor = 'background: orange; color: #fff;';
+                        else if (status === 'scheduled') rowColor = 'background: purple; color: #fff;';
+                        else if (status === 'completed') rowColor = 'background: green; color: #fff;';
+                        else if (status === 'declined') rowColor = 'background: red; color: #fff;';
+                        return (
+                          <React.Fragment key={itemId}>
+                            <tr
+                              style={rowColor ? { ...Object.fromEntries(rowColor.split(';').filter(Boolean).map(s => s.split(':').map(x => x.trim())).map(([k, v]) => [k, v])) } : {}}
+                              className={expandedHistoryRows[itemId] ? 'expanded' : ''}
+                              onClick={() => toggleHistoryRow(itemId, isSeries, classItem.series_id)}
+                            >
+                              <td>{classItem.student?.name || 'Unknown'}</td>
+                              <td>{classItem.instructor?.name || 'Unknown'}</td>
+                              <td>{classItem.subject_name}</td>
+                              <td>{new Date(classItem.start_date).toLocaleDateString()}</td>
+                              <td>
+                                {isSingleSession ?
+                                  new Date(classItem.start_date).toLocaleDateString('en-US', { weekday: 'short' }) :
+                                  (Array.isArray(classItem.days_of_week) ? classItem.days_of_week.join(', ') : classItem.days_of_week || 'N/A')
+                                }
+                              </td>
+                              <td>
+                                <span className={`status-badge ${status}`}>{classItem.status || 'Unknown'}</span>
+                              </td>
+                              <td>
+                                <div className="action-buttons">
+                                  <button className="btn-icon delete" onClick={e => { e.stopPropagation(); handleDeleteHistory(itemId); }} title="Delete">
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            {expandedHistoryRows[itemId] && (
+                              <tr className="expanded-row">
+                                <td colSpan="7">
+                                  {isSingleSession ? (
+                                    <div>
+                                      <strong>Start Time:</strong> {classItem.start_time}<br />
+                                      <strong>End Time:</strong> {classItem.end_time || calculateEndTime(classItem.start_time, classItem.duration)}
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <strong>Class Series Sessions:</strong>
+                                      {seriesSessionsCache[classItem.series_id] ? (
+                                        <table className="series-sessions-table" style={{ marginTop: 8, width: '100%' }}>
+                                          <thead>
+                                            <tr>
+                                              <th>Date</th>
+                                              <th>Day</th>
+                                              <th>Start Time</th>
+                                              <th>End Time</th>
+                                              <th>Status</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {seriesSessionsCache[classItem.series_id].length === 0 ? (
+                                              <tr><td colSpan="5">No sessions found for this series.</td></tr>
+                                            ) : (
+                                              seriesSessionsCache[classItem.series_id].map(session => (
+                                                <tr key={session.session_id}>
+                                                  <td>{new Date(session.session_date).toLocaleDateString()}</td>
+                                                  <td>{new Date(session.session_date).toLocaleDateString('en-US', { weekday: 'short' })}</td>
+                                                  <td>{session.start_time}</td>
+                                                  <td>{session.end_time || calculateEndTime(session.start_time, session.duration)}</td>
+                                                  <td>{session.status}</td>
+                                                </tr>
+                                              ))
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      ) : (
+                                        <div>Loading sessions...</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                      {classHistory.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="no-data">No class history found</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
           )}
         </section>
       </div>

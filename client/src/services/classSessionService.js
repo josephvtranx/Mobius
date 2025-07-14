@@ -1,4 +1,5 @@
 import api from './api';
+import { toUtcIso, isoToLocal } from '../lib/time.js';
 
 const classSessionService = {
     // Get all class sessions
@@ -29,8 +30,8 @@ const classSessionService = {
             // Ensure session_start and session_end are in UTC ISO format
             const session = {
                 ...sessionData,
-                session_start: new Date(sessionData.session_start).toISOString(),
-                session_end: new Date(sessionData.session_end).toISOString()
+                session_start: toUtcIso(sessionData.session_start),
+                session_end: toUtcIso(sessionData.session_end)
             };
             
             console.log('Creating session with TIMESTAMPTZ data:', session);
@@ -48,10 +49,10 @@ const classSessionService = {
             // Ensure session_start and session_end are in UTC ISO format if provided
             const session = { ...sessionData };
             if (session.session_start) {
-                session.session_start = new Date(session.session_start).toISOString();
+                session.session_start = toUtcIso(session.session_start);
             }
             if (session.session_end) {
-                session.session_end = new Date(session.session_end).toISOString();
+                session.session_end = toUtcIso(session.session_end);
             }
             
             const response = await api.put(`/class-sessions/${id}`, session);
@@ -91,10 +92,10 @@ const classSessionService = {
             const params = new URLSearchParams();
             
             if (startDate) {
-                params.append('startDate', new Date(startDate).toISOString());
+                params.append('startDate', toUtcIso(startDate));
             }
             if (endDate) {
-                params.append('endDate', new Date(endDate).toISOString());
+                params.append('endDate', toUtcIso(endDate));
             }
             
             if (params.toString()) {
@@ -116,10 +117,10 @@ const classSessionService = {
             const params = new URLSearchParams();
             
             if (startDate) {
-                params.append('start_date', new Date(startDate).toISOString());
+                params.append('start_date', toUtcIso(startDate));
             }
             if (endDate) {
-                params.append('end_date', new Date(endDate).toISOString());
+                params.append('end_date', toUtcIso(endDate));
             }
             
             if (params.toString()) {

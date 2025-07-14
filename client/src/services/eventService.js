@@ -1,6 +1,7 @@
 import api from './api';
 import classSessionService from './classSessionService';
 import instructorService from './instructorService';
+import { toUtcIso, isoToLocal } from '../lib/time.js';
 
 const eventService = {
     // Get events for the current user based on their role
@@ -33,8 +34,8 @@ const eventService = {
             return events.map(event => ({
                 id: event.session_id,
                 title: event.subject_name,
-                start: new Date(`${event.session_date}T${event.start_time}`),
-                end: new Date(`${event.session_date}T${event.end_time}`),
+                start: toUtcIso(event.session_date, event.start_time),
+                end: toUtcIso(event.session_date, event.end_time),
                 date: event.session_date,
                 startTime: event.start_time,
                 endTime: event.end_time,
@@ -67,8 +68,8 @@ const eventService = {
     getTodayEvents: async (userId, userRole) => {
         try {
             const today = new Date();
-            const startDate = today.toISOString().split('T')[0];
-            const endDate = today.toISOString().split('T')[0];
+            const startDate = toUtcIso(today.toISOString().split('T')[0], '00:00');
+            const endDate = toUtcIso(today.toISOString().split('T')[0], '23:59');
             
             return await eventService.getUserEvents(userId, userRole, startDate, endDate);
         } catch (error) {
@@ -84,8 +85,8 @@ const eventService = {
             const nextWeek = new Date(today);
             nextWeek.setDate(today.getDate() + 7);
             
-            const startDate = today.toISOString().split('T')[0];
-            const endDate = nextWeek.toISOString().split('T')[0];
+            const startDate = toUtcIso(today.toISOString().split('T')[0], '00:00');
+            const endDate = toUtcIso(nextWeek.toISOString().split('T')[0], '23:59');
             
             return await eventService.getUserEvents(userId, userRole, startDate, endDate);
         } catch (error) {

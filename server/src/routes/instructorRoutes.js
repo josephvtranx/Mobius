@@ -3,6 +3,8 @@ import { body } from 'express-validator';
 import pool from '../config/db.js';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
+import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { requireUtcIso } from '../middleware/requireUtcIso.js';
 const router = express.Router();
 
 // Validation middleware
@@ -150,7 +152,7 @@ router.post('/', instructorValidation, async (req, res) => {
 router.put('/:id', updateInstructor);
 
 // Add availability
-router.post('/:id/availability', availabilityValidation, async (req, res) => {
+router.post('/:id/availability', requireUtcIso(['start_date', 'end_date']), availabilityValidation, async (req, res) => {
     try {
         const { id } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;

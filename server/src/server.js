@@ -21,6 +21,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { toUtcIso } from './lib/time.js';
 
 // Initialize express app
 const app = express();
@@ -41,7 +42,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Logging middleware
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log(`${toUtcIso(new Date())} - ${req.method} ${req.url}`);
     if (req.method !== 'GET') {
         console.log('Request body:', req.body);
     }
