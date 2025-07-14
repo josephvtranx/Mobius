@@ -1,13 +1,12 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import pool from '../config/db.js';
 import { generateTokens, verifyAccessToken, verifyRefreshToken } from '../helpers/authHelpers.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
 
 // Token verification endpoint handler
 export const verifyTokenHandler = async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         // Get token from header
         const authHeader = req.headers['authorization'];
@@ -30,7 +29,7 @@ export const verifyTokenHandler = async (req, res) => {
         }
 
         // Check if user exists and is active
-        const result = await client.query(
+        const result = await req.db.query(
             'SELECT user_id, name, email, role, is_active FROM users WHERE user_id = $1',
             [decoded.userId]
         );
@@ -74,7 +73,7 @@ export const verifyTokenHandler = async (req, res) => {
 };
 
 export const signup = async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     
     try {
         const {
@@ -410,7 +409,7 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     
     try {
         const { email, password } = req.body;
@@ -494,7 +493,7 @@ export const refreshToken = async (req, res) => {
         }
 
         // Get user from database
-        const result = await pool.query(
+        const result = await req.db.query(
             'SELECT * FROM users WHERE user_id = $1',
             [decoded.userId]
         );
@@ -539,7 +538,7 @@ export const logout = async (req, res) => {
         const userId = req.user.user_id;
 
         // Increment token version to invalidate all existing refresh tokens
-        await pool.query(
+        await req.db.query(
             'UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE user_id = $1',
             [userId]
         );
@@ -561,7 +560,7 @@ export const changePassword = async (req, res) => {
         const { currentPassword, newPassword } = req.body;
 
         // Get user from database
-        const result = await pool.query(
+        const result = await req.db.query(
             'SELECT * FROM users WHERE user_id = $1',
             [userId]
         );
@@ -600,7 +599,7 @@ export const changePassword = async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
         // Start transaction
-        const client = await pool.connect();
+        const client = await req.db.connect();
         try {
             await client.query('BEGIN');
 

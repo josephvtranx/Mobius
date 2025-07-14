@@ -1,6 +1,5 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -25,27 +24,27 @@ router.get('/overview', authenticateToken, async (req, res) => {
         const { period = 'month' } = req.query;
         
         // Get total revenue from payments
-        const revenueResult = await pool.query(`
+        const revenueResult = await req.db.query(`
             SELECT COALESCE(SUM(amount), 0) as total_revenue 
             FROM payments
         `);
         
         // Get pending payments (invoices with pending status)
-        const pendingResult = await pool.query(`
+        const pendingResult = await req.db.query(`
             SELECT COALESCE(SUM(total_amount), 0) as pending_amount 
             FROM invoices 
             WHERE status = 'pending'
         `);
         
         // Get overdue invoices
-        const overdueResult = await pool.query(`
+        const overdueResult = await req.db.query(`
             SELECT COALESCE(SUM(total_amount), 0) as overdue_amount 
             FROM invoices 
             WHERE status = 'overdue'
         `);
         
         // Get payment success rate
-        const successRateResult = await pool.query(`
+        const successRateResult = await req.db.query(`
             SELECT 
                 COUNT(*) as total_payments,
                 COUNT(CASE WHEN status = 'paid' THEN 1 END) as successful_payments
@@ -83,7 +82,7 @@ router.get('/overview', authenticateToken, async (req, res) => {
 // Get all invoices
 router.get('/invoices', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 i.invoice_id as id,
                 u.name as student,
@@ -108,7 +107,7 @@ router.get('/invoices', authenticateToken, async (req, res) => {
 // Get all payments
 router.get('/transactions', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 p.payment_id as id,
                 u.name as student,
@@ -134,7 +133,7 @@ router.get('/transactions', authenticateToken, async (req, res) => {
 // Get all student credits
 router.get('/credits', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT DISTINCT
                 s.student_id,
                 u.name as student_name,
@@ -150,7 +149,7 @@ router.get('/credits', authenticateToken, async (req, res) => {
         // For each student, get their packages and usage
         const studentsWithDetails = await Promise.all(result.rows.map(async (student) => {
             // Get active packages
-            const packagesResult = await pool.query(`
+            const packagesResult = await req.db.query(`
                 SELECT 
                     stp.purchase_id,
                     tp.name as package_name,
@@ -165,7 +164,7 @@ router.get('/credits', authenticateToken, async (req, res) => {
             `, [student.student_id]);
             
             // Get recent usage
-            const usageResult = await pool.query(`
+            const usageResult = await req.db.query(`
                 SELECT 
                     td.deducted_at as date,
                     td.minutes_used,
@@ -180,7 +179,7 @@ router.get('/credits', authenticateToken, async (req, res) => {
             `, [student.student_id]);
             
             // Calculate total purchased and used
-            const totalPurchasedResult = await pool.query(`
+            const totalPurchasedResult = await req.db.query(`
                 SELECT 
                     COALESCE(SUM(tp.hours_total), 0) as total_purchased_hours,
                     COALESCE(SUM(td.minutes_used) / 60.0, 0) as total_used_hours
@@ -223,7 +222,7 @@ router.get('/credits/:studentId', authenticateToken, async (req, res) => {
         const { studentId } = req.params;
         
         // Get student details
-        const studentResult = await pool.query(`
+        const studentResult = await req.db.query(`
             SELECT 
                 s.student_id,
                 u.name as student_name,
@@ -243,7 +242,7 @@ router.get('/credits/:studentId', authenticateToken, async (req, res) => {
         const student = studentResult.rows[0];
         
         // Get active packages
-        const packagesResult = await pool.query(`
+        const packagesResult = await req.db.query(`
             SELECT 
                 stp.purchase_id,
                 tp.name as package_name,
@@ -258,7 +257,7 @@ router.get('/credits/:studentId', authenticateToken, async (req, res) => {
         `, [studentId]);
         
         // Get recent usage
-        const usageResult = await pool.query(`
+        const usageResult = await req.db.query(`
             SELECT 
                 td.deducted_at as date,
                 td.minutes_used,
@@ -273,7 +272,7 @@ router.get('/credits/:studentId', authenticateToken, async (req, res) => {
         `, [studentId]);
         
         // Calculate total purchased and used
-        const totalPurchasedResult = await pool.query(`
+        const totalPurchasedResult = await req.db.query(`
             SELECT 
                 COALESCE(SUM(tp.hours_total), 0) as total_purchased_hours,
                 COALESCE(SUM(td.minutes_used) / 60.0, 0) as total_used_hours
@@ -312,7 +311,7 @@ router.get('/credits/:studentId', authenticateToken, async (req, res) => {
 // Get credit packages (time packages)
 router.get('/packages', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 time_package_id as id,
                 name,
@@ -333,7 +332,7 @@ router.get('/packages', authenticateToken, async (req, res) => {
 
 // Add credits to student (purchase time package)
 router.post('/credits/add', authenticateToken, addCreditsValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { studentId, timePackageId, notes } = req.body;
 
@@ -399,7 +398,7 @@ router.post('/credits/add', authenticateToken, addCreditsValidation, async (req,
 
 // Create new credit package
 router.post('/packages', authenticateToken, creditPackageValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { name, hours, price, description } = req.body;
 
@@ -449,7 +448,7 @@ router.post('/packages', authenticateToken, creditPackageValidation, async (req,
 
 // Update credit package
 router.put('/packages/:id', authenticateToken, creditPackageValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { id } = req.params;
         const { name, hours, price, description } = req.body;
@@ -506,7 +505,7 @@ router.put('/packages/:id', authenticateToken, creditPackageValidation, async (r
 
 // Delete credit package
 router.delete('/packages/:id', authenticateToken, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { id } = req.params;
 

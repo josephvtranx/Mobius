@@ -1,5 +1,3 @@
-import pool from '../config/db.js';
-
 export const getStudentRoster = async (req, res) => {
   try {
     // Check if user is authenticated
@@ -92,9 +90,9 @@ export const getStudentRoster = async (req, res) => {
     `;
 
     console.log('Executing query...');
-    console.log('Database connection state:', pool.totalCount, 'total connections,', pool.idleCount, 'idle,', pool.waitingCount, 'waiting');
+    console.log('Database connection state:', req.db.totalCount, 'total connections,', req.db.idleCount, 'idle,', req.db.waitingCount, 'waiting');
     
-    const result = await pool.query(query);
+    const result = await req.db.query(query);
     console.log('Query executed successfully. Number of results:', result.rows.length);
     
     if (result.rows.length === 0) {

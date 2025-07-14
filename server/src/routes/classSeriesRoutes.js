@@ -1,6 +1,5 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { 
     generateTimeSlots, 
@@ -32,7 +31,7 @@ const classSeriesValidation = [
 // Get all class series
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 cs.*,
                 json_build_object(
@@ -66,7 +65,7 @@ router.post('/update-single-sessions-to-pending', async (req, res) => {
     try {
         console.log('[DEBUG] Updating single sessions to pending status...');
         
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE class_sessions 
             SET status = 'pending' 
             WHERE series_id IS NULL AND status = 'scheduled'
@@ -90,7 +89,7 @@ router.get('/pending', async (req, res) => {
         console.log('[DEBUG] Fetching pending class series and single sessions...');
         
         // Debug: Check all class_sessions and their statuses
-        const allSessionsDebug = await pool.query(`
+        const allSessionsDebug = await req.db.query(`
             SELECT session_id, status, series_id, instructor_id, student_id, session_date
             FROM class_sessions
             ORDER BY session_date DESC
@@ -99,7 +98,7 @@ router.get('/pending', async (req, res) => {
         console.log('[DEBUG] All recent class_sessions:', allSessionsDebug.rows);
         
         // Fetch pending class series
-        const seriesResult = await pool.query(`
+        const seriesResult = await req.db.query(`
             SELECT 
                 cs.*, 
                 json_build_object(
@@ -127,7 +126,7 @@ router.get('/pending', async (req, res) => {
         console.log('[DEBUG] Pending class series:', seriesResult.rows);
 
         // Fetch pending single class sessions (not part of a series)
-        const singleResult = await pool.query(`
+        const singleResult = await req.db.query(`
             SELECT 
                 cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, cs.session_date as start_date, cs.session_date as end_date,
                 ARRAY[LOWER(TO_CHAR(cs.session_date, 'Dy'))] as days_of_week,
@@ -180,7 +179,7 @@ router.get('/pending', async (req, res) => {
 router.get('/all', async (req, res) => {
     try {
         // Fetch all class series
-        const seriesResult = await pool.query(`
+        const seriesResult = await req.db.query(`
             SELECT 
                 cs.*, 
                 json_build_object(
@@ -204,7 +203,7 @@ router.get('/all', async (req, res) => {
         `);
 
         // Fetch all single class sessions (not part of a series)
-        const singleResult = await pool.query(`
+        const singleResult = await req.db.query(`
             SELECT 
                 cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, cs.session_date as start_date, cs.session_date as end_date,
                 ARRAY[LOWER(TO_CHAR(cs.session_date, 'Dy'))] as days_of_week,
@@ -251,7 +250,7 @@ router.get('/all', async (req, res) => {
 
 // Create new class series
 router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), classSeriesValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         await client.query('BEGIN');
 
@@ -468,7 +467,7 @@ router.patch('/:id/status', async (req, res) => {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE class_series
             SET status = $1
             WHERE series_id = $2
@@ -488,7 +487,7 @@ router.patch('/:id/status', async (req, res) => {
 
 // Delete class series
 router.delete('/:id', async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         await client.query('BEGIN');
 
@@ -524,7 +523,7 @@ router.delete('/:id', async (req, res) => {
 
 // Get suggested time slots for a specific instructor
 router.get('/suggested-slots/:instructorId', authenticateToken, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { instructorId } = req.params;
         const { student_id, subject_id, duration_minutes = 60 } = req.query;
@@ -627,7 +626,7 @@ router.post('/smart-schedule', authenticateToken, [
     body('preferred_end_time').matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Invalid end time format'),
     body('duration_minutes').optional().isInt({ min: 30, max: 120 }).withMessage('Duration must be between 30 and 120 minutes')
 ], async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         // Check for validation errors
         const errors = validationResult(req);

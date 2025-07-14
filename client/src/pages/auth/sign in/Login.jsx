@@ -14,6 +14,7 @@ export default function Login() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingInstitution, setIsCheckingInstitution] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -22,9 +23,22 @@ export default function Login() {
     if (error) setError('');
   };
 
-  const handleContinue = (e) => {
+  const handleContinue = async (e) => {
     e.preventDefault();
-    setStep(2);
+    if (formData.institutionCode.trim()) {
+      setIsCheckingInstitution(true);
+      setError('');
+      try {
+        await authService.setInstitutionCode(formData.institutionCode.trim());
+        setStep(2);
+      } catch (err) {
+        setError('Invalid institution code. Please try again.');
+      } finally {
+        setIsCheckingInstitution(false);
+      }
+    } else {
+      setStep(2);
+    }
   };
 
   const handleSignIn = async (e) => {
@@ -147,13 +161,13 @@ export default function Login() {
                 <div className="login-saas-btn-group">
           <button
             type="submit"
-            disabled={isLoading}
-                    className="login-saas-signin-btn"
+            disabled={isLoading || isCheckingInstitution}
+            className="login-saas-signin-btn"
           >
-                    {isLoading
-                      ? (step === 1 ? 'Continuing...' : 'Signing in...')
-                      : (step === 1 ? (<><span>Continue</span> <FaArrowRight style={{ fontSize: 20 }} /></>) : (<><span>Sign in</span> <FaArrowRight style={{ fontSize: 20 }} /></>))}
-                  </button>
+            {isLoading || isCheckingInstitution
+              ? (step === 1 ? 'Checking...' : 'Signing in...')
+              : (step === 1 ? (<><span>Continue</span> <FaArrowRight style={{ fontSize: 20 }} /></>) : (<><span>Sign in</span> <FaArrowRight style={{ fontSize: 20 }} /></>))}
+          </button>
                   <button type="button" className="login-saas-register-btn" onClick={handleRegisterClick}>
                     <span>{step === 1 ? 'Register your institution as a new Möbius Workspace' : 'New user?'}</span>
                     <span className="login-saas-register-arrow"><FaArrowRight /></span>

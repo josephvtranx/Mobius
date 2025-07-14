@@ -1,6 +1,5 @@
 import express from 'express';
 import upload from '../middleware/upload.js';
-import { pool } from '../config/db.js';
 import auth from '../middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
@@ -29,7 +28,7 @@ router.post('/profile-picture', auth, upload.single('profilePicture'), async (re
       WHERE user_id = $2
     `;
     
-    await pool.query(updateQuery, [imageUrl, userId]);
+    await req.db.query(updateQuery, [imageUrl, userId]);
 
     res.json({
       success: true,
@@ -55,7 +54,7 @@ router.delete('/profile-picture', auth, async (req, res) => {
 
     // Get current profile picture URL
     const getQuery = 'SELECT profile_pic_url FROM users WHERE user_id = $1';
-    const result = await pool.query(getQuery, [userId]);
+    const result = await req.db.query(getQuery, [userId]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -73,7 +72,7 @@ router.delete('/profile-picture', auth, async (req, res) => {
       WHERE user_id = $1
     `;
     
-    await pool.query(updateQuery, [userId]);
+    await req.db.query(updateQuery, [userId]);
 
     // Delete file from filesystem if it exists
     if (currentImageUrl) {

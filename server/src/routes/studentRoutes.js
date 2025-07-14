@@ -1,6 +1,5 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getStudentRoster } from '../controllers/studentController.js';
 
@@ -25,7 +24,7 @@ router.get('/roster', getStudentRoster);
 // Get all students
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT s.*, u.name, u.email, u.phone
             FROM students s
             JOIN users u ON s.student_id = u.user_id
@@ -46,7 +45,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 s.*,
                 u.name,
@@ -76,7 +75,7 @@ router.get('/:id', async (req, res) => {
 
 // Create new student
 router.post('/', studentValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         await client.query('BEGIN');
 
@@ -147,7 +146,7 @@ router.put('/:id', studentValidation, async (req, res) => {
         const { id } = req.params;
         const { status, guardian_contact } = req.body;
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE students 
             SET status = $1, guardian_contact = $2
             WHERE student_id = $3
@@ -171,12 +170,12 @@ router.get('/:id/time-packages', async (req, res) => {
         const { id } = req.params;
         
         // Validate student exists
-        const studentExists = await pool.query('SELECT * FROM students WHERE student_id = $1', [id]);
+        const studentExists = await req.db.query('SELECT * FROM students WHERE student_id = $1', [id]);
         if (studentExists.rows.length === 0) {
             return res.status(404).json({ error: 'Student not found' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 stp.*,
                 tp.name as package_name,
@@ -201,7 +200,7 @@ router.get('/:id/time-packages', async (req, res) => {
 
 // Purchase time package
 router.post('/:id/time-packages', async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { id } = req.params;
         const { time_package_id } = req.body;
@@ -258,12 +257,12 @@ router.get('/:id/time-balance', async (req, res) => {
         const { id } = req.params;
         
         // Validate student exists
-        const studentExists = await pool.query('SELECT * FROM students WHERE student_id = $1', [id]);
+        const studentExists = await req.db.query('SELECT * FROM students WHERE student_id = $1', [id]);
         if (studentExists.rows.length === 0) {
             return res.status(404).json({ error: 'Student not found' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 COALESCE(SUM(minutes_remaining), 0) as total_minutes,
                 COUNT(*) as active_packages,

@@ -1,5 +1,3 @@
-import pool from '../config/db.js';
-
 // Classroom Conflict Check
 const checkClassroomConflict = async (classroom_id, start_time, end_time, date, class_id = null) => {
     const query = `
@@ -18,7 +16,7 @@ const checkClassroomConflict = async (classroom_id, start_time, end_time, date, 
         : [classroom_id, date, start_time, end_time];
 
     try {
-        const result = await pool.query(query, values);
+        const result = await req.db.query(query, values);
         return result.rowCount > 0; // True if conflict exists
     } catch (error) {
         console.error("Error in checkClassroomConflict:", error);
@@ -51,7 +49,7 @@ const checkInstructorConflict = async (instructor_ids, start_time, end_time, dat
         console.log("Query:", query);
         console.log("Values:", values);
 
-        const result = await pool.query(query, values);
+        const result = await req.db.query(query, values);
 
         console.log("Conflicting Classes:", result.rows);
 
@@ -77,7 +75,7 @@ const checkStudentConflict = async (student_id, start_time, end_time, schedule_d
     `;
     const values = [student_id, schedule_day, start_time, end_time];
     
-    const result = await pool.query(query, values);
+    const result = await req.db.query(query, values);
     return result.rowCount > 0; // True if a conflict exists
   };
 

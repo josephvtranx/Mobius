@@ -1,11 +1,9 @@
-import pool from './db.js';
-
-async function checkSchema() {
+async function checkSchema(db) {
   try {
     console.log('Checking database schema...');
     
     // Check if class_sessions table has the new TIMESTAMPTZ columns
-    const result = await pool.query(`
+    const result = await db.query(`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns
       WHERE table_name = 'class_sessions'
@@ -19,14 +17,14 @@ async function checkSchema() {
     });
     
     // Check if there are any existing sessions
-    const sessionCount = await pool.query(`
+    const sessionCount = await db.query(`
       SELECT COUNT(*) as count FROM class_sessions
     `);
     
     console.log(`\nTotal sessions in database: ${sessionCount.rows[0].count}`);
     
     // Check sample session data
-    const sampleSessions = await pool.query(`
+    const sampleSessions = await db.query(`
       SELECT session_id, session_start, session_end, session_date, start_time, end_time
       FROM class_sessions
       LIMIT 3
@@ -45,8 +43,9 @@ async function checkSchema() {
   } catch (error) {
     console.error('Error checking schema:', error);
   } finally {
-    await pool.end();
+    // await pool.end(); // This line is removed as per the edit hint
   }
 }
 
-checkSchema(); 
+// The original call to checkSchema() is removed as per the edit hint
+// checkSchema(); 

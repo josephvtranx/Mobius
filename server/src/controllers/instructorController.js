@@ -1,5 +1,3 @@
-import pool from '../config/db.js';
-
 const getInstructorRoster = async (req, res) => {
   try {
     console.log('Fetching instructor roster...');
@@ -59,7 +57,7 @@ const getInstructorRoster = async (req, res) => {
     `;
 
     console.log('Executing query...');
-    const result = await pool.query(query);
+    const result = await req.db.query(query);
     console.log('Query executed successfully. Number of results:', result.rows.length);
     
     // Transform the data to match the frontend structure
@@ -110,7 +108,7 @@ const updateInstructor = async (req, res) => {
     console.log('Updating instructor:', id, 'with data:', req.body);
 
     // Start a transaction
-    const client = await pool.connect();
+    const client = await req.db.connect();
     
     try {
       await client.query('BEGIN');

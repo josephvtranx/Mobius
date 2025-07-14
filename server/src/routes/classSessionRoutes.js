@@ -1,6 +1,5 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { toUtcIso, assertUtcIso } from '../lib/time.js';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
@@ -98,7 +97,7 @@ router.get('/', async (req, res) => {
 
         query += ` ORDER BY cs.session_start`;
 
-        const result = await pool.query(query, params);
+        const result = await req.db.query(query, params);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching class sessions:', error);
@@ -110,7 +109,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 cs.*,
                 json_build_object(
@@ -198,7 +197,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         }
 
         // Check if instructor exists and is active
-        const instructorCheck = await pool.query(`
+        const instructorCheck = await req.db.query(`
             SELECT i.instructor_id, u.name, u.is_active
             FROM instructors i
             JOIN users u ON i.instructor_id = u.user_id
@@ -214,7 +213,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         }
 
         // Check if student exists and is active
-        const studentCheck = await pool.query(`
+        const studentCheck = await req.db.query(`
             SELECT s.student_id, u.name, u.is_active
             FROM students s
             JOIN users u ON s.student_id = u.user_id
@@ -230,7 +229,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         }
 
         // Check if subject exists
-        const subjectCheck = await pool.query(`
+        const subjectCheck = await req.db.query(`
             SELECT subject_id, name FROM subjects WHERE subject_id = $1
         `, [subject_id]);
 
@@ -239,7 +238,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         }
 
         // Check if instructor is qualified to teach this subject
-        const instructorSubjectCheck = await pool.query(`
+        const instructorSubjectCheck = await req.db.query(`
             SELECT * FROM instructor_specialties 
             WHERE instructor_id = $1 AND subject_id = $2
         `, [instructor_id, subject_id]);
@@ -274,7 +273,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         console.log(`[DEBUG] End time: ${endTime}`);
         console.log(`[DEBUG] Session date: ${sessionDate}`);
         
-        const instructorAvailability = await pool.query(`
+        const instructorAvailability = await req.db.query(`
             WITH availability_check AS (
                 SELECT * FROM instructor_availability
                 WHERE instructor_id = $1
@@ -313,7 +312,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         if (instructorAvailability.rows.length === 0) {
             console.log(`[DEBUG] Availability check failed for instructor ${instructor_id} on ${sessionDate} (${startTime} - ${endTime})`);
             
-            const allAvail = await pool.query(`
+            const allAvail = await req.db.query(`
                 SELECT * FROM instructor_availability 
                 WHERE instructor_id = $1 AND day_of_week = $2
             `, [instructor_id, dayOfWeek]);
@@ -333,7 +332,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         }
 
         // Check for scheduling conflicts using TIMESTAMPTZ
-        const conflicts = await pool.query(`
+        const conflicts = await req.db.query(`
             SELECT 
                 cs.*,
                 CASE 
@@ -381,7 +380,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
             const startTime = toUtcIso(session_start).toTimeString().slice(0, 5);
             const endTime = toUtcIso(session_end).toTimeString().slice(0, 5);
             
-            const result = await pool.query(`
+            const result = await req.db.query(`
             INSERT INTO class_sessions (
                 instructor_id,
                 student_id,
@@ -401,7 +400,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
             console.log('Session created successfully:', result.rows[0]);
 
         // Create instructor unavailability for this specific session
-        await pool.query(`
+        await req.db.query(`
             INSERT INTO instructor_unavailability (
                 instructor_id,
                 start_datetime,
@@ -438,7 +437,7 @@ router.patch('/:id/status', async (req, res) => {
             return res.status(400).json({ error: 'Invalid status' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE class_sessions
             SET 
                 status = $1,
@@ -453,7 +452,7 @@ router.patch('/:id/status', async (req, res) => {
 
         // If session is canceled or completed, remove the unavailability record
         if (mappedStatus === 'canceled' || mappedStatus === 'completed') {
-            await pool.query(`
+            await req.db.query(`
                 DELETE FROM instructor_unavailability
                 WHERE instructor_id = $1
                 AND reason LIKE $2
@@ -474,7 +473,7 @@ router.post('/:id/attendance', async (req, res) => {
         const { attended, notes } = req.body;
 
         // Check if session exists and is scheduled for today or in the past
-        const sessionCheck = await pool.query(`
+        const sessionCheck = await req.db.query(`
             SELECT * FROM class_sessions
             WHERE session_id = $1 AND session_start <= NOW()
         `, [id]);
@@ -485,7 +484,7 @@ router.post('/:id/attendance', async (req, res) => {
             });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             INSERT INTO attendance (session_id, student_id, attended, notes)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (session_id, student_id)
@@ -504,7 +503,7 @@ router.post('/:id/attendance', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(
+        const result = await req.db.query(
             'DELETE FROM class_sessions WHERE session_id = $1 RETURNING *',
             [id]
         );
@@ -549,7 +548,7 @@ router.get('/instructor/:instructorId', async (req, res) => {
 
         query += ` ORDER BY cs.session_start ASC`;
 
-        const result = await pool.query(query, params);
+        const result = await req.db.query(query, params);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching instructor sessions:', error);

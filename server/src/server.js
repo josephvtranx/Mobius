@@ -2,6 +2,8 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import session from 'express-session';
+import { getTenantPool } from './db/tenantPool.js';
 
 // Import all routes
 import authRoutes from './routes/authRoutes.js';
@@ -34,6 +36,19 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(session({
+  secret: 'mobius-secret',
+  resave: false,
+  saveUninitialized: false
+}));
+
+// Attach tenant pool to every request BEFORE all /api routes
+app.use(async (req, _res, next) => {
+  if (!req.session?.tenantCode) return next();    // public routes
+  req.db = await getTenantPool(req.session.tenantCode);
+  next();
+});
 
 // Serve static files from uploads directory
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +62,17 @@ app.use((req, res, next) => {
         console.log('Request body:', req.body);
     }
     next();
+});
+
+// STEP 1 – user submits institution code
+app.post('/api/institution', async (req, res) => {
+  try {
+    await getTenantPool(req.body.code);           // throws if invalid
+    req.session.tenantCode = req.body.code;       // store tenant context
+    res.sendStatus(200);
+  } catch {
+    res.status(404).send('Invalid institution code');
+  }
 });
 
 // Route middlewares

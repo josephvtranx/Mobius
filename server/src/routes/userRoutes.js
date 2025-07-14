@@ -1,7 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
-import pool from '../config/db.js';
 
 const router = express.Router();
 
@@ -16,7 +15,7 @@ const userValidation = [
 // Get all users
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT user_id, name, email, phone, role, created_at 
             FROM users 
             ORDER BY created_at DESC
@@ -35,7 +34,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
         console.log('Fetching profile for user ID:', userId);
 
         // Get base user data
-        const userResult = await pool.query(
+        const userResult = await req.db.query(
             'SELECT user_id, name, email, phone, role, last_login, profile_pic_url FROM users WHERE user_id = $1',
             [userId]
         );
@@ -66,7 +65,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Admin route to get all users (protected + role-based) - MUST COME BEFORE /:id
 router.get('/all', authenticateToken, authorizeRole('admin'), async (req, res) => {
     try {
-        const result = await pool.query(
+        const result = await req.db.query(
             'SELECT user_id, name, email, role, is_active, last_login FROM users'
         );
 
@@ -85,7 +84,7 @@ router.get('/all', authenticateToken, authorizeRole('admin'), async (req, res) =
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT user_id, name, email, phone, role, created_at 
             FROM users 
             WHERE user_id = $1
@@ -108,7 +107,7 @@ router.post('/', userValidation, async (req, res) => {
         const { name, email, phone, role } = req.body;
 
         // Check if email already exists
-        const emailCheck = await pool.query(
+        const emailCheck = await req.db.query(
             'SELECT user_id FROM users WHERE email = $1',
             [email]
         );
@@ -117,7 +116,7 @@ router.post('/', userValidation, async (req, res) => {
             return res.status(400).json({ error: 'Email already in use' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             INSERT INTO users (name, email, phone, role, created_at)
             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
             RETURNING user_id, name, email, phone, role, created_at
@@ -137,7 +136,7 @@ router.put('/:id', userValidation, async (req, res) => {
         const { name, email, phone, role } = req.body;
 
         // Check if email already exists for other users
-        const emailCheck = await pool.query(
+        const emailCheck = await req.db.query(
             'SELECT user_id FROM users WHERE email = $1 AND user_id != $2',
             [email, id]
         );
@@ -146,7 +145,7 @@ router.put('/:id', userValidation, async (req, res) => {
             return res.status(400).json({ error: 'Email already in use' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE users 
             SET name = $1, email = $2, phone = $3, role = $4
             WHERE user_id = $5
@@ -169,7 +168,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             DELETE FROM users 
             WHERE user_id = $1
             RETURNING user_id
@@ -188,7 +187,7 @@ router.delete('/:id', async (req, res) => {
 
 // Update user profile (protected route)
 router.patch('/profile', authenticateToken, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const userId = req.user.user_id;
         const { name, phone, email } = req.body;

@@ -1,11 +1,11 @@
-import pool from './db.js';
+// Remove: import pool from './db.js';
 
-async function checkInstructorAvailability() {
+async function checkInstructorAvailability(db) {
   try {
     console.log('Checking availability for instructor 1...');
     
     // Check all availability slots for instructor 1
-    const availabilityResult = await pool.query(`
+    const availabilityResult = await db.query(`
       SELECT 
         availability_id,
         day_of_week,
@@ -39,7 +39,7 @@ async function checkInstructorAvailability() {
     }
     
     // Check instructor unavailability
-    const unavailabilityResult = await pool.query(`
+    const unavailabilityResult = await db.query(`
       SELECT 
         unavail_id,
         start_datetime,
@@ -62,8 +62,19 @@ async function checkInstructorAvailability() {
   } catch (error) {
     console.error('Error checking instructor availability:', error);
   } finally {
-    await pool.end();
+    // await pool.end(); // This line is removed as per the edit hint
   }
 }
 
-checkInstructorAvailability(); 
+// checkInstructorAvailability(); // This line is removed as per the edit hint
+// The function needs to be called with a database instance, e.g., req.db
+// Example usage (assuming this function is part of a route handler):
+// app.get('/check-instructor-availability', async (req, res) => {
+//   try {
+//     await checkInstructorAvailability(req.db);
+//     res.send('Availability checked.');
+//   } catch (error) {
+//     console.error('Error in route:', error);
+//     res.status(500).send('Internal Server Error');
+//   }
+// }); 

@@ -1,4 +1,3 @@
-import pool from '../config/db.js';
 import { verifyAccessToken } from '../helpers/authHelpers.js';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
@@ -15,7 +14,7 @@ export const authLimiter = rateLimit({
 // Log authentication attempts
 const logAuthAttempt = async (req, success, reason = null) => {
     try {
-        await pool.query(
+        await req.db.query(
             `INSERT INTO auth_logs (ip_address, user_agent, endpoint, success, failure_reason)
              VALUES ($1, $2, $3, $4, $5)`,
             [
@@ -43,7 +42,7 @@ export const authenticateToken = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Query to get user by id instead of username
-        const result = await pool.query(
+        const result = await req.db.query(
             'SELECT * FROM users WHERE user_id = $1',
             [decoded.userId]
         );

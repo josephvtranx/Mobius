@@ -1,11 +1,11 @@
-import pool from './db.js';
+// Remove: import pool from './db.js';
 
-async function debugSessions() {
+async function debugSessions(db) {
   try {
     console.log('Debugging sessions for instructor 1...');
     
     // Get all sessions for instructor 1
-    const result = await pool.query(`
+    const result = await db.query(`
       SELECT 
         session_id,
         instructor_id,
@@ -34,7 +34,7 @@ async function debugSessions() {
     
     // Check for sessions on the specific date (2025-07-10)
     console.log('\n=== Sessions on 2025-07-10 ===');
-    const dateResult = await pool.query(`
+    const dateResult = await db.query(`
       SELECT 
         session_id,
         instructor_id,
@@ -59,8 +59,17 @@ async function debugSessions() {
   } catch (error) {
     console.error('Error debugging sessions:', error);
   } finally {
-    await pool.end();
+    // await pool.end(); // This line is removed as per the edit hint
   }
 }
 
-debugSessions(); 
+// debugSessions(); // This line is removed as per the edit hint
+// The function is now expected to be called with a 'db' parameter or 'req.db'
+// Example usage:
+// const pool = require('./db.js'); // Assuming db.js exports the pool
+// debugSessions(pool);
+// Or if called from a route:
+// app.get('/debug-sessions', (req, res) => {
+//   debugSessions(req.db);
+//   res.send('Debugging sessions complete.');
+// }); 
