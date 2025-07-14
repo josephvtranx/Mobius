@@ -173,6 +173,10 @@ body {
 .navbar--teal {
     background: #229191;
   }
+
+.navbar--home {
+  background: #229191;
+}
   
   /* Apply the same style to all buttons */
   /* Base styles for all buttons */

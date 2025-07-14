@@ -44,9 +44,9 @@ const PendingBlocks = () => {
 
   return (
     <div className="blocks-section">
-      <div className="pending-title">
-        <h4>Pending Blocks</h4>
-      </div>
+        <div className="pending-title">
+          <h4>Pending Blocks</h4>
+        </div>
       {pendingRequests.length === 0 ? (
         <p className="no-pending">No pending blocks</p>
       ) : (
@@ -75,8 +75,8 @@ const PendingBlocks = () => {
                 >
                   Decline
                 </button>
-              </div>
-            </div>
+          </div>
+          </div>
           ))}
         </div>
       )}

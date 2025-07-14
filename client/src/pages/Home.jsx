@@ -52,8 +52,8 @@ function Home() {
                     <div className="loading">Loading...</div>
                   ) : pendingClasses.length > 0 ? (
                     <div className="pending-list">
-                      {pendingClasses.slice(0, 3).map(classItem => (
-                        <div key={classItem.series_id} className="card pending-card">
+                      {pendingClasses.slice(0, 3).map((classItem, idx) => (
+                        <div key={classItem.series_id ?? `pending-${idx}`} className="card pending-card">
                           <div className="pending-info">
                             <p className="student-name">{classItem.student?.name || 'Unknown Student'}</p>
                             <p className="subject-info">

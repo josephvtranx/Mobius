@@ -35,10 +35,10 @@ function RoleSelect() {
 
   const handleContinue = (e) => {
     e.preventDefault();
-    // Keep backend logic: navigate to the correct registration page
-    if (selectedRole === 'student') navigate('/auth/register/student');
-    else if (selectedRole === 'instructor') navigate('/auth/register/instructor');
-    else if (selectedRole === 'admin') navigate('/auth/register/staff'); // Assuming admin uses staff registration
+    const state = { email };
+    if (selectedRole === 'student') navigate('/auth/register/student', { state });
+    else if (selectedRole === 'instructor') navigate('/auth/register/instructor', { state });
+    else if (selectedRole === 'admin') navigate('/auth/register/staff', { state });
   };
 
   return (

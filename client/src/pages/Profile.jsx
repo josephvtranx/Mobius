@@ -121,88 +121,88 @@ function Profile() {
                 <div className="profile-section">
                   <div className="section-header">
                     <h2 className="section-title">Profile Information</h2>
-                    {!isEditing && (
-                      <button
-                        onClick={() => setIsEditing(true)}
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
                         className="btn-edit"
-                      >
-                        Edit Profile
-                      </button>
-                    )}
-                  </div>
+              >
+                Edit Profile
+              </button>
+            )}
+          </div>
 
-                  {isEditing ? (
+          {isEditing ? (
                     <div className="card">
                       <form onSubmit={handleSubmit} className="profile-form">
                         <div className="form-group">
                           <label htmlFor="name" className="form-label">
-                            Name
-                          </label>
-                          <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            required
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
                             className="form-input"
-                          />
-                        </div>
+                />
+              </div>
 
                         <div className="form-group">
                           <label htmlFor="email" className="form-label">
-                            Email
-                          </label>
-                          <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
                             className="form-input"
-                          />
-                        </div>
+                />
+              </div>
 
                         <div className="form-group">
                           <label htmlFor="phone" className="form-label">
-                            Phone
-                          </label>
-                          <input
-                            type="tel"
-                            id="phone"
-                            name="phone"
-                            value={formData.phone}
-                            onChange={handleChange}
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
                             className="form-input"
-                          />
-                        </div>
+                />
+              </div>
 
                         <div className="form-actions">
-                          <button
-                            type="submit"
+                <button
+                  type="submit"
                             className="btn-primary"
-                          >
-                            Save Changes
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditing(false);
-                              setFormData({
-                                name: user.name,
-                                email: user.email,
-                                phone: user.phone || ''
-                              });
-                            }}
+                >
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setFormData({
+                      name: user.name,
+                      email: user.email,
+                      phone: user.phone || ''
+                    });
+                  }}
                             className="btn-secondary"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
                     </div>
-                  ) : (
+          ) : (
                     <div className="card">
                       <div className="profile-info">
                         <div className="info-row">
@@ -212,19 +212,19 @@ function Profile() {
                         <div className="info-row">
                           <span className="info-label">Email</span>
                           <span className="info-value">{user.email}</span>
-                        </div>
+              </div>
                         <div className="info-row">
                           <span className="info-label">Phone</span>
                           <span className="info-value">{user.phone || 'Not provided'}</span>
-                        </div>
+              </div>
                         <div className="info-row">
                           <span className="info-label">Role</span>
                           <span className="info-value capitalize">{user.role}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+              </div>
+              </div>
+            </div>
+          )}
+        </div>
               </div>
             </div>
           </div>

@@ -49,8 +49,8 @@ function Navbar({ variant = 'teal' }) {
   };
 
   // Determine classes based on variant
-  const navbarClass = `navbar navbar--${variant}`;
-  const buttonBoxClass = `button-box button-box--light${variant}`;
+  const navbarClass = `navbar navbar--${variant === 'home' ? 'teal' : variant}`;
+  const buttonBoxClass = `button-box button-box--light${variant === 'home' ? 'teal' : variant}`;
 
   return (
     <div className={navbarClass}>

@@ -1,367 +1,305 @@
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/*
+  Mobius SaaS Login Page Styles
+  Cleaned up: Only .login-saas-* classes for the new design
+*/
+
+/* === Layout === */
+.login-saas-bg {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  padding: 20px;
-  padding-top: 80px;
-}
-
-.login-card {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 40px;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  max-width: 400px;
-  backdrop-filter: blur(10px);
-  transform: translateY(0);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.login-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: 35px;
-}
-
-.login-header h1 {
-  color: #2d3748;
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  letter-spacing: -0.5px;
-}
-
-.login-header p {
-  color: #718096;
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-.login-form {
+  width: 100vw;
+  background: #eaf9fc;
   display: flex;
-  flex-direction: column;
-  gap: 24px;
+  align-items: stretch;
+  font-family: 'Inter', 'Poppins', sans-serif;
 }
 
-.form-group {
+.login-saas-container {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  color: #4a5568;
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-}
-
-.form-input {
-  padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  font-size: 16px;
-  color: #2d3748;
-  transition: all 0.3s ease;
-  width: 100%;
-  background-color: white;
-}
-
-.form-input:hover {
-  border-color: #cbd5e0;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
-}
-
-/* Password input container */
-.password-input-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.password-input-container .form-input {
-  padding-right: 45px;
-}
-
-.password-toggle-button {
-  position: absolute;
-  right: 16px;
-  background: none;
-  border: none;
-  color: #718096;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s ease;
-  height: 20px;
-  width: 20px;
-}
-
-.password-toggle-button:hover {
-  color: #4299e1;
-}
-
-.password-toggle-button:focus {
-  outline: none;
-  color: #4299e1;
-}
-
-/* Form links */
-.form-links {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.forgot-password-link {
-  color: #718096;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.forgot-password-link:hover {
-  color: #4299e1;
-  text-decoration: none;
-  transform: translateY(-1px);
-}
-
-/* Submit button */
-.login-button {
-  background: linear-gradient(to right, #4299e1, #667eea);
-  color: white;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: 100%;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.login-button:hover {
-  background: linear-gradient(to right, #3182ce, #5a67d8);
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(66, 153, 225, 0.2);
-}
-
-.login-button:active {
-  transform: translateY(0);
-}
-
-.login-button:disabled {
-  background: #e2e8f0;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Error message */
-.error-message {
-  background-color: #fff5f5;
-  color: #e53e3e;
-  padding: 14px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  text-align: center;
-  font-size: 14px;
-  border: 1px solid #feb2b2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-/* Form switch */
-.form-switch {
-  text-align: center;
-  color: #718096;
-  font-size: 14px;
-  margin-top: 8px;
-}
-
-.switch-button {
-  color: #4299e1;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  margin-left: 4px;
-}
-
-.switch-button:hover {
-  color: #2b6cb0;
-  text-decoration: none;
-  transform: translateY(-1px);
-}
-
-/* Role select dropdown styling */
-select.form-input {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 16px center;
-  background-size: 16px;
-  padding-right: 45px;
-  cursor: pointer;
-}
-
-select.form-input:focus {
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234299e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-}
-
-/* Role Selection Styles */
-.role-select-button {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  padding: 16px;
-  margin-bottom: 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 10px;
-  background-color: white;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.role-select-button:hover {
-  border-color: #4299e1;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(66, 153, 225, 0.1);
-}
-
-.role-select-button .icon {
-  width: 24px;
-  height: 24px;
-  margin-right: 16px;
-  color: #4299e1;
-}
-
-.role-select-button .text {
+  flex-direction: row;
+  width: 100vw;
+  max-width: 1440px;
+  margin: 0 auto;
   flex: 1;
 }
 
-.role-select-button .title {
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 4px;
-  font-size: 16px;
+/* Disable scrolling when login page is present */
+body:has(.login-saas-bg), html:has(.login-saas-bg) {
+  overflow: hidden !important;
+  height: 100vh;
 }
 
-.role-select-button .description {
-  font-size: 14px;
-  color: #718096;
-  line-height: 1.4;
-}
-
-/* Header Styles */
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  padding:15px 30px;
-  z-index: 1000;
+.login-saas-left {
+  flex: 1;
   display: flex;
-  align-items: center;
-  height: 90px;
-}
-
-/* Regular header styles */
-.header:not(.header--login) {
-  justify-content: space-between;
-}
-
-/* Login page header styles */
-.header--login {
+  flex-direction: column;
   justify-content: flex-start;
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.header--login .logo {
-  height: 40px;
-}
-
-.logo {
-  height: 40px;
-  display: flex;
-  align-items: center;
-}
-
-.logo-img {
-  height: 100%;
-  width: auto;
-}
-
-/* Title section styles (hidden on login) */
-.title-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-grow: 1;
-}
-
-/* Remove conflicting title styles */
-.title {
-  margin: 0;
-}
-
-.search-bar {
-  flex-grow: 1;
-  max-width: 400px;
-}
-
-.search-bar input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.icon-section {
-  display: flex;
-  align-items: center;
-}
-
-.icons {
-  display: flex;
-  gap: 15px;
-  list-style: none;
-  margin: 0;
+  align-items: flex-start;
   padding: 0;
+  min-width: 320px;
+  position: relative;
+  height: 100vh;
 }
 
-.icon-button {
-  background: none;
+/* === Form === */
+.login-saas-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: 640px;
+  align-items: flex-start;
+  position: absolute;
+  top: var(--login-form-top, 35%);
+  left: var(--login-form-left, 0);
+  right: var(--login-form-right, auto);
+  bottom: var(--login-form-bottom, auto);
+  transform: translateY(-50%);
+  margin-top: 0;
+  height: 340px;
+  min-height: unset;
+}
+
+.login-saas-heading {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #1e3a4c;
+  margin-bottom: 18px;
+  margin-top: 0;
+  line-height: 1.18;
+  letter-spacing: -0.5px;
+}
+
+.login-saas-input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+  width: 100%;
+  max-width: 390px;
+}
+
+.login-saas-input-label {
+  color: #4a5568;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.login-saas-input {
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 1.08rem;
+  color: #1e3a4c;
+  background: #fafdff;
+  transition: border 0.2s, box-shadow 0.2s;
+  outline: none;
+  box-shadow: 0 1px 4px rgba(30,58,76,0.04);
+  width: 100%;
+  max-width: 300px;
+}
+
+.login-saas-input:focus {
+  border-color: #229191;
+  box-shadow: 0 0 0 2px rgba(34,145,145,0.10);
+}
+
+.login-saas-error {
+  background: #fff5f5;
+  color: #e53e3e;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 2px;
+  text-align: center;
+  font-size: 14px;
+  border: 1px solid #feb2b2;
+  width: 100%;
+}
+
+/* === Pills/Progress === */
+.login-saas-progress {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin-bottom: 18px;
+  margin-top: 0;
+}
+
+.login-saas-pill {
+  width: 76px;
+  height: 7px;
+  border-radius: 20px;
+  background: #e5e7eb;
+  transition: background 0.2s;
+}
+
+.login-saas-pill.active {
+  background: #44C3C3;
+}
+
+/* === Buttons === */
+.login-saas-btn-group {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.login-saas-signin-btn,
+.login-saas-register-btn {
+  font-size: 1rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-saas-signin-btn {
+  background: #44C3C3;
+  color: #fff;
   border: none;
-  padding: 8px;
+  border-radius: 14px;
+  font-weight: 700;
+  padding: 9px 0;
+  gap: 10px;
   cursor: pointer;
-  color: #666;
-  transition: color 0.3s ease;
+  margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(62,212,223,0.08);
+  transition: background 0.2s;
 }
 
-.icon-button:hover {
-  color: #007bff;
+.login-saas-signin-btn:disabled {
+  background: #b2e2e2;
+  cursor: not-allowed;
+}
+
+.login-saas-signin-btn:hover:not(:disabled) {
+  background: #1e8a8a;
+}
+
+.login-saas-register-btn {
+  background: #6d7179;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-weight: 600;
+  padding: 9px 32px 9px 18px;
+  gap: 12px;
+  margin-top: -2px;
+  margin-bottom: 0;
+  box-shadow: 0 1px 4px rgba(30,58,76,0.06);
+  cursor: pointer;
+  transition: background 0.2s;
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.login-saas-register-btn:hover {
+  background: #181a20;
+}
+
+.login-saas-register-arrow {
+  margin-left: auto;
+  font-size: 1.2em;
+  display: flex;
+  align-items: center;
+}
+
+/* === Image === */
+.login-saas-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  padding: 0 4vw 0 0;
+  height: 100vh;
+  position: relative;
+}
+
+.login-saas-image {
+  position: absolute;
+  top: var(--login-image-top, 40%);
+  left: var(--login-image-left, 50%);
+  right: var(--login-image-right, auto);
+  bottom: var(--login-image-bottom, auto);
+  transform: translate(-50%, -50%);
+  width: 700px;
+  max-width: 90vw;
+  min-width: 320px;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(30,58,76,0.10);
+  object-fit: cover;
+  background: #fff;
+  z-index: 1;
+}
+
+/* === Responsive === */
+@media (max-width: 900px) {
+  body:has(.login-saas-bg), html:has(.login-saas-bg) {
+    overflow: auto !important;
+    height: auto;
+  }
+  .login-saas-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .login-saas-left, .login-saas-right {
+    padding: 32px 4vw 0 4vw;
+    min-width: 0;
+    height: auto;
+  }
+  .login-saas-right {
+    padding: 0 4vw 32px 4vw;
+    height: auto;
+  }
+  .login-saas-image {
+    position: static;
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+    border-radius: 18px;
+    transform: none;
+  }
+  .login-saas-form {
+    position: static;
+    transform: none;
+    margin-top: 12px;
+    max-width: 100vw;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-saas-heading {
+    font-size: 1.5rem;
+    margin-bottom: 12px;
+  }
+  .login-saas-form {
+    gap: 20px;
+    max-width: 100vw;
+    margin-top: 12px;
+  }
+  .login-saas-left, .login-saas-right {
+    padding: 18px 2vw 0 2vw;
+  }
+  .login-saas-right {
+    padding: 0 2vw 18px 2vw;
+    height: auto;
+  }
+  .login-saas-image {
+    border-radius: 10px;
+  }
+  .login-saas-progress {
+    gap: 7px;
+    margin-bottom: 18px;
+  }
+  .login-saas-pill {
+    width: 56px;
+    height: 5px;
+  }
 } 

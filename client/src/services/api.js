@@ -42,7 +42,7 @@ api.interceptors.response.use(
 // Auth endpoints
 export const auth = {
     login: (credentials) => api.post('/auth/login', credentials),
-    signup: (userData) => api.post('/auth/signup', userData),
+    signup: (userData) => api.post('/auth/register', userData),
     verify: () => api.get('/auth/verify'),
     logout: () => {
         localStorage.removeItem('token');

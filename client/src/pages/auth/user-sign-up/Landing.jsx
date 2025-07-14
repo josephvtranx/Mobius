@@ -12,7 +12,7 @@ export default function Landing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleContinue = () => navigate("/auth/role-select");
+    const handleContinue = () => navigate("/auth/login");
     window.addEventListener("keydown", handleContinue);
     window.addEventListener("mousedown", handleContinue);
     return () => {
