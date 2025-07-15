@@ -16,9 +16,9 @@ const attendanceValidation = [
 ];
 
 // Helper function to calculate session duration in minutes
-const calculateSessionDuration = (startTime, endTime) => {
-    const start = toUtcIso(new Date(`2000-01-01T${startTime}`));
-    const end = toUtcIso(new Date(`2000-01-01T${endTime}`));
+const calculateSessionDuration = (sessionStart, sessionEnd) => {
+    const start = new Date(sessionStart);
+    const end = new Date(sessionEnd);
     return Math.round((end - start) / (1000 * 60)); // Convert to minutes
 };
 
@@ -32,9 +32,8 @@ router.post('/mark', authenticateToken, attendanceValidation, async (req, res) =
         const sessionCheck = await client.query(`
             SELECT 
                 cs.session_id,
-                cs.session_date,
-                cs.start_time,
-                cs.end_time,
+                cs.session_start,
+                cs.session_end,
                 cs.status,
                 s.name as student_name,
                 i.name as instructor_name
@@ -79,7 +78,7 @@ router.post('/mark', authenticateToken, attendanceValidation, async (req, res) =
         // If student attended, deduct time and log deduction
         if (attended) {
             // Calculate session duration in minutes
-            const sessionDurationMinutes = calculateSessionDuration(session.start_time, session.end_time);
+            const sessionDurationMinutes = calculateSessionDuration(session.session_start, session.session_end);
 
             // Check if student has sufficient time packages
             const studentTimePackages = await client.query(`
@@ -172,15 +171,15 @@ router.post('/mark', authenticateToken, attendanceValidation, async (req, res) =
         `, [student_id]);
 
         const totalMinutes = parseInt(updatedTime.rows[0].total_minutes);
-        const sessionDurationMinutes = attended ? calculateSessionDuration(session.start_time, session.end_time) : 0;
+        const sessionDurationMinutes = attended ? calculateSessionDuration(session.session_start, session.session_end) : 0;
 
         res.json({
             success: true,
             message: `Attendance marked successfully. Student ${attended ? 'attended' : 'did not attend'}.`,
             session: {
                 id: session.session_id,
-                date: session.session_date,
-                time: `${session.start_time} - ${session.end_time}`,
+                start: session.session_start,
+                end: session.session_end,
                 instructor: session.instructor_name,
                 student: session.student_name
             },
@@ -219,9 +218,8 @@ router.get('/session/:sessionId', authenticateToken, async (req, res) => {
                 a.notes,
                 a.created_at,
                 s.name as student_name,
-                cs.session_date,
-                cs.start_time,
-                cs.end_time,
+                cs.session_start,
+                cs.session_end,
                 cs.status as session_status
             FROM attendance a
             JOIN students s ON a.student_id = s.student_id
@@ -250,9 +248,8 @@ router.get('/student/:studentId', authenticateToken, async (req, res) => {
                 a.attended,
                 a.notes,
                 a.created_at,
-                cs.session_date,
-                cs.start_time,
-                cs.end_time,
+                cs.session_start,
+                cs.session_end,
                 cs.status as session_status,
                 sub.name as subject_name,
                 i.name as instructor_name
@@ -262,7 +259,7 @@ router.get('/student/:studentId', authenticateToken, async (req, res) => {
             JOIN instructors i ON cs.instructor_id = i.instructor_id
             JOIN users u ON i.instructor_id = u.user_id
             WHERE a.student_id = $1
-            ORDER BY cs.session_date DESC, cs.start_time DESC
+            ORDER BY cs.session_start DESC
             LIMIT $2 OFFSET $3
         `, [studentId, limit, offset]);
 

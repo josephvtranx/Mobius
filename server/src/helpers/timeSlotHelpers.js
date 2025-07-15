@@ -8,21 +8,22 @@ const dayToNumber = (dayAbbr) => {
 };
 
 // Get next occurrence of a day of the week
-const getNextDayOccurrence = (dayAbbr, baseDate = toUtcIso()) => {
+const getNextDayOccurrence = (dayAbbr, baseDate = toUtcIso(new Date())) => {
     const targetDay = dayToNumber(dayAbbr);
-    const currentDay = assertUtcIso(baseDate).getDay();
+    const base = new Date(baseDate);
+    const currentDay = base.getDay();
     let daysToAdd = (targetDay - currentDay + 7) % 7;
     
     // If it's today but the time has passed, move to next week
     if (daysToAdd === 0) {
-        const currentTime = assertUtcIso(baseDate).getHours() * 60 + assertUtcIso(baseDate).getMinutes();
+        const currentTime = base.getHours() * 60 + base.getMinutes();
         // If it's past 6 PM, move to next week
         if (currentTime >= 18 * 60) {
             daysToAdd = 7;
         }
     }
     
-    const nextDate = assertUtcIso(baseDate).getTime() + (daysToAdd * 24 * 60 * 60 * 1000);
+    const nextDate = new Date(base.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
     return toUtcIso(nextDate);
 };
 
@@ -46,10 +47,10 @@ const checkSchedulingConflicts = async (client, instructorId, studentId, date, s
     const sessionConflict = await client.query(`
         SELECT session_id FROM class_sessions 
         WHERE (instructor_id = $1 OR student_id = $2)
-        AND session_date = $3
+        AND DATE(session_start) = $3
         AND status NOT IN ('canceled', 'completed')
         AND (
-            ($4::time, $5::time) OVERLAPS (start_time, end_time)
+            (CAST(session_start AS time), CAST(session_end AS time)) OVERLAPS ($4::time, $5::time)
         )
     `, [instructorId, studentId, date, startTime, endTime]);
 
@@ -72,11 +73,14 @@ const checkSchedulingConflicts = async (client, instructorId, studentId, date, s
 // Generate time slots from availability
 const generateTimeSlots = async (client, availability, durationMinutes, instructorId, studentId) => {
     const suggestedSlots = [];
-    const today = toUtcIso();
-    const twoWeeksFromNow = assertUtcIso(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+    const today = new Date();
+    const twoWeeksFromNow = new Date(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+    const todayIso = toUtcIso(today);
+    const twoWeeksFromNowIso = toUtcIso(twoWeeksFromNow);
 
     for (const availSlot of availability) {
-        const slotDate = getNextDayOccurrence(availSlot.day_of_week, today);
+        const slotDateIso = getNextDayOccurrence(availSlot.day_of_week, todayIso);
+        const slotDate = new Date(slotDateIso);
         
         // Only consider dates within the next 2 weeks
         if (slotDate > twoWeeksFromNow) continue;
@@ -94,19 +98,19 @@ const generateTimeSlots = async (client, availability, durationMinutes, instruct
 
             // Check for conflicts
             const hasConflict = await checkSchedulingConflicts(
-                client, instructorId, studentId, slotDate, currentTime, endTime
+                client, instructorId, studentId, slotDateIso, currentTime, endTime
             );
             
             if (!hasConflict) {
                 // Format date for display
-                const formattedDate = assertUtcIso(slotDate).toLocaleDateString('en-US', {
+                const formattedDate = slotDate.toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric'
                 });
 
                 suggestedSlots.push({
-                    date: assertUtcIso(slotDate).toISOString().split('T')[0], // YYYY-MM-DD format
+                    date: slotDateIso.split('T')[0], // YYYY-MM-DD format
                     displayDate: formattedDate,
                     startTime: currentTime,
                     endTime: endTime,
@@ -128,7 +132,7 @@ const generateTimeSlots = async (client, availability, durationMinutes, instruct
 
     // Sort slots by date and time
     suggestedSlots.sort((a, b) => {
-        const dateComparison = assertUtcIso(a.date) - assertUtcIso(b.date);
+        const dateComparison = new Date(a.date) - new Date(b.date);
         if (dateComparison !== 0) return dateComparison;
         return a.startTime.localeCompare(b.startTime);
     });
@@ -293,17 +297,20 @@ const isExactMatch = (preferredStart, preferredEnd, actualStart, actualEnd) => {
 // Generate smart time slots with proximity scoring
 const generateSmartTimeSlots = async (client, instructorId, studentId, availability, durationMinutes, preferredDays, preferredStartTime, preferredEndTime) => {
     const suggestedSlots = [];
-    const today = toUtcIso();
-    const twoWeeksFromNow = assertUtcIso(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+    const today = new Date();
+    const twoWeeksFromNow = new Date(today.getTime() + (14 * 24 * 60 * 60 * 1000));
+    const todayIso = toUtcIso(today);
+    const twoWeeksFromNowIso = toUtcIso(twoWeeksFromNow);
 
     // Track the best match for each day
     const bestMatchesByDay = {};
 
     for (const availSlot of availability) {
-        const slotDate = getNextDayOccurrence(availSlot.day_of_week, today);
+        const slotDate = getNextDayOccurrence(availSlot.day_of_week, todayIso);
+        const slotDateObj = new Date(slotDate);
         
         // Only consider dates within the next 2 weeks
-        if (slotDate > twoWeeksFromNow) continue;
+        if (slotDateObj > twoWeeksFromNow) continue;
 
         // Generate time slots within this availability period
         // Start with the preferred start time if it's within availability
@@ -330,7 +337,7 @@ const generateSmartTimeSlots = async (client, instructorId, studentId, availabil
             
             if (!hasConflict) {
                 // Format date for display
-                const formattedDate = assertUtcIso(slotDate).toLocaleDateString('en-US', {
+                const formattedDate = slotDateObj.toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric'
@@ -358,7 +365,7 @@ const generateSmartTimeSlots = async (client, instructorId, studentId, availabil
                 // Only add slots with reasonable proximity (within 2 hours of preferred time)
                 if (proximityScore <= 120) { // 2 hours = 120 minutes
                     const slot = {
-                        date: assertUtcIso(slotDate).toISOString().split('T')[0],
+                        date: slotDate.toISOString().split('T')[0],
                         displayDate: formattedDate,
                         startTime: currentTime,
                         endTime: endTime,
@@ -407,7 +414,7 @@ const generateSmartTimeSlots = async (client, instructorId, studentId, availabil
         }
         
         // Finally sort by date and time
-        const dateComparison = assertUtcIso(a.date) - assertUtcIso(b.date);
+        const dateComparison = new Date(a.date) - new Date(b.date);
         if (dateComparison !== 0) return dateComparison;
         return a.startTime.localeCompare(b.startTime);
     });
@@ -474,7 +481,7 @@ const findSmartSchedulingMatches = async (client, studentId, subjectId, preferre
         }
         
         // Finally sort by date and time
-        const dateComparison = assertUtcIso(a.date) - assertUtcIso(b.date);
+        const dateComparison = new Date(a.date) - new Date(b.date);
         if (dateComparison !== 0) return dateComparison;
         return a.startTime.localeCompare(b.startTime);
     });

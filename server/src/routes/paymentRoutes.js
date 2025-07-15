@@ -168,7 +168,7 @@ router.get('/credits', authenticateToken, async (req, res) => {
                 SELECT 
                     td.deducted_at as date,
                     td.minutes_used,
-                    cs.session_date,
+                    cs.session_start,
                     sub.name as subject_name
                 FROM time_deductions td
                 JOIN class_sessions cs ON td.session_id = cs.session_id
@@ -261,7 +261,7 @@ router.get('/credits/:studentId', authenticateToken, async (req, res) => {
             SELECT 
                 td.deducted_at as date,
                 td.minutes_used,
-                cs.session_date,
+                cs.session_start,
                 sub.name as subject_name
             FROM time_deductions td
             JOIN class_sessions cs ON td.session_id = cs.session_id

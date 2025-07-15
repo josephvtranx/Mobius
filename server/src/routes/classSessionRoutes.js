@@ -181,8 +181,8 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         }
 
         // Validate time range
-        const startDate = toUtcIso(session_start);
-        const endDate = toUtcIso(session_end);
+        const startDate = new Date(toUtcIso(session_start));
+        const endDate = new Date(toUtcIso(session_end));
         
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
             return res.status(400).json({ 
@@ -249,7 +249,7 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
 
         // Check instructor availability using the new TIMESTAMPTZ fields
         // Extract day of week from session_start - convert to local time first
-        const sessionStartDate = toUtcIso(session_start);
+        const sessionStartDate = new Date(toUtcIso(session_start));
         const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
         
         // Convert UTC to local time for day calculation
@@ -258,8 +258,8 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
         
         // Extract time components from session_start and session_end
         // Convert UTC to local time for availability checking
-        const localStartTime = toUtcIso(session_start);
-        const localEndTime = toUtcIso(session_end);
+        const localStartTime = new Date(toUtcIso(session_start));
+        const localEndTime = new Date(toUtcIso(session_end));
         const startTime = localStartTime.toTimeString().slice(0, 5);
         const endTime = localEndTime.toTimeString().slice(0, 5);
         const sessionDate = localStartTime.toISOString().split('T')[0];
@@ -375,27 +375,19 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
                 location
             });
             
-            // Extract old format fields for backward compatibility
-            const sessionDate = toUtcIso(session_start).toISOString().split('T')[0];
-            const startTime = toUtcIso(session_start).toTimeString().slice(0, 5);
-            const endTime = toUtcIso(session_end).toTimeString().slice(0, 5);
-            
             const result = await req.db.query(`
             INSERT INTO class_sessions (
                 instructor_id,
                 student_id,
                 subject_id,
-                session_date,
-                start_time,
-                end_time,
-                    session_start,
-                    session_end,
+                session_start,
+                session_end,
                 location,
                 status
             )
-                VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8::timestamptz, $9, 'pending')
+                VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz, $6, 'pending')
             RETURNING *
-            `, [instructor_id, student_id, subject_id, sessionDate, startTime, endTime, session_start, session_end, location]);
+            `, [instructor_id, student_id, subject_id, session_start, session_end, location]);
 
             console.log('Session created successfully:', result.rows[0]);
 

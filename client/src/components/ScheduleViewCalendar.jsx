@@ -6,7 +6,7 @@ import classSessionService from '../services/classSessionService';
 import authService from '../services/authService';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../css/schedule-view-calendar.scss';
-import { toUtcIso, isoToLocal } from '../lib/time.js';
+import { toUtcIso, isoToLocal, convertSessionsToLocalTime } from '../lib/time.js';
 
 const locales = {
   'en-US': enUS
@@ -22,7 +22,6 @@ const localizer = dateFnsLocalizer({
 
 // Custom Toolbar Component
 const CustomToolbar = ({ date, onNavigate, onView, view }) => {
-  console.log('CustomToolbar rendered with date:', date);
   
   const goToToday = () => {
     onNavigate('TODAY');
@@ -65,7 +64,6 @@ const CustomToolbar = ({ date, onNavigate, onView, view }) => {
 
 // Custom Header Component
 const CustomHeader = ({ date, localizer }) => {
-  console.log('CustomHeader rendered with date:', date);
   
   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
   const dayNumber = format(date, 'd');
@@ -86,18 +84,9 @@ const CustomEvent = ({ event }) => {
   const session = event.resource;
   const currentUser = authService.getCurrentUser();
 
-  console.log('CustomEvent rendering:', {
-    event,
-    session,
-    startTime,
-    endTime,
-    currentUser: currentUser?.role
-  });
-
   // Determine what information to show based on user role
   const getEventContent = () => {
     if (!session) {
-      console.warn('No session data in event:', event);
       return null;
     }
 
@@ -165,7 +154,6 @@ const CustomEvent = ({ event }) => {
       );
     }
 
-    console.log('Event content generated:', content);
     return content;
   };
 
@@ -198,11 +186,6 @@ function ScheduleViewCalendar({ calendarRange, currentUserId }) {
       setError(null);
       let userSessions = [];
 
-      console.log('Fetching sessions for user:', {
-        userId: currentUserId,
-        role: currentUser.role
-      });
-
       // Fetch sessions based on user role
       if (currentUser.role === 'instructor') {
         userSessions = await classSessionService.getInstructorSessions(currentUserId);
@@ -213,53 +196,38 @@ function ScheduleViewCalendar({ calendarRange, currentUserId }) {
         userSessions = await classSessionService.getAllSessions();
       }
 
-      console.log('Raw sessions data:', userSessions);
-
-      // Convert sessions to calendar events with proper time formatting
-      const calendarEvents = userSessions
+      // Convert sessions to local time first, then to calendar events
+      const localSessions = convertSessionsToLocalTime(userSessions);
+      
+      const calendarEvents = localSessions
         .filter(session => {
           // Filter out sessions without required fields
           return session.session_start && session.session_end;
         })
         .map(session => {
-          // Handle TIMESTAMPTZ fields - use the same approach as SmartSchedulingCalendar
-          let start, end;
-          
           try {
-            // Parse the TIMESTAMPTZ fields properly
-            start = isoToLocal(session.session_start).toJSDate();
-            end = isoToLocal(session.session_end).toJSDate();
+            // session_start and session_end are now local Date objects
+            const start = session.session_start;
+            const end = session.session_end;
             const status = session.status || 'scheduled';
             
             // Validate dates
             if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-              console.warn('Invalid date/time for session:', session);
               return null;
             }
 
-            // Use the same time positioning logic as SmartSchedulingCalendar
-            // Create new Date objects to avoid timezone issues
-            // start = new Date(sessionStart);
-            // end = new Date(sessionEnd);
-            
-            // Ensure we preserve the exact time but handle timezone correctly
-            // This is the key fix - we need to set the time components explicitly
-            const startHours = start.getHours();
-            const startMinutes = start.getMinutes();
-            const endHours = end.getHours();
-            const endMinutes = end.getMinutes();
-            
-            // Set the time components explicitly to avoid timezone conversion issues
-            start.setHours(startHours, startMinutes, 0, 0);
-            end.setHours(endHours, endMinutes, 0, 0);
-            
-            console.log('Session time positioning:', {
-              original: { start: session.session_start, end: session.session_end },
-              processed: { start, end },
-              hours: { start: startHours, end: endHours },
-              minutes: { start: startMinutes, end: endMinutes }
+            // Format times for display
+            const startTime = start.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
             });
-
+            const endTime = end.toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: false 
+            });
+            
             const eventData = {
               id: session.session_id,
               title: getSessionTitle(session),
@@ -269,15 +237,14 @@ function ScheduleViewCalendar({ calendarRange, currentUserId }) {
               className: getEventClassName(status),
               // Add additional properties for custom rendering
               session: session,
-              startTime: `${String(startHours).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}`,
-              endTime: `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`,
+              startTime,
+              endTime,
               subjectName: session.subject_name,
               studentName: session.student?.name || session.student_name,
               instructorName: session.instructor?.name || session.instructor_name,
               location: session.location
             };
 
-            console.log('Created event data:', eventData);
             return eventData;
           } catch (error) {
             console.error('Error processing session time:', error, session);
@@ -286,7 +253,13 @@ function ScheduleViewCalendar({ calendarRange, currentUserId }) {
         })
         .filter(Boolean); // Remove null entries
 
-      console.log('Processed calendar events:', calendarEvents);
+      // Log when time blocks are generated
+      console.log('Generated calendar events:', calendarEvents.map(ev => ({
+        id: ev.id,
+        title: ev.title,
+        start: ev.start,
+        end: ev.end
+      })));
       setEvents(calendarEvents);
     } catch (error) {
       console.error('Error fetching user sessions:', error);
@@ -441,11 +414,9 @@ function ScheduleViewCalendar({ calendarRange, currentUserId }) {
         max={new Date(0, 0, 0, 22, 0, 0)} // 10 PM
         onNavigate={(newDate) => {
           // Handle navigation if needed
-          console.log('Calendar navigated to:', newDate);
         }}
         onView={(newView) => {
           // Handle view change if needed
-          console.log('Calendar view changed to:', newView);
         }}
       />
     </div>

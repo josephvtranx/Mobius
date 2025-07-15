@@ -20,10 +20,8 @@ const classSeriesValidation = [
     body('days_of_week').isArray().withMessage('Days of week must be an array'),
     body('days_of_week.*').isIn(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
         .withMessage('Invalid day of week'),
-    body('start_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
-        .withMessage('Start time must be in HH:MM format'),
-    body('end_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
-        .withMessage('End time must be in HH:MM format'),
+    body('session_start').isISO8601().withMessage('Session start must be a valid ISO 8601 datetime'),
+    body('session_end').isISO8601().withMessage('Session end must be a valid ISO 8601 datetime'),
     body('location').optional().isString().withMessage('Location must be a string'),
     body('notes').optional().isString().withMessage('Notes must be a string')
 ];
@@ -69,7 +67,7 @@ router.post('/update-single-sessions-to-pending', async (req, res) => {
             UPDATE class_sessions 
             SET status = 'pending' 
             WHERE series_id IS NULL AND status = 'scheduled'
-            RETURNING session_id, status, instructor_id, student_id, session_date
+            RETURNING session_id, status, instructor_id, student_id, session_start
         `);
         
         console.log('[DEBUG] Updated sessions:', result.rows);
@@ -90,9 +88,9 @@ router.get('/pending', async (req, res) => {
         
         // Debug: Check all class_sessions and their statuses
         const allSessionsDebug = await req.db.query(`
-            SELECT session_id, status, series_id, instructor_id, student_id, session_date
+            SELECT session_id, status, series_id, instructor_id, student_id, session_start
             FROM class_sessions
-            ORDER BY session_date DESC
+            ORDER BY session_start DESC
             LIMIT 10
         `);
         console.log('[DEBUG] All recent class_sessions:', allSessionsDebug.rows);
@@ -128,9 +126,10 @@ router.get('/pending', async (req, res) => {
         // Fetch pending single class sessions (not part of a series)
         const singleResult = await req.db.query(`
             SELECT 
-                cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, cs.session_date as start_date, cs.session_date as end_date,
-                ARRAY[LOWER(TO_CHAR(cs.session_date, 'Dy'))] as days_of_week,
-                cs.start_time, cs.end_time, cs.location, cs.status,
+                cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, 
+                cs.session_start, cs.session_end,
+                ARRAY[LOWER(TO_CHAR(cs.session_start, 'Dy'))] as days_of_week,
+                cs.location, cs.status,
                 json_build_object(
                     'instructor_id', i.instructor_id,
                     'name', u_i.name,
@@ -149,7 +148,7 @@ router.get('/pending', async (req, res) => {
             JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             WHERE cs.status = 'pending' AND cs.series_id IS NULL
-            ORDER BY cs.session_date ASC
+            ORDER BY cs.session_start ASC
         `);
 
         console.log('[DEBUG] Pending single sessions count:', singleResult.rows.length);
@@ -205,9 +204,10 @@ router.get('/all', async (req, res) => {
         // Fetch all single class sessions (not part of a series)
         const singleResult = await req.db.query(`
             SELECT 
-                cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, cs.session_date as start_date, cs.session_date as end_date,
-                ARRAY[LOWER(TO_CHAR(cs.session_date, 'Dy'))] as days_of_week,
-                cs.start_time, cs.end_time, cs.location, cs.status,
+                cs.session_id, cs.instructor_id, cs.student_id, cs.subject_id, 
+                cs.session_start, cs.session_end,
+                ARRAY[LOWER(TO_CHAR(cs.session_start, 'Dy'))] as days_of_week,
+                cs.location, cs.status,
                 json_build_object(
                     'instructor_id', i.instructor_id,
                     'name', u_i.name,
@@ -226,7 +226,7 @@ router.get('/all', async (req, res) => {
             JOIN users u_s ON s.student_id = u_s.user_id
             JOIN subjects sub ON cs.subject_id = sub.subject_id
             WHERE cs.series_id IS NULL
-            ORDER BY cs.session_date DESC
+            ORDER BY cs.session_start DESC
         `);
 
         // Map single sessions to match class series structure
@@ -261,8 +261,8 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
             start_date,
             end_date,
             days_of_week,
-            start_time,
-            end_time,
+            session_start,
+            session_end,
             location,
             notes,
             sessions
@@ -272,27 +272,33 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
         if (Array.isArray(sessions) && sessions.length > 0) {
             // Validate each session
             for (const [i, session] of sessions.entries()) {
-                if (!session.session_date || !session.start_time || !session.end_time) {
+                if (!session.session_start || !session.session_end) {
                     return res.status(400).json({ error: `Session ${i + 1} is missing required fields` });
                 }
+                
+                // Parse session times for availability check
+                const sessionStart = new Date(session.session_start);
+                const sessionEnd = new Date(session.session_end);
+                
                 // Check instructor availability for this session
                 // Convert JavaScript day to database day format
                 // JavaScript getDay(): 0=Sunday, 1=Monday, 2=Tuesday, etc.
                 // Database format: 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'
                 
-                // Fix timezone issue by ensuring we parse the date correctly
-                // Add 'T00:00:00' to ensure it's parsed as local time, not UTC
-                const dateString = `${session.session_date}T00:00:00`;
-                const dateObj = new Date(dateString);
-                const jsDay = dateObj.getDay();
+                const jsDay = sessionStart.getDay();
                 const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
                 const dayOfWeek = dayMap[jsDay];
                 
                 // Debug: Let's verify the date calculation
-                console.log(`[DEBUG] Session date: ${session.session_date}`);
-                console.log(`[DEBUG] Date string: ${dateString}`);
+                console.log(`[DEBUG] Session start: ${session.session_start}`);
+                console.log(`[DEBUG] Session end: ${session.session_end}`);
                 console.log(`[DEBUG] JavaScript getDay(): ${jsDay}`);
                 console.log(`[DEBUG] Calculated dayOfWeek: ${dayOfWeek}`);
+                
+                // Extract time components for availability check
+                const startTime = sessionStart.toTimeString().slice(0, 5); // HH:MM format
+                const endTime = sessionEnd.toTimeString().slice(0, 5); // HH:MM format
+                const sessionDate = sessionStart.toISOString().split('T')[0]; // YYYY-MM-DD format
                 
                 const avail = await client.query(`
                     SELECT * FROM instructor_availability
@@ -314,14 +320,14 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                 `, [
                     instructor_id,
                     dayOfWeek,
-                    session.start_time,
-                    session.end_time,
-                    session.session_date
+                    startTime,
+                    endTime,
+                    sessionDate
                 ]);
                 
                 if (avail.rows.length === 0) {
                     // Add debugging information
-                    console.log(`[DEBUG] Availability check failed for instructor ${instructor_id} on ${session.session_date} (${session.start_time} - ${session.end_time})`);
+                    console.log(`[DEBUG] Availability check failed for instructor ${instructor_id} on ${sessionDate} (${startTime} - ${endTime})`);
                     console.log(`[DEBUG] Day of week: ${dayOfWeek}`);
                     
                     // Check what availability exists for this instructor and day
@@ -332,13 +338,13 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                     console.log(`[DEBUG] All availability for instructor ${instructor_id} on ${dayOfWeek}:`, allAvail.rows);
                     
                     return res.status(400).json({ 
-                        error: `Instructor is not available for session on ${session.session_date} (${session.start_time} - ${session.end_time})`,
+                        error: `Instructor is not available for session on ${sessionDate} (${startTime} - ${endTime})`,
                         debug: {
                             dayOfWeek: dayOfWeek,
                             instructorId: instructor_id,
-                            sessionDate: session.session_date,
-                            startTime: session.start_time,
-                            endTime: session.end_time,
+                            sessionDate: sessionDate,
+                            startTime: startTime,
+                            endTime: endTime,
                             availableSlots: allAvail.rows
                         }
                     });
@@ -347,39 +353,42 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                     instructor_id,
                     student_id,
                     subject_id,
-                    session_date: session.session_date,
-                    start_time: session.start_time,
-                    end_time: session.end_time,
+                    session_start: session.session_start,
+                    session_end: session.session_end,
                     location,
-                    status: 'scheduled',
-                    credits_cost: 1
+                    status: 'scheduled'
                 });
             }
         } else {
             // Fallback: generate sessions from pattern (legacy)
-        let currentDate = new Date(start_date);
-        const endDate = new Date(end_date);
-        while (currentDate <= endDate) {
-            const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
-            const dayOfWeek = dayMap[currentDate.getDay()];
-            if (days_of_week.includes(dayOfWeek)) {
+            let currentDate = new Date(start_date);
+            const endDate = new Date(end_date);
+            while (currentDate <= endDate) {
+                const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
+                const dayOfWeek = dayMap[currentDate.getDay()];
+                if (days_of_week.includes(dayOfWeek)) {
+                    // Create session_start and session_end from the pattern
+                    const sessionStart = new Date(currentDate);
+                    sessionStart.setHours(parseInt(session_start.split(':')[0]), parseInt(session_start.split(':')[1]), 0, 0);
+                    
+                    const sessionEnd = new Date(currentDate);
+                    sessionEnd.setHours(parseInt(session_end.split(':')[0]), parseInt(session_end.split(':')[1]), 0, 0);
+                    
                     sessionsToInsert.push({
-                    instructor_id,
-                    student_id,
-                    subject_id,
-                    session_date: new Date(currentDate),
-                    start_time,
-                    end_time,
-                    location,
-                    status: 'scheduled',
-                    credits_cost: 1
-                });
-            }
-            currentDate.setDate(currentDate.getDate() + 1);
+                        instructor_id,
+                        student_id,
+                        subject_id,
+                        session_start: sessionStart.toISOString(),
+                        session_end: sessionEnd.toISOString(),
+                        location,
+                        status: 'scheduled'
+                    });
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
             }
         }
 
-        // Create class series (keep start_time/end_time for reference, but sessions can vary)
+        // Create class series (keep session_start/session_end for reference, but sessions can vary)
         const seriesResult = await client.query(`
             INSERT INTO class_series (
                 subject_id,
@@ -389,8 +398,8 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                 start_date,
                 end_date,
                 days_of_week,
-                start_time,
-                end_time,
+                session_start,
+                session_end,
                 location,
                 status,
                 instructor_confirmation_status,
@@ -407,8 +416,8 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
             start_date,
             end_date,
             days_of_week,
-            start_time,
-            end_time,
+            session_start,
+            session_end,
             location,
             notes,
             sessionsToInsert.length
@@ -425,21 +434,19 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                     instructor_id,
                     student_id,
                     subject_id,
-                    session_date,
-                    start_time,
-                    end_time,
+                    session_start,
+                    session_end,
                     location,
                     status
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             `, [
                 series.series_id,
                 session.instructor_id,
                 session.student_id,
                 session.subject_id,
-                session.session_date,
-                session.start_time,
-                session.end_time,
+                session.session_start,
+                session.session_end,
                 session.location,
                 session.status
             ]);

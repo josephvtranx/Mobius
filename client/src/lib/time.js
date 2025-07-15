@@ -5,12 +5,17 @@ export function toUtcIso(input) {
           ? DateTime.fromJSDate(input, { zone: "local" })
           : DateTime.fromISO(input,    { zone: "local" }))
         .toUTC()
-        .toISO();              // ends with ‘Z’
+        .toISO();              // ends with 'Z'
 }
 
 export function isoToLocal(isoUtc) {
   return DateTime.fromISO(isoUtc, { zone: "utc" })
                  .setZone(DateTime.local().zoneName);   // Luxon DT
+}
+
+// Convert UTC ISO string to local JavaScript Date object
+export function isoToLocalDate(isoUtc) {
+  return isoToLocal(isoUtc).toJSDate();
 }
 
 // Format a UTC ISO string for display in local time zone
@@ -31,4 +36,22 @@ export function createSessionTimestamps(date, startTime, durationMinutes) {
     session_start: start.toUTC().toISO(),
     session_end: end.toUTC().toISO(),
   };
+}
+
+// Convert session data from backend (UTC) to local time for calendar display
+export function convertSessionToLocalTime(session) {
+  if (!session.session_start || !session.session_end) {
+    return session;
+  }
+  
+  return {
+    ...session,
+    session_start: isoToLocalDate(session.session_start),
+    session_end: isoToLocalDate(session.session_end)
+  };
+}
+
+// Convert multiple sessions to local time
+export function convertSessionsToLocalTime(sessions) {
+  return sessions.map(session => convertSessionToLocalTime(session));
 } 

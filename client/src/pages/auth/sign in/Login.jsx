@@ -25,19 +25,19 @@ export default function Login() {
 
   const handleContinue = async (e) => {
     e.preventDefault();
-    if (formData.institutionCode.trim()) {
-      setIsCheckingInstitution(true);
-      setError('');
-      try {
-        await authService.setInstitutionCode(formData.institutionCode.trim());
-        setStep(2);
-      } catch (err) {
-        setError('Invalid institution code. Please try again.');
-      } finally {
-        setIsCheckingInstitution(false);
-      }
-    } else {
+    if (!formData.institutionCode.trim()) {
+      setError('Institution code is required.');
+      return;
+    }
+    setIsCheckingInstitution(true);
+    setError('');
+    try {
+      await authService.setInstitutionCode(formData.institutionCode.trim());
       setStep(2);
+    } catch (err) {
+      setError('Invalid institution code. Please try again.');
+    } finally {
+      setIsCheckingInstitution(false);
     }
   };
 
@@ -45,6 +45,12 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    if (!formData.institutionCode.trim()) {
+      setError('Institution code is required.');
+      setIsLoading(false);
+      setStep(1);
+      return;
+    }
     try {
       await authService.login({
         email: formData.email,

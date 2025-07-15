@@ -5,7 +5,7 @@ import { format, parse, startOfWeek, getDay, addDays, addMinutes, differenceInMi
 import { enUS } from 'date-fns/locale';
 import instructorService from '../services/instructorService';
 import classSessionService from '../services/classSessionService';
-import { toUtcIso, isoToLocal } from '../lib/time.js';
+import { toUtcIso, isoToLocal, convertSessionsToLocalTime } from '../lib/time.js';
 
 // Import React Big Calendar default styles FIRST
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -284,81 +284,17 @@ function SmartSchedulingCalendar({
           setSessionsCache(prev => new Map(prev).set(selectedInstructorId, sessions));
         }
 
-        const formattedSessions = sessions
+        // Convert sessions to local time first
+        const localSessions = convertSessionsToLocalTime(sessions);
+        
+        const formattedSessions = localSessions
           .filter(session => session.status === 'scheduled' || session.status === 'in_progress')
           .map(session => {
             console.log('Processing session:', session);
-            console.log('Session data types:', {
-              session_date: typeof session.session_date,
-              start_time: typeof session.start_time,
-              end_time: typeof session.end_time,
-              session_date_value: session.session_date,
-              start_time_value: session.start_time,
-              end_time_value: session.end_time
-            });
             
-            // Parse the date and time properly
-            let start, end;
-            try {
-              // Handle different date/time formats
-              if (session.session_date && session.start_time && session.end_time) {
-                // Validate time formats
-                const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
-                
-                if (!timeRegex.test(session.start_time) || !timeRegex.test(session.end_time)) {
-                  console.warn('Invalid time format:', { start_time: session.start_time, end_time: session.end_time });
-                  return null;
-                }
-                
-                // If start_time and end_time include seconds, remove them for consistency
-                const startTime = session.start_time.split(':').slice(0, 2).join(':');
-                const endTime = session.end_time.split(':').slice(0, 2).join(':');
-                
-                // Try different date formats
-                let dateString = session.session_date;
-                
-                // If session_date is a Date object, convert to string
-                if (session.session_date instanceof Date) {
-                  dateString = session.session_date.toISOString().split('T')[0];
-                }
-                
-                // If it's already a string, ensure it's in YYYY-MM-DD format
-                if (typeof dateString === 'string') {
-                  // If it's in a different format, try to parse it
-                  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-                    const parsedDate = new Date(dateString);
-                    if (!isNaN(parsedDate.getTime())) {
-                      dateString = parsedDate.toISOString().split('T')[0];
-                    }
-                  }
-                } else if (dateString instanceof Date) {
-                  // If it's already a Date object, convert to string
-                  dateString = dateString.toISOString().split('T')[0];
-                } else {
-                  // If it's null, undefined, or some other type, try to create a valid date
-                  console.warn('Invalid session_date format:', dateString);
-                  return null;
-                }
-                
-                const fullStartString = `${dateString}T${startTime}:00`;
-                const fullEndString = `${dateString}T${endTime}:00`;
-                
-                console.log(`Attempting to parse: start="${fullStartString}", end="${fullEndString}"`);
-                
-                start = isoToLocal(fullStartString).toJSDate();
-                end = isoToLocal(fullEndString).toJSDate();
-                
-                console.log(`Parsed dates - session_date: ${dateString}, start_time: ${startTime}, end_time: ${endTime}`);
-                console.log(`Created start: ${start}, end: ${end}`);
-                console.log(`Start valid: ${!isNaN(start.getTime())}, End valid: ${!isNaN(end.getTime())}`);
-              } else {
-                console.warn('Missing date/time data for session:', session);
-                return null;
-              }
-            } catch (error) {
-              console.error('Error parsing session dates:', error, session);
-              return null;
-            }
+            // session_start and session_end are now local Date objects
+            const start = session.session_start;
+            const end = session.session_end;
             
             return {
               id: `session-${session.session_id}`,
@@ -368,9 +304,8 @@ function SmartSchedulingCalendar({
               resource: session,
               type: 'existing-session',
               draggable: false,
-              sessionDate: session.session_date,
-              startTime: session.start_time,
-              endTime: session.end_time
+              sessionStart: session.session_start,
+              sessionEnd: session.session_end
             };
           })
           .filter(Boolean) // Remove any null entries
@@ -409,64 +344,15 @@ function SmartSchedulingCalendar({
         const sessions = await classSessionService.getStudentSessions(currentUserId, startDate, endDate);
         console.log('Raw student sessions from API:', sessions);
         
-        const formattedSessions = sessions
+        // Convert sessions to local time first
+        const localSessions = convertSessionsToLocalTime(sessions);
+        
+        const formattedSessions = localSessions
           .filter(session => session.status === 'scheduled' || session.status === 'in_progress')
           .map(session => {
-            // Parse the date and time properly
-            let start, end;
-            try {
-              if (session.session_date && session.start_time && session.end_time) {
-                // Validate time formats
-                const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
-                
-                if (!timeRegex.test(session.start_time) || !timeRegex.test(session.end_time)) {
-                  console.warn('Invalid time format:', { start_time: session.start_time, end_time: session.end_time });
-                  return null;
-                }
-                
-                // If start_time and end_time include seconds, remove them for consistency
-                const startTime = session.start_time.split(':').slice(0, 2).join(':');
-                const endTime = session.end_time.split(':').slice(0, 2).join(':');
-                
-                // Try different date formats
-                let dateString = session.session_date;
-                
-                // If session_date is a Date object, convert to string
-                if (session.session_date instanceof Date) {
-                  dateString = session.session_date.toISOString().split('T')[0];
-                }
-                
-                // If it's already a string, ensure it's in YYYY-MM-DD format
-                if (typeof dateString === 'string') {
-                  // If it's in a different format, try to parse it
-                  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-                    const parsedDate = new Date(dateString);
-                    if (!isNaN(parsedDate.getTime())) {
-                      dateString = parsedDate.toISOString().split('T')[0];
-                    }
-                  }
-                } else if (dateString instanceof Date) {
-                  // If it's already a Date object, convert to string
-                  dateString = dateString.toISOString().split('T')[0];
-                } else {
-                  // If it's null, undefined, or some other type, try to create a valid date
-                  console.warn('Invalid session_date format:', dateString);
-                  return null;
-                }
-                
-                const fullStartString = `${dateString}T${startTime}:00`;
-                const fullEndString = `${dateString}T${endTime}:00`;
-                
-                start = isoToLocal(fullStartString).toJSDate();
-                end = isoToLocal(fullEndString).toJSDate();
-              } else {
-                console.warn('Missing date/time data for session:', session);
-                return null;
-              }
-            } catch (error) {
-              console.error('Error parsing session dates:', error, session);
-              return null;
-            }
+            // session_start and session_end are now local Date objects
+            const start = session.session_start;
+            const end = session.session_end;
             
             return {
               id: `student-session-${session.session_id}`,
@@ -476,9 +362,8 @@ function SmartSchedulingCalendar({
               resource: session,
               type: 'student-session',
               draggable: false,
-              sessionDate: session.session_date,
-              startTime: session.start_time,
-              endTime: session.end_time
+              sessionStart: session.session_start,
+              sessionEnd: session.session_end
             };
           })
           .filter(Boolean) // Remove any null entries
@@ -524,57 +409,25 @@ function SmartSchedulingCalendar({
       return;
     }
 
-    const formattedSessions = selectedStudentSessions
-      .filter(session => session.status === 'scheduled' || session.status === 'in_progress')
+    // Convert sessions to local time first
+    const localSessions = convertSessionsToLocalTime(selectedStudentSessions);
+    
+    const formattedSessions = localSessions
       .map(session => {
-        // Parse the date and time properly
-        let start, end;
-        try {
-          // Use local time construction
-          if (session.session_date && session.start_time && session.end_time) {
-            // Extract date parts
-            let dateString = session.session_date;
-            if (session.session_date instanceof Date) {
-              dateString = session.session_date.toISOString().split('T')[0];
-            }
-            if (typeof dateString === 'string') {
-              if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-                const parsedDate = new Date(dateString);
-                if (!isNaN(parsedDate.getTime())) {
-                  dateString = parsedDate.toISOString().split('T')[0];
-                }
-              }
-            } else if (dateString instanceof Date) {
-              dateString = dateString.toISOString().split('T')[0];
-            } else {
-              console.warn('Invalid session_date format:', dateString);
-              return null;
-            }
-            const [year, month, day] = dateString.split('-').map(Number);
-            const [startHour, startMinute] = session.start_time.split(':').map(Number);
-            const [endHour, endMinute] = session.end_time.split(':').map(Number);
-            start = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
-            end = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
-          } else {
-            console.warn('Missing date/time data for session:', session);
-            return null;
-          }
-        } catch (error) {
-          console.error('Error parsing session dates:', error, session);
-          return null;
-        }
+        // session_start and session_end are now local Date objects
+        const start = session.session_start;
+        const end = session.session_end;
         
         return {
           id: `selected-student-session-${session.session_id}`,
-          title: `${session.subject_name} with ${session.instructor.name}`,
+          title: `${session.subject_name} with ${session.instructor?.name || 'Instructor'}`,
           start,
           end,
           resource: session,
           type: 'selected-student-session',
           draggable: false,
-          sessionDate: session.session_date,
-          startTime: session.start_time,
-          endTime: session.end_time
+          sessionStart: session.session_start,
+          sessionEnd: session.session_end
         };
       })
       .filter(Boolean) // Remove any null entries

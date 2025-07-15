@@ -386,8 +386,8 @@ router.get('/:id/schedule', async (req, res) => {
             SELECT 
                 cs.series_id as session_id,
                 cs.start_date as session_date,
-                cs.start_time,
-                cs.end_time,
+                cs.session_start,
+                cs.session_end,
                 cs.status,
                 u_s.name as student_name,
                 sub.name as subject_name,
@@ -409,14 +409,7 @@ router.get('/:id/schedule', async (req, res) => {
                 // Handle both old and new format
                 const aDate = a.session_start ? new Date(a.session_start) : new Date(a.session_date);
                 const bDate = b.session_start ? new Date(b.session_start) : new Date(b.session_date);
-                const dateComparison = aDate - bDate;
-                if (dateComparison !== 0) return dateComparison;
-                
-                // For old format, compare times
-                if (a.start_time && b.start_time) {
-                    return a.start_time.localeCompare(b.start_time);
-                }
-                return 0;
+                return aDate - bDate;
             })
         };
 

@@ -1,7 +1,7 @@
 import api from './api';
 import classSessionService from './classSessionService';
 import instructorService from './instructorService';
-import { toUtcIso, isoToLocal } from '../lib/time.js';
+import { toUtcIso, isoToLocal, convertSessionsToLocalTime } from '../lib/time.js';
 
 const eventService = {
     // Get events for the current user based on their role
@@ -30,15 +30,25 @@ const eventService = {
                     return [];
             }
             
-            // Format events for display
-            return events.map(event => ({
+            // Convert events to local time and format for display
+            const localEvents = convertSessionsToLocalTime(events);
+            
+            return localEvents.map(event => ({
                 id: event.session_id,
                 title: event.subject_name,
-                start: toUtcIso(event.session_date, event.start_time),
-                end: toUtcIso(event.session_date, event.end_time),
-                date: event.session_date,
-                startTime: event.start_time,
-                endTime: event.end_time,
+                start: event.session_start,
+                end: event.session_end,
+                date: event.session_start ? event.session_start.toISOString().split('T')[0] : null,
+                startTime: event.session_start ? event.session_start.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                }) : null,
+                endTime: event.session_end ? event.session_end.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                }) : null,
                 location: event.location,
                 status: event.status,
                 // Include participant info based on role

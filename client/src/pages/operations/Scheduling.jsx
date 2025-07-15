@@ -11,7 +11,7 @@ import classSeriesService from '../../services/classSeriesService';
 import classSessionService from '../../services/classSessionService';
 import timePackageService from '../../services/timePackageService';
 import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns';
-import { createSessionTimestamps, toUtcIso, isoToLocal } from '../../lib/time.js';
+import { createSessionTimestamps, toUtcIso, isoToLocal, convertSessionsToLocalTime, formatLocalTime } from '../../lib/time.js';
 
 function Scheduling() {
   // Tab state
@@ -102,6 +102,9 @@ function Scheduling() {
   // Add state for class history
   const [classHistory, setClassHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [deletingItems, setDeletingItems] = useState(new Set());
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // Add state for expanded rows and series sessions cache
   const [expandedHistoryRows, setExpandedHistoryRows] = useState({});
@@ -217,10 +220,63 @@ function Scheduling() {
   const fetchPendingClasses = async () => {
     setIsLoadingPending(true);
     try {
-      const data = await classSeriesService.getPendingClassSeries();
-      console.log('[DEBUG] Pending classes data received:', data);
-      console.log('[DEBUG] Number of pending classes:', data.length);
-      data.forEach((item, index) => {
+      // Fetch both pending sessions and class series
+      const [sessions, series] = await Promise.all([
+        classSessionService.getAllSessions().then(sessions => 
+          sessions.filter(s => s.status === 'pending')
+        ),
+        classSeriesService.getPendingClassSeries()
+      ]);
+      
+      // Convert sessions to local time
+      const localSessions = convertSessionsToLocalTime(sessions);
+      
+      // Deduplicate sessions by session_id
+      const uniqueSessions = localSessions.filter((session, index, self) => 
+        index === self.findIndex(s => s.session_id === session.session_id)
+      );
+      
+      // Deduplicate series by series_id
+      const uniqueSeries = series.filter((seriesItem, index, self) => 
+        index === self.findIndex(s => s.series_id === seriesItem.series_id)
+      );
+      
+      // Combine and format the data
+      const combinedData = [
+        ...uniqueSessions.map(session => ({
+          ...session,
+          isSingleSession: true,
+          start_date: session.session_start ? session.session_start.toISOString().split('T')[0] : session.start_date,
+          start_time: session.session_start ? formatLocalTime(session.session_start.toISOString()) : session.start_time,
+          end_time: session.session_end ? formatLocalTime(session.session_end.toISOString()) : session.end_time
+        })),
+        ...uniqueSeries.map(seriesItem => ({
+          ...seriesItem,
+          isSingleSession: false
+        }))
+      ];
+      
+      console.log('[DEBUG] Pending classes data received:', combinedData);
+      console.log('[DEBUG] Number of pending classes:', combinedData.length);
+      console.log('[DEBUG] Pending classes IDs:', {
+        originalSessionsCount: sessions.length,
+        originalSeriesCount: series.length,
+        uniqueSessionsCount: uniqueSessions.length,
+        uniqueSeriesCount: uniqueSeries.length,
+        combinedCount: combinedData.length,
+        duplicatesRemoved: {
+          sessions: sessions.length - uniqueSessions.length,
+          series: series.length - uniqueSeries.length
+        },
+        sessionIds: uniqueSessions.map(s => s.session_id),
+        seriesIds: uniqueSeries.map(s => s.series_id),
+        combinedIds: combinedData.map(item => ({
+          id: item.session_id || item.series_id,
+          type: item.isSingleSession ? 'session' : 'series',
+          uniqueKey: item.isSingleSession ? `session-${item.session_id}` : `series-${item.series_id}`
+        }))
+      });
+      combinedData.forEach((item, index) => {
         console.log(`[DEBUG] Item ${index}:`, {
           series_id: item.series_id,
           session_id: item.session_id,
@@ -230,7 +286,7 @@ function Scheduling() {
           status: item.status
         });
       });
-      setPendingClasses(data);
+      setPendingClasses(combinedData);
     } catch (error) {
       console.error('Error fetching pending classes:', error);
     } finally {
@@ -932,10 +988,64 @@ function Scheduling() {
   const fetchClassHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      // You may need to adjust this service call to fetch all classes (sessions + series)
-      // For now, let's assume classSeriesService.getAllClasses() returns all classes
-      const data = await classSeriesService.getAllClasses();
-      setClassHistory(data);
+      // Fetch both individual sessions and class series
+      const [sessions, series] = await Promise.all([
+        classSessionService.getAllSessions(),
+        classSeriesService.getAllClasses()
+      ]);
+      
+      // Convert sessions to local time
+      const localSessions = convertSessionsToLocalTime(sessions);
+      
+      // Deduplicate sessions by session_id
+      const uniqueSessions = localSessions.filter((session, index, self) => 
+        index === self.findIndex(s => s.session_id === session.session_id)
+      );
+      
+      // Deduplicate series by series_id
+      const uniqueSeries = series.filter((seriesItem, index, self) => 
+        index === self.findIndex(s => s.series_id === seriesItem.series_id)
+      );
+      
+      // Combine and format the data
+      const combinedData = [
+        ...uniqueSessions.map(session => ({
+          ...session,
+          // Add a flag to identify single sessions
+          isSingleSession: true,
+          // Use session_start for start_date if available
+          start_date: session.session_start ? session.session_start.toISOString().split('T')[0] : session.start_date,
+          // Format times for display
+          start_time: session.session_start ? formatLocalTime(session.session_start.toISOString()) : session.start_time,
+          end_time: session.session_end ? formatLocalTime(session.session_end.toISOString()) : session.end_time
+        })),
+        ...uniqueSeries.map(seriesItem => ({
+          ...seriesItem,
+          isSingleSession: false
+        }))
+      ];
+      
+      // Log the data to debug duplicate keys
+      console.log('Class History Data:', {
+        originalSessionsCount: localSessions.length,
+        originalSeriesCount: series.length,
+        uniqueSessionsCount: uniqueSessions.length,
+        uniqueSeriesCount: uniqueSeries.length,
+        combinedCount: combinedData.length,
+        duplicatesRemoved: {
+          sessions: localSessions.length - uniqueSessions.length,
+          series: series.length - uniqueSeries.length
+        },
+        sessionIds: uniqueSessions.map(s => s.session_id),
+        seriesIds: uniqueSeries.map(s => s.series_id),
+        combinedIds: combinedData.map(item => ({
+          id: item.session_id || item.series_id,
+          type: item.isSingleSession ? 'session' : 'series',
+          uniqueKey: item.isSingleSession ? `session-${item.session_id}` : `series-${item.series_id}`
+        }))
+      });
+      
+      setClassHistory(combinedData);
     } catch (error) {
       console.error('Error fetching class history:', error);
       setClassHistory([]);
@@ -949,28 +1059,101 @@ function Scheduling() {
     fetchClassHistory();
   }, []);
 
+  // Helper function to safely get date string
+  const getSafeDateString = (dateValue) => {
+    if (!dateValue) return '';
+    if (dateValue instanceof Date) {
+      return dateValue.toLocaleDateString();
+    }
+    try {
+      return new Date(dateValue).toLocaleDateString();
+    } catch (error) {
+      console.error('Error converting date:', error, dateValue);
+      return 'Invalid Date';
+    }
+  };
+
+  // Helper function to safely get weekday string
+  const getSafeWeekdayString = (dateValue) => {
+    if (!dateValue) return '';
+    if (dateValue instanceof Date) {
+      return dateValue.toLocaleDateString('en-US', { weekday: 'short' });
+    }
+    try {
+      return new Date(dateValue).toLocaleDateString('en-US', { weekday: 'short' });
+    } catch (error) {
+      console.error('Error converting date for weekday:', error, dateValue);
+      return 'Invalid Date';
+    }
+  };
+
   // Add a handler for deleting from class history
   const handleDeleteHistory = async (id) => {
-    if (window.confirm('Are you sure you want to delete this class?')) {
-      try {
-        // Check if it's a single session or class series by looking at the class history
-        const classItem = classHistory.find(item => (item.session_id || item.series_id) === id);
-        const isSingleSession = classItem?.session_id !== undefined;
-        if (isSingleSession) {
-          await classSessionService.deleteSession(id);
-        } else {
-          await classSeriesService.deleteClassSeries(id);
-        }
-        fetchClassHistory();
-        if (window.refreshCalendarData) {
-          window.refreshCalendarData();
-        }
-        alert('Class deleted successfully');
-      } catch (error) {
-        console.error('Error deleting class:', error);
-        alert(error.response?.data?.error || 'Failed to delete class');
-      }
+    // Find the class item to show in the modal
+    const classItem = classHistory.find(item => (item.session_id || item.series_id) === id);
+    if (!classItem) {
+      alert('Class not found. Please refresh the page and try again.');
+      return;
     }
+    
+    // Set the item to delete and show the modal
+    setItemToDelete({ id, classItem });
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      // Add to deleting items set to show loading state
+      setDeletingItems(prev => new Set(prev).add(itemToDelete.id));
+      
+      console.log('Attempting to delete item with ID:', itemToDelete.id);
+      console.log('Current classHistory:', classHistory);
+      
+      const classItem = itemToDelete.classItem;
+      console.log('Found classItem:', classItem);
+      
+      const isSingleSession = classItem.session_id !== undefined;
+      console.log('Is single session:', isSingleSession);
+      
+      if (isSingleSession) {
+        console.log('Deleting session with ID:', itemToDelete.id);
+        await classSessionService.deleteSession(itemToDelete.id);
+      } else {
+        console.log('Deleting series with ID:', itemToDelete.id);
+        await classSeriesService.deleteClassSeries(itemToDelete.id);
+      }
+      
+      // Refresh the class history
+      await fetchClassHistory();
+      
+      // Refresh calendar data if available
+      if (window.refreshCalendarData) {
+        window.refreshCalendarData();
+      }
+      
+      // Close modal and show success message
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+      alert('Class deleted successfully');
+    } catch (error) {
+      console.error('Error deleting class:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete class';
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      // Remove from deleting items set
+      setDeletingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemToDelete.id);
+        return newSet;
+      });
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setItemToDelete(null);
   };
 
   // Function to toggle expanded row
@@ -983,9 +1166,10 @@ function Scheduling() {
     if (isSeries && !seriesSessionsCache[seriesId]) {
       try {
         const sessions = await classSessionService.getAllSessions();
-        // Filter for this series
+        // Filter for this series and convert to local time
         const filtered = sessions.filter(s => s.series_id === seriesId);
-        setSeriesSessionsCache(prev => ({ ...prev, [seriesId]: filtered }));
+        const localSessions = convertSessionsToLocalTime(filtered);
+        setSeriesSessionsCache(prev => ({ ...prev, [seriesId]: localSessions }));
       } catch (error) {
         console.error('Error fetching sessions for series', seriesId, error);
         setSeriesSessionsCache(prev => ({ ...prev, [seriesId]: [] }));
@@ -1372,25 +1556,33 @@ function Scheduling() {
                     </tr>
                   </thead>
                   <tbody>
-                      {pendingClasses.map(classItem => {
-                        // Use session_id for single sessions, series_id for class series
+                      {pendingClasses.map((classItem, index) => {
+                        // Create unique keys that distinguish between sessions and series, with index for absolute uniqueness
                         const itemId = classItem.session_id || classItem.series_id;
                         const isSingleSession = classItem.session_id !== undefined;
+                        const uniqueKey = isSingleSession ? `session-${itemId}-${index}` : `series-${itemId}-${index}`;
                         
                         return (
-                          <tr key={itemId}>
+                          <tr key={uniqueKey}>
                             <td>{classItem.student?.name || 'Unknown'}</td>
                             <td>{classItem.instructor?.name || 'Unknown'}</td>
                         <td>{classItem.subject_name}</td>
-                        <td>{new Date(classItem.start_date).toLocaleDateString()}</td>
-                            <td>
-                              {isSingleSession ? 
-                                // For single sessions, show the day of the week
-                                new Date(classItem.start_date).toLocaleDateString('en-US', { weekday: 'short' }) :
-                                // For class series, show the days array
-                                (Array.isArray(classItem.days_of_week) ? classItem.days_of_week.join(', ') : classItem.days_of_week || 'N/A')
-                              }
-                            </td>
+                                                <td>
+                          {classItem.isSingleSession && classItem.session_start ? 
+                            getSafeDateString(classItem.session_start) :
+                            getSafeDateString(classItem.start_date)
+                          }
+                        </td>
+                        <td>
+                          {isSingleSession ? 
+                            (classItem.session_start ? 
+                              getSafeWeekdayString(classItem.session_start) :
+                              getSafeWeekdayString(classItem.start_date)
+                            ) :
+                            // For class series, show the days array
+                            (Array.isArray(classItem.days_of_week) ? classItem.days_of_week.join(', ') : classItem.days_of_week || 'N/A')
+                          }
+                        </td>
                         <td>
                               <span className={`status-badge ${classItem.status?.toLowerCase() || 'unknown'}`}>
                                 {classItem.status || 'Unknown'}
@@ -1440,10 +1632,12 @@ function Scheduling() {
                       </tr>
                     </thead>
                     <tbody>
-                      {classHistory.map(classItem => {
+                      {classHistory.map((classItem, index) => {
                         const itemId = classItem.session_id || classItem.series_id;
                         const isSingleSession = classItem.session_id !== undefined;
                         const isSeries = !isSingleSession;
+                        // Create unique keys that distinguish between sessions and series, with index for absolute uniqueness
+                        const uniqueKey = isSingleSession ? `session-${itemId}-${index}` : `series-${itemId}-${index}`;
                         // Determine row color based on status
                         let rowColor = '';
                         const status = (classItem.status || '').toLowerCase();
@@ -1452,7 +1646,7 @@ function Scheduling() {
                         else if (status === 'completed') rowColor = 'background: green; color: #fff;';
                         else if (status === 'declined') rowColor = 'background: red; color: #fff;';
                         return (
-                          <React.Fragment key={itemId}>
+                          <React.Fragment key={uniqueKey}>
                             <tr
                               style={rowColor ? { ...Object.fromEntries(rowColor.split(';').filter(Boolean).map(s => s.split(':').map(x => x.trim())).map(([k, v]) => [k, v])) } : {}}
                               className={expandedHistoryRows[itemId] ? 'expanded' : ''}
@@ -1461,10 +1655,18 @@ function Scheduling() {
                               <td>{classItem.student?.name || 'Unknown'}</td>
                               <td>{classItem.instructor?.name || 'Unknown'}</td>
                               <td>{classItem.subject_name}</td>
-                              <td>{new Date(classItem.start_date).toLocaleDateString()}</td>
+                              <td>
+                                {classItem.isSingleSession && classItem.session_start ? 
+                                  getSafeDateString(classItem.session_start) :
+                                  getSafeDateString(classItem.start_date)
+                                }
+                              </td>
                               <td>
                                 {isSingleSession ?
-                                  new Date(classItem.start_date).toLocaleDateString('en-US', { weekday: 'short' }) :
+                                  (classItem.session_start ? 
+                                    getSafeWeekdayString(classItem.session_start) :
+                                    getSafeWeekdayString(classItem.start_date)
+                                  ) :
                                   (Array.isArray(classItem.days_of_week) ? classItem.days_of_week.join(', ') : classItem.days_of_week || 'N/A')
                                 }
                               </td>
@@ -1473,8 +1675,39 @@ function Scheduling() {
                               </td>
                               <td>
                                 <div className="action-buttons">
-                                  <button className="btn-icon delete" onClick={e => { e.stopPropagation(); handleDeleteHistory(itemId); }} title="Delete">
-                                    <i className="fas fa-trash"></i>
+                                  <button 
+                                    className="btn-icon delete" 
+                                    onClick={e => { 
+                                      e.stopPropagation(); 
+                                      handleDeleteHistory(itemId); 
+                                    }} 
+                                    title={deletingItems.has(itemId) ? "Deleting..." : "Delete"}
+                                    disabled={deletingItems.has(itemId)}
+                                    style={{
+                                      backgroundColor: deletingItems.has(itemId) ? '#9ca3af' : '#ef4444',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: '4px',
+                                      padding: '6px 8px',
+                                      cursor: deletingItems.has(itemId) ? 'not-allowed' : 'pointer',
+                                      transition: 'background-color 0.2s'
+                                    }}
+                                    onMouseOver={(e) => {
+                                      if (!deletingItems.has(itemId)) {
+                                        e.target.style.backgroundColor = '#dc2626';
+                                      }
+                                    }}
+                                    onMouseOut={(e) => {
+                                      if (!deletingItems.has(itemId)) {
+                                        e.target.style.backgroundColor = '#ef4444';
+                                      }
+                                    }}
+                                  >
+                                    {deletingItems.has(itemId) ? (
+                                      <i className="fas fa-spinner fa-spin"></i>
+                                    ) : (
+                                      <i className="fas fa-trash"></i>
+                                    )}
                                   </button>
                                 </div>
                               </td>
@@ -1484,8 +1717,16 @@ function Scheduling() {
                                 <td colSpan="7">
                                   {isSingleSession ? (
                                     <div>
-                                      <strong>Start Time:</strong> {classItem.start_time}<br />
-                                      <strong>End Time:</strong> {classItem.end_time || calculateEndTime(classItem.start_time, classItem.duration)}
+                                      <strong>Start Time:</strong> {classItem.start_time || (classItem.session_start ? 
+                                        (classItem.session_start instanceof Date ? 
+                                          formatLocalTime(classItem.session_start.toISOString()) :
+                                          formatLocalTime(classItem.session_start)
+                                        ) : 'N/A')}<br />
+                                      <strong>End Time:</strong> {classItem.end_time || (classItem.session_end ? 
+                                        (classItem.session_end instanceof Date ? 
+                                          formatLocalTime(classItem.session_end.toISOString()) :
+                                          formatLocalTime(classItem.session_end)
+                                        ) : calculateEndTime(classItem.start_time, classItem.duration))}
                                     </div>
                                   ) : (
                                     <div>
@@ -1505,15 +1746,19 @@ function Scheduling() {
                                             {seriesSessionsCache[classItem.series_id].length === 0 ? (
                                               <tr><td colSpan="5">No sessions found for this series.</td></tr>
                                             ) : (
-                                              seriesSessionsCache[classItem.series_id].map(session => (
-                                                <tr key={session.session_id}>
-                                                  <td>{new Date(session.session_date).toLocaleDateString()}</td>
-                                                  <td>{new Date(session.session_date).toLocaleDateString('en-US', { weekday: 'short' })}</td>
-                                                  <td>{session.start_time}</td>
-                                                  <td>{session.end_time || calculateEndTime(session.start_time, session.duration)}</td>
-                                                  <td>{session.status}</td>
-                                                </tr>
-                                              ))
+                                              seriesSessionsCache[classItem.series_id].map(session => {
+                                                // Convert session to local time if it's not already converted
+                                                const localSession = session.session_start instanceof Date ? session : convertSessionToLocalTime(session);
+                                                return (
+                                                  <tr key={`series-session-${session.session_id}`}>
+                                                    <td>{localSession.session_start.toLocaleDateString()}</td>
+                                                    <td>{localSession.session_start.toLocaleDateString('en-US', { weekday: 'short' })}</td>
+                                                    <td>{formatLocalTime(localSession.session_start.toISOString())}</td>
+                                                    <td>{formatLocalTime(localSession.session_end.toISOString())}</td>
+                                                    <td>{session.status}</td>
+                                                  </tr>
+                                                );
+                                              })
                                             )}
                                           </tbody>
                                         </table>
@@ -1541,6 +1786,125 @@ function Scheduling() {
           )}
         </section>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && itemToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '90%',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '16px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: '12px'
+              }}>
+                <i className="fas fa-exclamation-triangle" style={{ color: 'white', fontSize: '16px' }}></i>
+              </div>
+              <h3 style={{ margin: 0, color: '#1f2937' }}>Delete Class</h3>
+            </div>
+            
+            <p style={{ 
+              marginBottom: '20px', 
+              color: '#6b7280',
+              lineHeight: '1.5'
+            }}>
+              Are you sure you want to delete this class? This action cannot be undone.
+            </p>
+            
+            <div style={{
+              backgroundColor: '#f3f4f6',
+              padding: '12px',
+              borderRadius: '6px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                {itemToDelete.classItem.subject_name}
+              </div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                {itemToDelete.classItem.student?.name} with {itemToDelete.classItem.instructor?.name}
+              </div>
+              <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                Status: {itemToDelete.classItem.status}
+              </div>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={cancelDelete}
+                disabled={deletingItems.has(itemToDelete.id)}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  cursor: deletingItems.has(itemToDelete.id) ? 'not-allowed' : 'pointer',
+                  opacity: deletingItems.has(itemToDelete.id) ? 0.6 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deletingItems.has(itemToDelete.id)}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: deletingItems.has(itemToDelete.id) ? '#9ca3af' : '#ef4444',
+                  color: 'white',
+                  cursor: deletingItems.has(itemToDelete.id) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {deletingItems.has(itemToDelete.id) ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-trash"></i>
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
