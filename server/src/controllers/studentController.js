@@ -25,8 +25,10 @@ export const getStudentRoster = async (req, res) => {
           ARRAY_AGG(
             json_build_object(
               'days', cs.days_of_week,
-              'session_start', cs.session_start,
-              'session_end', cs.session_end,
+              'start_date', cs.start_date,
+              'end_date', cs.end_date,
+              'start_time', cs.start_time,
+              'end_time', cs.end_time,
               'subject_name', sub.name
             )
           ) as schedule
@@ -116,8 +118,10 @@ export const getStudentRoster = async (req, res) => {
         // s.days is an array of days, join as comma string for display
         return {
           days: Array.isArray(s.days) ? s.days.join(', ') : s.days,
-          session_start: s.session_start,
-          session_end: s.session_end,
+          start_date: s.start_date,
+          end_date: s.end_date,
+          start_time: s.start_time,
+          end_time: s.end_time,
           subject_name: s.subject_name
         };
       })

@@ -1,8 +1,9 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticateToken } from '../middleware/auth.js';
-import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { toUtcIso, assertUtcIso, isoToLocal } from '../lib/time.js';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
+import { DateTime } from 'luxon';
 
 const router = express.Router();
 
@@ -180,11 +181,14 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
             });
         }
 
-        // Validate time range
-        const startDate = new Date(toUtcIso(session_start));
-        const endDate = new Date(toUtcIso(session_end));
+        // Validate time range - session_start and session_end should already be UTC ISO
+        assertUtcIso(session_start);
+        assertUtcIso(session_end);
         
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        const startDate = DateTime.fromISO(session_start);
+        const endDate = DateTime.fromISO(session_end);
+        
+        if (!startDate.isValid || !endDate.isValid) {
             return res.status(400).json({ 
                 error: 'Invalid date format for session_start or session_end',
                 session_start,
@@ -249,28 +253,22 @@ router.post('/', authenticateToken, requireUtcIso(['session_start', 'session_end
 
         // Check instructor availability using the new TIMESTAMPTZ fields
         // Extract day of week from session_start - convert to local time first
-        const sessionStartDate = new Date(toUtcIso(session_start));
+        const sessionStartLocal = isoToLocal(session_start);
         const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
-        
-        // Convert UTC to local time for day calculation
-        const localDate = new Date(sessionStartDate.getTime() - (sessionStartDate.getTimezoneOffset() * 60000));
-        const dayOfWeek = dayMap[localDate.getDay()];
+        const dayOfWeek = dayMap[sessionStartLocal.weekday % 7]; // Luxon weekday is 1-7, convert to 0-6
         
         // Extract time components from session_start and session_end
         // Convert UTC to local time for availability checking
-        const localStartTime = new Date(toUtcIso(session_start));
-        const localEndTime = new Date(toUtcIso(session_end));
-        const startTime = localStartTime.toTimeString().slice(0, 5);
-        const endTime = localEndTime.toTimeString().slice(0, 5);
-        const sessionDate = localStartTime.toISOString().split('T')[0];
+        const localStartTime = sessionStartLocal.toFormat('HH:mm');
+        const localEndTime = isoToLocal(session_end).toFormat('HH:mm');
+        const sessionDate = sessionStartLocal.toFormat('yyyy-MM-dd');
         
         console.log(`[DEBUG] Session start: ${session_start}`);
         console.log(`[DEBUG] Session end: ${session_end}`);
-        console.log(`[DEBUG] UTC day: ${sessionStartDate.getDay()}`);
-        console.log(`[DEBUG] Local day: ${localDate.getDay()}`);
+        console.log(`[DEBUG] Local day: ${sessionStartLocal.weekday}`);
         console.log(`[DEBUG] Day of week: ${dayOfWeek}`);
-        console.log(`[DEBUG] Start time: ${startTime}`);
-        console.log(`[DEBUG] End time: ${endTime}`);
+        console.log(`[DEBUG] Start time: ${localStartTime}`);
+        console.log(`[DEBUG] End time: ${localEndTime}`);
         console.log(`[DEBUG] Session date: ${sessionDate}`);
         
         const instructorAvailability = await req.db.query(`

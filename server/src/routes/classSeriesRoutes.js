@@ -6,7 +6,8 @@ import {
     validateSchedulingRequest,
     findSmartSchedulingMatches
 } from '../helpers/timeSlotHelpers.js';
-import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { toUtcIso, assertUtcIso, isoToLocal } from '../lib/time.js';
+import { DateTime } from 'luxon';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 const router = express.Router();
 
@@ -277,28 +278,29 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                 }
                 
                 // Parse session times for availability check
-                const sessionStart = new Date(session.session_start);
-                const sessionEnd = new Date(session.session_end);
+                const sessionStart = DateTime.fromISO(session.session_start);
+                const sessionEnd = DateTime.fromISO(session.session_end);
+                
+                if (!sessionStart.isValid || !sessionEnd.isValid) {
+                    return res.status(400).json({ error: `Session ${i + 1} has invalid date format` });
+                }
                 
                 // Check instructor availability for this session
-                // Convert JavaScript day to database day format
-                // JavaScript getDay(): 0=Sunday, 1=Monday, 2=Tuesday, etc.
-                // Database format: 'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'
-                
-                const jsDay = sessionStart.getDay();
+                // Convert to local time for day calculation
+                const sessionStartLocal = isoToLocal(session.session_start);
                 const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
-                const dayOfWeek = dayMap[jsDay];
+                const dayOfWeek = dayMap[sessionStartLocal.weekday % 7]; // Luxon weekday is 1-7, convert to 0-6
                 
                 // Debug: Let's verify the date calculation
                 console.log(`[DEBUG] Session start: ${session.session_start}`);
                 console.log(`[DEBUG] Session end: ${session.session_end}`);
-                console.log(`[DEBUG] JavaScript getDay(): ${jsDay}`);
+                console.log(`[DEBUG] Local weekday: ${sessionStartLocal.weekday}`);
                 console.log(`[DEBUG] Calculated dayOfWeek: ${dayOfWeek}`);
                 
                 // Extract time components for availability check
-                const startTime = sessionStart.toTimeString().slice(0, 5); // HH:MM format
-                const endTime = sessionEnd.toTimeString().slice(0, 5); // HH:MM format
-                const sessionDate = sessionStart.toISOString().split('T')[0]; // YYYY-MM-DD format
+                const startTime = sessionStartLocal.toFormat('HH:mm'); // HH:MM format
+                const endTime = isoToLocal(session.session_end).toFormat('HH:mm'); // HH:MM format
+                const sessionDate = sessionStartLocal.toFormat('yyyy-MM-dd'); // YYYY-MM-DD format
                 
                 const avail = await client.query(`
                     SELECT * FROM instructor_availability
@@ -361,12 +363,12 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
             }
         } else {
             // Fallback: generate sessions from pattern (legacy)
-            let currentDate = new Date(start_date);
-            const endDate = new Date(end_date);
-            while (currentDate <= endDate) {
-                const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
-                const dayOfWeek = dayMap[currentDate.getDay()];
-                if (days_of_week.includes(dayOfWeek)) {
+        let currentDate = new Date(start_date);
+        const endDate = new Date(end_date);
+        while (currentDate <= endDate) {
+            const dayMap = { 0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat' };
+            const dayOfWeek = dayMap[currentDate.getDay()];
+            if (days_of_week.includes(dayOfWeek)) {
                     // Create session_start and session_end from the pattern
                     const sessionStart = new Date(currentDate);
                     sessionStart.setHours(parseInt(session_start.split(':')[0]), parseInt(session_start.split(':')[1]), 0, 0);
@@ -375,16 +377,16 @@ router.post('/', authenticateToken, requireUtcIso(['start_date', 'end_date']), c
                     sessionEnd.setHours(parseInt(session_end.split(':')[0]), parseInt(session_end.split(':')[1]), 0, 0);
                     
                     sessionsToInsert.push({
-                        instructor_id,
-                        student_id,
-                        subject_id,
+                    instructor_id,
+                    student_id,
+                    subject_id,
                         session_start: sessionStart.toISOString(),
                         session_end: sessionEnd.toISOString(),
-                        location,
+                    location,
                         status: 'scheduled'
-                    });
-                }
-                currentDate.setDate(currentDate.getDate() + 1);
+                });
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
             }
         }
 

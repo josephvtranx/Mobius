@@ -8,6 +8,7 @@ import Header from './components/Header';
 import Home from './pages/Home';
 import Landing from './pages/auth/user-sign-up/Landing';
 import Login from './pages/auth/sign in/Login';
+import InstitutionRegistration from './pages/auth/Institution-sign-up/InstitutionRegistration';
 import RoleSelect from './pages/auth/user-sign-up/RoleSelect';
 import StudentRegistration from './pages/auth/user-sign-up/StudentRegistration';
 import InstructorRegistration from './pages/auth/user-sign-up/InstructorRegistration';
@@ -84,6 +85,8 @@ function AppContent() {
             
             {/* Auth routes */}
             <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/sign-in" element={<Login />} />
+            <Route path="/auth/Institution-sign-up" element={<InstitutionRegistration />} />
             <Route path="/auth/role-select" element={<RoleSelect />} />
             <Route path="/auth/register/student" element={<StudentRegistration />} />
             <Route path="/auth/register/instructor" element={<InstructorRegistration />} />

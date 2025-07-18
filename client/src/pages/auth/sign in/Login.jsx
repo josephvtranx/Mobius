@@ -29,15 +29,15 @@ export default function Login() {
       setError('Institution code is required.');
       return;
     }
-    setIsCheckingInstitution(true);
-    setError('');
-    try {
-      await authService.setInstitutionCode(formData.institutionCode.trim());
-      setStep(2);
-    } catch (err) {
-      setError('Invalid institution code. Please try again.');
-    } finally {
-      setIsCheckingInstitution(false);
+      setIsCheckingInstitution(true);
+      setError('');
+      try {
+        await authService.setInstitutionCode(formData.institutionCode.trim());
+        setStep(2);
+      } catch (err) {
+        setError('Invalid institution code. Please try again.');
+      } finally {
+        setIsCheckingInstitution(false);
     }
   };
 
@@ -68,10 +68,11 @@ export default function Login() {
   };
 
   const handleRegisterClick = () => {
-    if (step === 2) {
+    if (step === 1) {
+      navigate('/auth/Institution-sign-up');
+    } else if (step === 2) {
       navigate('/auth/role-select');
     }
-    // Optionally, add a different action for step 1 if needed
   };
 
   return (

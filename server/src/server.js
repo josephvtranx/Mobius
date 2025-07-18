@@ -21,6 +21,7 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import timePackageRoutes from './routes/timePackageRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import registerInstitutionRouter from './routes/registerInstitution.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { toUtcIso } from './lib/time.js';
@@ -91,6 +92,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/time-packages', timePackageRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use(registerInstitutionRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
