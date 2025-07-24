@@ -6,6 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import { createClient } from 'redis'; // ✨ add redis client import
 import session from 'express-session';
 import RedisStore from 'connect-redis';
 import bodyParser from 'body-parser';
@@ -45,15 +46,27 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(
-  session({
-    store: new RedisStore({ url: process.env.REDIS_URL }),
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: true, sameSite: 'lax' }
-  })
-);
+
+(async () => {
+  // 1️⃣  Build and connect the client
+  const redisClient = createClient({ url: process.env.REDIS_URL });
+  redisClient.on('error', err => console.error('Redis error', err));
+  await redisClient.connect();   // v4 client is async
+
+  // 2️⃣  Pass the client to RedisStore
+  const store = new RedisStore({ client: redisClient });
+
+  // 3️⃣  Session middleware
+  app.use(
+    session({
+      store,
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: true, sameSite: 'lax' }
+    })
+  );
+})();
 
 // Attach tenant pool to every request BEFORE all /api routes
 app.use(async (req, _res, next) => {
