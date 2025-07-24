@@ -279,6 +279,44 @@
   border-radius: 12px !important;
 }
 
+  // Resizable event styling
+  .rbc-addons-dnd-resizable {
+    position: relative !important;
+  }
+
+  .rbc-addons-dnd-resize-ns-anchor {
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 4px !important;
+    cursor: ns-resize !important;
+    background-color: rgba(59, 130, 246, 0.3) !important;
+    border-radius: 2px !important;
+    z-index: 10 !important;
+  }
+
+  .rbc-addons-dnd-resize-ns-anchor:first-child {
+    top: -2px !important;
+  }
+
+  .rbc-addons-dnd-resize-ns-anchor:last-child {
+    bottom: -2px !important;
+  }
+
+  .rbc-addons-dnd-resize-ns-anchor:hover {
+    background-color: rgba(59, 130, 246, 0.6) !important;
+  }
+
+  // Ensure resizable events have proper styling
+  .rbc-event.rbc-addons-dnd-dragging {
+    opacity: 0.8 !important;
+    transform: rotate(5deg) !important;
+  }
+
+  .rbc-event.rbc-addons-dnd-resizing {
+    opacity: 0.9 !important;
+  }
+
   // ========================================
   // CURRENT TIME INDICATOR
   // ========================================

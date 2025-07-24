@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import '../css/SearchableDropdown.css';
 
 const SearchableDropdown = ({
-  options,
+  options = [],
   value,
   onChange,
   placeholder,
@@ -34,13 +34,15 @@ const SearchableDropdown = ({
       );
       setFilteredOptions(filtered);
     }
-  }, [searchTerm, options]);
+  }, [searchTerm, options, getOptionLabel]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setSearchTerm('');
+        setFocusedIndex(-1);
       }
     };
 
@@ -54,6 +56,7 @@ const SearchableDropdown = ({
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         setIsOpen(true);
+        inputRef.current?.focus();
       }
       return;
     }
@@ -71,13 +74,15 @@ const SearchableDropdown = ({
         break;
       case 'Enter':
         e.preventDefault();
-        if (focusedIndex >= 0) {
+        if (focusedIndex >= 0 && focusedIndex < filteredOptions.length) {
           handleSelect(filteredOptions[focusedIndex]);
         }
         break;
       case 'Escape':
         e.preventDefault();
         setIsOpen(false);
+        setSearchTerm('');
+        setFocusedIndex(-1);
         break;
       default:
         break;
@@ -111,6 +116,7 @@ const SearchableDropdown = ({
     e.stopPropagation();
     if (!disabled) {
       setIsOpen(true);
+      inputRef.current?.focus();
     }
   };
 
@@ -124,6 +130,14 @@ const SearchableDropdown = ({
   };
 
   const selectedOption = options.find(opt => getOptionValue(opt) === value);
+
+  // Determine input value - show search term when typing, otherwise show selected option
+  const getInputValue = () => {
+    if (searchTerm !== '') {
+      return searchTerm;
+    }
+    return selectedOption ? getOptionLabel(selectedOption) : '';
+  };
 
   const renderOptionContent = (option) => {
     if (renderOption) {
@@ -193,7 +207,7 @@ const SearchableDropdown = ({
         <input
           ref={inputRef}
           type="text"
-          value={searchTerm || (selectedOption ? getOptionLabel(selectedOption) : '')}
+          value={getInputValue()}
           onChange={handleInputChange}
           onClick={handleInputClick}
           onKeyDown={handleKeyDown}
@@ -201,6 +215,7 @@ const SearchableDropdown = ({
           disabled={disabled}
           aria-autocomplete="list"
           aria-controls="dropdown-list"
+          readOnly={disabled}
         />
         <span className="dropdown-arrow">▼</span>
       </div>

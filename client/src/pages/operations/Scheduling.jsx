@@ -148,12 +148,14 @@ function Scheduling() {
     setIsLoading(prev => ({ ...prev, students: true }));
     try {
       const data = await studentService.getAllStudents();
+      console.log('Raw students data:', data);
       const formattedStudents = data.map(student => ({
         id: student.student_id,
         name: student.name,
         first_name: student.first_name,
         last_name: student.last_name
       }));
+      console.log('Formatted students:', formattedStudents);
       setStudents(formattedStudents);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -166,6 +168,7 @@ function Scheduling() {
     setIsLoading(prev => ({ ...prev, instructors: true }));
     try {
       const data = await instructorService.getInstructorRoster();
+      console.log('Raw instructors data:', data);
       const formattedInstructors = data.map(instructor => ({
         id: instructor.id,
         name: instructor.name,
@@ -173,6 +176,7 @@ function Scheduling() {
         last_name: instructor.name.split(' ').slice(1).join(' ') || '',
         teachingSubjects: instructor.teachingSubjects || []
       }));
+      console.log('Formatted instructors:', formattedInstructors);
       setInstructors(formattedInstructors);
     } catch (error) {
       console.error('Error fetching instructors:', error);
@@ -185,11 +189,13 @@ function Scheduling() {
     setIsLoading(prev => ({ ...prev, subjects: true }));
     try {
       const data = await subjectService.getAllSubjectGroups();
+      console.log('Raw subject groups data:', data);
       const formattedGroups = data.map(group => ({
         id: group.group_id,
         name: group.name,
         description: group.description
       }));
+      console.log('Formatted subject groups:', formattedGroups);
       setSubjectGroups(formattedGroups);
     } catch (error) {
       console.error('Error fetching subject groups:', error);
@@ -202,6 +208,7 @@ function Scheduling() {
     setIsLoading(prev => ({ ...prev, subjects: true }));
     try {
       const data = await subjectService.getAllSubjects();
+      console.log('Raw subjects data:', data);
       const filteredSubjects = data
         .filter(subject => subject.group_id === parseInt(groupId))
         .map(subject => ({
@@ -209,6 +216,7 @@ function Scheduling() {
           name: subject.name,
           group_id: subject.group_id
         }));
+      console.log('Filtered subjects for group', groupId, ':', filteredSubjects);
       setSubjects(filteredSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
@@ -479,7 +487,18 @@ function Scheduling() {
 
   const handleSelect = (field, value) => {
     console.log('handleSelect called with field:', field, 'value:', value);
-    setFormData(prev => ({ ...prev, [field]: value.id }));
+    console.log('Current formData before update:', formData);
+    
+    if (!value || !value.id) {
+      console.error('Invalid value passed to handleSelect:', value);
+      return;
+    }
+    
+    setFormData(prev => {
+      const newFormData = { ...prev, [field]: value.id };
+      console.log('Updated formData:', newFormData);
+      return newFormData;
+    });
 
     if (field === 'student') {
       console.log('Student selected, fetching sessions for studentId:', value.id);
@@ -487,11 +506,13 @@ function Scheduling() {
     }
 
     if (field === 'subjectGroup') {
+      console.log('Subject group selected, fetching subjects for groupId:', value.id);
       fetchSubjects(value.id);
       setFormData(prev => ({ ...prev, subject: '' }));
     }
     
     if (field === 'subject') {
+      console.log('Subject selected, clearing instructor selection');
       setSelectedInstructorId(null);
     }
   };

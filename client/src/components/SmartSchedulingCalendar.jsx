@@ -10,6 +10,9 @@ import { toUtcIso, isoToLocal, convertSessionsToLocalTime } from '../lib/time.js
 // Import React Big Calendar default styles FIRST
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
+// Import drag-and-drop addon styles
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
+
 // Then import your custom overrides
 import '../css/react-big-calendar-custom.scss';
 
@@ -608,6 +611,7 @@ function SmartSchedulingCalendar({
                 sessionNumber: session.sessionNumber,
                 type: 'preference',
                 draggable: true,
+                resizable: true,
                 resource: { dayOfWeek: session.dayKey, duration: modifiedEvent.duration, sessionNumber: session.sessionNumber }
               });
             } else {
@@ -637,6 +641,7 @@ function SmartSchedulingCalendar({
                   sessionNumber: session.sessionNumber,
                   type: 'preference',
                   draggable: true,
+                  resizable: true,
                   resource: { dayOfWeek: session.dayKey, duration: firstWeekPattern.duration, sessionNumber: session.sessionNumber }
                 });
               } else {
@@ -659,6 +664,7 @@ function SmartSchedulingCalendar({
                   sessionNumber: session.sessionNumber,
               type: 'preference',
               draggable: true,
+              resizable: true,
                   resource: { dayOfWeek: session.dayKey, duration, sessionNumber: session.sessionNumber }
             });
           }
@@ -1246,6 +1252,26 @@ function SmartSchedulingCalendar({
   // Update events when selectedTimeSlot changes (for manual edits)
   // Removed to prevent infinite loop - selectedTimeSlot updates are handled in the parent component
 
+  // Debug: Log DOM structure of events to verify drag-and-drop addon
+  useEffect(() => {
+    // Wait for events to be rendered
+    setTimeout(() => {
+      const eventElements = document.querySelectorAll('.rbc-event');
+      console.log('Found event elements:', eventElements.length);
+      
+      eventElements.forEach((element, index) => {
+        const parent = element.parentElement;
+        console.log(`Event ${index + 1} DOM structure:`, {
+          eventElement: element,
+          parentElement: parent,
+          parentClasses: parent?.className,
+          hasResizableWrapper: parent?.classList.contains('rbc-addons-dnd-resizable'),
+          hasResizeAnchors: parent?.querySelectorAll('.rbc-addons-dnd-resize-ns-anchor').length
+        });
+      });
+    }, 1000);
+  }, [events]);
+
   return (
     <div className="smart-scheduling-calendar">
       <DragAndDropCalendar
@@ -1262,7 +1288,7 @@ function SmartSchedulingCalendar({
         selectable={false}
         onEventDrop={handleEventDrop}
         onEventResize={handleEventResize}
-        resizable
+        resizable={true}
         eventPropGetter={eventStyleGetter}
         components={components}
         formats={{
@@ -1281,10 +1307,12 @@ function SmartSchedulingCalendar({
           return event.type === 'preference' && event.draggable !== false;
         }}
         resizableAccessor={(event) => {
-          return event.type === 'preference' && event.draggable !== false;
+          return event.type === 'preference' && event.resizable !== false;
         }}
         onDragStartPreventDefault={false}
         onRangeChange={onRangeChange}
+        popup={false}
+        showMultiDayTimes={false}
       />
       
       {/* Legend */}
