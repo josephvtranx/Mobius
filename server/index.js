@@ -8,6 +8,8 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import session from 'express-session';
 import bodyParser from 'body-parser';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // Import all routes (as in src/server.js)
 import authRoutes from './src/routes/authRoutes.js';
@@ -31,6 +33,16 @@ import { toUtcIso } from './src/lib/time.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+// ✅ show a one-line success or error at boot
+pool.connect()
+  .then(() => console.log('✅ Connected to Postgres'))
+  .catch(err  => console.error('❌ Postgres connect error', err));
 
 const app = express();
 dotenv.config();
