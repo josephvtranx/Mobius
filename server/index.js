@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
 import bodyParser from 'body-parser';
 
 // Import all routes (as in src/server.js)
@@ -44,11 +45,15 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'mobius-secret',
-  resave: false,
-  saveUninitialized: false
-}));
+app.use(
+  session({
+    store: new RedisStore({ url: process.env.REDIS_URL }),
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: true, sameSite: 'lax' }
+  })
+);
 
 // Attach tenant pool to every request BEFORE all /api routes
 app.use(async (req, _res, next) => {
@@ -119,7 +124,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`API endpoints available at http://localhost:${PORT}/api`);
