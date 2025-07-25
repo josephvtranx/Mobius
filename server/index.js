@@ -86,7 +86,13 @@ app.post('/api/institution', async (req, res) => {
   try {
     await getTenantPool(req.body.code);           // throws if invalid
     req.session.tenantCode = req.body.code;       // store tenant context
-    res.sendStatus(200);
+    req.session.save(err => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).send('Session error');
+      }
+      res.sendStatus(200);
+    });
   } catch {
     res.status(404).send('Invalid institution code');
   }
