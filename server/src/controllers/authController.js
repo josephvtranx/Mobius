@@ -409,6 +409,16 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
+    // Debug logs for session and institution code
+    console.log('--- LOGIN ATTEMPT ---');
+    console.log('Session ID:', req.sessionID);
+    console.log('Session:', req.session);
+    console.log('Institution code in session:', req.session?.tenantCode);
+    // Guard for req.db
+    if (!req.db) {
+        console.error('No req.db found. Likely missing or invalid institution code or session.');
+        return res.status(400).json({ error: 'No institution selected or DB unavailable.' });
+    }
     const client = await req.db.connect();
     
     try {
