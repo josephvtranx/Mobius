@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { toUtcIso, assertUtcIso } from '../lib/time.js';
@@ -37,7 +37,7 @@ router.get('/roster', getInstructorRoster);
 // Get all instructors
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 i.*,
                 u.name,
@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 i.*,
                 u.name,
@@ -105,7 +105,7 @@ router.post('/', instructorValidation, async (req, res) => {
         } = req.body;
 
         // Check if user exists and is not already an instructor
-        const userCheck = await pool.query(
+        const userCheck = await req.db.query(
             'SELECT role FROM users WHERE user_id = $1 AND is_deleted = false',
             [user_id]
         );
@@ -119,7 +119,7 @@ router.post('/', instructorValidation, async (req, res) => {
         }
 
         // Check if instructor record already exists
-        const instructorCheck = await pool.query(
+        const instructorCheck = await req.db.query(
             'SELECT instructor_id FROM instructors WHERE user_id = $1',
             [user_id]
         );
@@ -128,7 +128,7 @@ router.post('/', instructorValidation, async (req, res) => {
             return res.status(400).json({ error: 'Instructor record already exists' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             INSERT INTO instructors (
                 user_id, 
                 hourly_rate, 
@@ -167,7 +167,7 @@ router.post('/:id/availability', requireUtcIso(['start_date', 'end_date']), avai
             return res.status(400).json({ error: 'Start date must be before end date' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             INSERT INTO instructor_availability (
                 instructor_id,
                 day_of_week,
@@ -204,7 +204,7 @@ router.post('/:id/availability', requireUtcIso(['start_date', 'end_date']), avai
 router.get('/:id/availability', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT * FROM instructor_availability
             WHERE instructor_id = $1
             ORDER BY 
@@ -244,7 +244,7 @@ router.put('/:id/availability/:availabilityId', async (req, res) => {
             return res.status(400).json({ error: 'Start date must be before end date' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE instructor_availability
             SET day_of_week = $1, start_time = $2, end_time = $3, type = $4, status = $5, start_date = $6, end_date = $7, notes = $8
             WHERE availability_id = $9 AND instructor_id = $10
@@ -266,7 +266,7 @@ router.put('/:id/availability/:availabilityId', async (req, res) => {
 router.delete('/:id/availability/:availabilityId', async (req, res) => {
     try {
         const { id, availabilityId } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             DELETE FROM instructor_availability
             WHERE availability_id = $1 AND instructor_id = $2
             RETURNING *
@@ -287,7 +287,7 @@ router.delete('/:id/availability/:availabilityId', async (req, res) => {
 router.get('/:id/unavailability', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT * FROM instructor_unavailability
             WHERE instructor_id = $1
             ORDER BY start_datetime
@@ -311,7 +311,7 @@ router.post('/:id/unavailability', async (req, res) => {
             return res.status(400).json({ error: 'Start datetime must be before end datetime' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             INSERT INTO instructor_unavailability (
                 instructor_id,
                 start_datetime,
@@ -333,7 +333,7 @@ router.post('/:id/unavailability', async (req, res) => {
 router.delete('/:id/unavailability/:unavailabilityId', async (req, res) => {
     try {
         const { id, unavailabilityId } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             DELETE FROM instructor_unavailability
             WHERE unavail_id = $1 AND instructor_id = $2
             RETURNING *
@@ -362,7 +362,7 @@ router.get('/:id/schedule', async (req, res) => {
         if (!end_date) end_date = format(endOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
 
         // Get individual sessions using new TIMESTAMPTZ fields
-        const sessionsResult = await pool.query(`
+        const sessionsResult = await req.db.query(`
             SELECT 
                 cs.session_id,
                 cs.session_start,
@@ -382,7 +382,7 @@ router.get('/:id/schedule', async (req, res) => {
         `, [id, start_date, end_date]);
 
         // Get class series (keeping old format for now since class_series table might not be updated yet)
-        const seriesResult = await pool.query(`
+        const seriesResult = await req.db.query(`
             SELECT 
                 cs.series_id as session_id,
                 cs.start_date as session_date,

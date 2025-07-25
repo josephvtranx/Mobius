@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const timePackageValidation = [
 // Get all time packages
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT * FROM time_packages 
             ORDER BY hours_total ASC
         `);
@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT * FROM time_packages 
             WHERE time_package_id = $1
         `, [id]);
@@ -49,7 +49,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create new time package
 router.post('/', authenticateToken, timePackageValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { name, hours_total, price, expiration_days } = req.body;
 
@@ -77,7 +77,7 @@ router.post('/', authenticateToken, timePackageValidation, async (req, res) => {
 
 // Update time package
 router.put('/:id', authenticateToken, timePackageValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { id } = req.params;
         const { name, hours_total, price, expiration_days } = req.body;
@@ -112,7 +112,7 @@ router.put('/:id', authenticateToken, timePackageValidation, async (req, res) =>
 
 // Delete time package
 router.delete('/:id', authenticateToken, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { id } = req.params;
 

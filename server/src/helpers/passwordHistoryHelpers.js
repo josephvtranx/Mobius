@@ -1,11 +1,11 @@
 import bcrypt from 'bcryptjs';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 
 // Check if password was used before
-export const checkPasswordHistory = async (userId, newPassword) => {
+export const checkPasswordHistory = async (db, userId, newPassword) => {
     try {
         // Get password history
-        const result = await pool.query(
+        const result = await db.query(
             'SELECT password_hash FROM password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
             [userId]
         );
@@ -29,15 +29,15 @@ export const checkPasswordHistory = async (userId, newPassword) => {
 };
 
 // Add password to history
-export const addToPasswordHistory = async (userId, passwordHash) => {
+export const addToPasswordHistory = async (db, userId, passwordHash) => {
     try {
-        await pool.query(
+        await db.query(
             'INSERT INTO password_history (user_id, password_hash) VALUES ($1, $2)',
             [userId, passwordHash]
         );
 
         // Keep only last 5 passwords
-        await pool.query(`
+        await db.query(`
             DELETE FROM password_history 
             WHERE id NOT IN (
                 SELECT id FROM password_history 

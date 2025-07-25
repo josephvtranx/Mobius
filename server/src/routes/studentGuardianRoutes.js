@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 const router = express.Router();
 
 // Validation middleware
@@ -12,7 +12,7 @@ const relationshipValidation = [
 // Get all student-guardian relationships
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 sg.*,
                 s.name as student_name,
@@ -35,8 +35,8 @@ router.post('/', relationshipValidation, async (req, res) => {
         const { student_id, guardian_id } = req.body;
         
         // First check if both student and guardian exist
-        const studentExists = await pool.query('SELECT * FROM students WHERE student_id = $1', [student_id]);
-        const guardianExists = await pool.query('SELECT * FROM guardians WHERE guardian_id = $1', [guardian_id]);
+        const studentExists = await req.db.query('SELECT * FROM students WHERE student_id = $1', [student_id]);
+        const guardianExists = await req.db.query('SELECT * FROM guardians WHERE guardian_id = $1', [guardian_id]);
         
         if (studentExists.rows.length === 0) {
             return res.status(404).json({ error: 'Student not found' });
@@ -46,7 +46,7 @@ router.post('/', relationshipValidation, async (req, res) => {
         }
         
         // Check if relationship already exists
-        const existingRelation = await pool.query(
+        const existingRelation = await req.db.query(
             'SELECT * FROM student_guardian WHERE student_id = $1 AND guardian_id = $2',
             [student_id, guardian_id]
         );
@@ -56,7 +56,7 @@ router.post('/', relationshipValidation, async (req, res) => {
         }
         
         // Create the relationship
-        const result = await pool.query(
+        const result = await req.db.query(
             'INSERT INTO student_guardian (student_id, guardian_id) VALUES ($1, $2) RETURNING *',
             [student_id, guardian_id]
         );
@@ -73,7 +73,7 @@ router.delete('/', relationshipValidation, async (req, res) => {
     try {
         const { student_id, guardian_id } = req.body;
         
-        const result = await pool.query(
+        const result = await req.db.query(
             'DELETE FROM student_guardian WHERE student_id = $1 AND guardian_id = $2 RETURNING *',
             [student_id, guardian_id]
         );
@@ -93,7 +93,7 @@ router.delete('/', relationshipValidation, async (req, res) => {
 router.get('/student/:student_id', async (req, res) => {
     try {
         const { student_id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 g.*
             FROM guardians g
@@ -112,7 +112,7 @@ router.get('/student/:student_id', async (req, res) => {
 router.get('/guardian/:guardian_id', async (req, res) => {
     try {
         const { guardian_id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 s.*
             FROM students s

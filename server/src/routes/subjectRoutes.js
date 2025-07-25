@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 import { validateRequest } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -50,7 +50,7 @@ const validateSubjectCreation = (req, res, next) => {
 
 // Get all subject groups with their subjects
 router.get('/subject-groups', async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const result = await client.query(`
             SELECT 
@@ -88,7 +88,7 @@ router.get('/subject-groups', async (req, res) => {
 // Get all subjects
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 s.*,
                 COUNT(DISTINCT cs.session_id) as active_sessions
@@ -109,7 +109,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 s.*,
                 sg.name as group_name,
@@ -135,7 +135,7 @@ router.get('/:id', async (req, res) => {
 
 // Create a new subject
 router.post('/', validateSubjectCreation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { name, group_id } = req.body;
         
@@ -187,7 +187,7 @@ router.put('/:id', subjectValidation, validateRequest, async (req, res) => {
         const { name, department, description } = req.body;
 
         // Check if updated name conflicts with existing subject
-        const existingSubject = await pool.query(
+        const existingSubject = await req.db.query(
             'SELECT subject_id FROM subjects WHERE LOWER(name) = LOWER($1) AND subject_id != $2',
             [name, id]
         );
@@ -196,7 +196,7 @@ router.put('/:id', subjectValidation, validateRequest, async (req, res) => {
             return res.status(400).json({ error: 'Subject name already exists' });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             UPDATE subjects 
             SET name = $1, department = $2, description = $3
             WHERE subject_id = $4
@@ -220,7 +220,7 @@ router.delete('/:id', async (req, res) => {
         const { id } = req.params;
 
         // Check for active sessions
-        const activeSessions = await pool.query(`
+        const activeSessions = await req.db.query(`
             SELECT COUNT(*) as count 
             FROM class_sessions 
             WHERE subject_id = $1 AND status = 'scheduled'
@@ -232,7 +232,7 @@ router.delete('/:id', async (req, res) => {
             });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             DELETE FROM subjects 
             WHERE subject_id = $1
             RETURNING *
@@ -256,7 +256,7 @@ router.post('/:id/instructors', async (req, res) => {
         const { instructor_id } = req.body;
 
         // Check if assignment already exists
-        const existingAssignment = await pool.query(`
+        const existingAssignment = await req.db.query(`
             SELECT * FROM instructor_specialties 
             WHERE subject_id = $1 AND instructor_id = $2
         `, [id, instructor_id]);
@@ -267,7 +267,7 @@ router.post('/:id/instructors', async (req, res) => {
             });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             INSERT INTO instructor_specialties (subject_id, instructor_id)
             VALUES ($1, $2)
             RETURNING *
@@ -286,7 +286,7 @@ router.delete('/:id/instructors/:instructorId', async (req, res) => {
         const { id, instructorId } = req.params;
 
         // Check for active sessions
-        const activeSessions = await pool.query(`
+        const activeSessions = await req.db.query(`
             SELECT COUNT(*) as count 
             FROM class_sessions 
             WHERE subject_id = $1 
@@ -300,7 +300,7 @@ router.delete('/:id/instructors/:instructorId', async (req, res) => {
             });
         }
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             DELETE FROM instructor_specialties 
             WHERE subject_id = $1 AND instructor_id = $2
             RETURNING *

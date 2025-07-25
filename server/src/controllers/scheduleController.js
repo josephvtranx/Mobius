@@ -1,5 +1,5 @@
 import { validationResult } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 import {
     checkClassroomConflict,
     checkInstructorConflict,
@@ -32,7 +32,7 @@ const getNextDateForDay = (day) => {
 // Get all classes
 const getClasses = async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM classes');
+        const result = await db.query('SELECT * FROM classes');
         res.status(200).json(result.rows);
     } catch (error) {
         console.error('Database query failed:', error);
@@ -54,7 +54,7 @@ const createClass = async (req, res) => {
               AND date >= CURRENT_DATE
             ORDER BY date, start_time
         `;
-        const instructorAvailability = await pool.query(instructorAvailabilityQuery, [instructor_ids]);
+        const instructorAvailability = await db.query(instructorAvailabilityQuery, [instructor_ids]);
 
         if (instructorAvailability.rowCount === 0) {
             console.error("No future availability found for the selected instructors");
@@ -67,7 +67,7 @@ const createClass = async (req, res) => {
         // Step 2: Find suitable classrooms
         console.log("Fetching classrooms...");
         const classroomsQuery = `SELECT * FROM classrooms WHERE capacity >= $1`;
-        const classrooms = await pool.query(classroomsQuery, [capacity]);
+        const classrooms = await db.query(classroomsQuery, [capacity]);
 
         if (classrooms.rowCount === 0) {
             console.error("No classrooms available with sufficient capacity");
@@ -172,7 +172,7 @@ const createClass = async (req, res) => {
             INSERT INTO classes (title, description, start_time, end_time, schedule_day, classroom_id) 
             VALUES ($1, $2, $3, $4, TO_CHAR($3::timestamp, 'Day'), $5) RETURNING id
         `;
-        const result = await pool.query(createClassQuery, [
+        const result = await db.query(createClassQuery, [
             title, description, start_time, end_time, classroom_id
         ]);
 
@@ -183,7 +183,7 @@ const createClass = async (req, res) => {
             INSERT INTO class_instructors (class_id, instructor_id) 
             SELECT $1, unnest($2::int[])
         `;
-        await pool.query(assignInstructorsQuery, [class_id, instructor_ids]);
+        await db.query(assignInstructorsQuery, [class_id, instructor_ids]);
 
         res.status(201).json({ message: "Class created successfully!", class_id });
     } catch (error) {
@@ -199,7 +199,7 @@ const updateClass = async (req, res) => {
 
     try {
         // Check if Class Exists
-        const classCheck = await pool.query(`SELECT * FROM classes WHERE id = $1`, [id]);
+        const classCheck = await db.query(`SELECT * FROM classes WHERE id = $1`, [id]);
         if (classCheck.rowCount === 0) {
             return res.status(404).json({ error: "Class not found" });
         }
@@ -218,7 +218,7 @@ const updateClass = async (req, res) => {
         }
 
         // Update the Class
-        const result = await pool.query(`
+        const result = await db.query(`
             UPDATE classes 
             SET title = $1, description = $2, start_time = $3, end_time = $4, 
                 schedule_day = $5, classroom_id = $6 
@@ -231,8 +231,8 @@ const updateClass = async (req, res) => {
         }
 
         // Update Instructors
-        await pool.query(`DELETE FROM class_instructors WHERE class_id = $1`, [id]);
-        await pool.query(`
+        await db.query(`DELETE FROM class_instructors WHERE class_id = $1`, [id]);
+        await db.query(`
             INSERT INTO class_instructors (class_id, instructor_id) 
             SELECT $1, unnest($2::int[])
         `, [id, instructor_ids]);
@@ -249,7 +249,7 @@ const deleteClass = async (req, res) => {
     const { id } = req.params;
 
     try {
-        const result = await pool.query(`DELETE FROM classes WHERE id = $1 RETURNING *`, [id]);
+        const result = await db.query(`DELETE FROM classes WHERE id = $1 RETURNING *`, [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "Class not found" });
@@ -268,7 +268,7 @@ const addStudentToClass = async (req, res) => {
   
     try {
       // Check if the Class Exists
-      const classCheck = await pool.query(`SELECT * FROM classes WHERE id = $1`, [class_id]);
+      const classCheck = await db.query(`SELECT * FROM classes WHERE id = $1`, [class_id]);
       if (classCheck.rowCount === 0) {
         return res.status(404).json({ error: "Class not found" });
       }
@@ -281,7 +281,7 @@ const addStudentToClass = async (req, res) => {
       }
   
       // Add Student to Class
-      await pool.query(`
+      await db.query(`
         INSERT INTO class_students (class_id, student_id) 
         VALUES ($1, $2)
       `, [class_id, student_id]);
@@ -296,7 +296,7 @@ const addStudentToClass = async (req, res) => {
   // Get all students
   const getStudents = async (req, res) => {
     try {
-      const result = await pool.query('SELECT * FROM students');
+      const result = await db.query('SELECT * FROM students');
       res.status(200).json(result.rows);
     } catch (error) {
       console.error('Failed to retrieve students:', error);
@@ -308,7 +308,7 @@ const addStudentToClass = async (req, res) => {
   const getStudentById = async (req, res) => {
     const { id } = req.params;
     try {
-      const result = await pool.query('SELECT * FROM students WHERE id = $1', [id]);
+      const result = await db.query('SELECT * FROM students WHERE id = $1', [id]);
       if (result.rowCount === 0) {
         return res.status(404).json({ error: 'Student not found' });
       }
@@ -325,7 +325,7 @@ const addStudentToClass = async (req, res) => {
     const { name, email } = req.body;
   
     try {
-      const result = await pool.query(
+      const result = await db.query(
         'UPDATE students SET name = $1, email = $2 WHERE id = $3 RETURNING *',
         [name, email, id]
       );
@@ -345,7 +345,7 @@ const addStudentToClass = async (req, res) => {
     const { id } = req.params;
   
     try {
-      const result = await pool.query('DELETE FROM students WHERE id = $1 RETURNING *', [id]);
+      const result = await db.query('DELETE FROM students WHERE id = $1 RETURNING *', [id]);
   
       if (result.rowCount === 0) {
         return res.status(404).json({ error: 'Student not found' });
@@ -377,7 +377,7 @@ const addStudentToClass = async (req, res) => {
         console.log('Parsed IDs:', { parsedStudentId, parsedCurrentClassId, parsedNewClassId });
 
         // Check if the new class exists
-        const newClassCheck = await pool.query(`SELECT * FROM classes WHERE id = $1`, [parsedNewClassId]);
+        const newClassCheck = await db.query(`SELECT * FROM classes WHERE id = $1`, [parsedNewClassId]);
         if (newClassCheck.rowCount === 0) {
             console.error('New class not found:', parsedNewClassId);
             return res.status(404).json({ error: "New class not found" });
@@ -398,7 +398,7 @@ const addStudentToClass = async (req, res) => {
         console.log('No conflicts found. Proceeding to update enrollment.');
 
         // Remove the student from the current class
-        await pool.query(`
+        await db.query(`
             DELETE FROM class_students 
             WHERE student_id = $1 AND class_id = $2
         `, [parsedStudentId, parsedCurrentClassId]);
@@ -406,7 +406,7 @@ const addStudentToClass = async (req, res) => {
         console.log('Student removed from current class:', parsedCurrentClassId);
 
         // Add the student to the new class
-        await pool.query(`
+        await db.query(`
             INSERT INTO class_students (class_id, student_id) 
             VALUES ($1, $2)
         `, [parsedNewClassId, parsedStudentId]);
@@ -431,7 +431,7 @@ const addAvailability = async (req, res) => {
 
         // Fetch instructor ID by name
         const instructorQuery = `SELECT id FROM instructors WHERE name = $1`;
-        const instructorResult = await pool.query(instructorQuery, [name]);
+        const instructorResult = await db.query(instructorQuery, [name]);
 
         if (instructorResult.rowCount === 0) {
             return res.status(404).json({ error: "Instructor not found" });
@@ -446,7 +446,7 @@ const addAvailability = async (req, res) => {
             RETURNING *;
         `;
         const values = [instructorId, date, start_time, end_time];
-        const result = await pool.query(query, values);
+        const result = await db.query(query, values);
 
         res.status(201).json({
             message: "Availability added successfully!",
@@ -473,7 +473,7 @@ const updateAvailability = async (req, res) => {
 
         // Fetch instructor ID by name
         const instructorQuery = `SELECT id FROM instructors WHERE name = $1`;
-        const instructorResult = await pool.query(instructorQuery, [name]);
+        const instructorResult = await db.query(instructorQuery, [name]);
 
         console.log("Instructor Query Result:", instructorResult.rows);
 
@@ -495,7 +495,7 @@ const updateAvailability = async (req, res) => {
 
         console.log("Update Query Values:", values);
 
-        const result = await pool.query(query, values);
+        const result = await db.query(query, values);
 
         console.log("Update Query Result:", result.rows);
 
@@ -529,7 +529,7 @@ const deleteAvailability = async (req, res) => {
 
         // Fetch instructor ID by name
         const instructorQuery = `SELECT id FROM instructors WHERE name = $1`;
-        const instructorResult = await pool.query(instructorQuery, [name]);
+        const instructorResult = await db.query(instructorQuery, [name]);
 
         if (instructorResult.rowCount === 0) {
             return res.status(404).json({ error: "Instructor not found" });
@@ -544,7 +544,7 @@ const deleteAvailability = async (req, res) => {
             RETURNING *;
         `;
         const values = [id, instructorId];
-        const result = await pool.query(query, values);
+        const result = await db.query(query, values);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "Availability not found or does not belong to the specified instructor" });
@@ -577,7 +577,7 @@ const getInstructorAvailabilities = async (req, res) => {
 
         query += ` ORDER BY ia.date, ia.start_time`;
 
-        const result = await pool.query(query, values);
+        const result = await db.query(query, values);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: "No availabilities found" });

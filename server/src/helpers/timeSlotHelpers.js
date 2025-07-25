@@ -1,4 +1,3 @@
-import pool from '../config/db.js';
 import { toUtcIso, assertUtcIso } from '../lib/time.js';
 
 // Convert day abbreviation to day number (sun=0, mon=1, tue=2, etc.)

@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -23,7 +23,7 @@ const guardianValidation = [
 // Get all guardians
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM guardians');
+        const result = await req.db.query('SELECT * FROM guardians');
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching guardians:', error);
@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query('SELECT * FROM guardians WHERE guardian_id = $1', [id]);
+        const result = await req.db.query('SELECT * FROM guardians WHERE guardian_id = $1', [id]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Guardian not found' });
@@ -50,7 +50,7 @@ router.get('/:id', async (req, res) => {
 
 // Create new guardian
 router.post('/', guardianValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         await client.query('BEGIN');
         
@@ -89,7 +89,7 @@ router.put('/:id', guardianValidation, async (req, res) => {
         const { id } = req.params;
         const { name, phone, email, relationship } = req.body;
         
-        const result = await pool.query(
+        const result = await req.db.query(
             'UPDATE guardians SET name = $1, phone = $2, email = $3, relationship = $4 WHERE guardian_id = $5 RETURNING *',
             [name, phone, email, relationship, id]
         );
@@ -109,7 +109,7 @@ router.put('/:id', guardianValidation, async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query('DELETE FROM guardians WHERE guardian_id = $1 RETURNING *', [id]);
+        const result = await req.db.query('DELETE FROM guardians WHERE guardian_id = $1 RETURNING *', [id]);
         
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Guardian not found' });
@@ -126,7 +126,7 @@ router.delete('/:id', async (req, res) => {
 router.get('/:id/students', async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT s.* 
             FROM students s
             JOIN student_guardian sg ON s.student_id = sg.student_id

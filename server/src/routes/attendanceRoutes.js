@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { toUtcIso, assertUtcIso } from '../lib/time.js';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
@@ -24,7 +24,7 @@ const calculateSessionDuration = (sessionStart, sessionEnd) => {
 
 // Mark attendance for a class session
 router.post('/mark', authenticateToken, attendanceValidation, async (req, res) => {
-    const client = await pool.connect();
+    const client = await req.db.connect();
     try {
         const { session_id, student_id, attended, notes } = req.body;
 
@@ -210,7 +210,7 @@ router.get('/session/:sessionId', authenticateToken, async (req, res) => {
     try {
         const { sessionId } = req.params;
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 a.session_id,
                 a.student_id,
@@ -242,7 +242,7 @@ router.get('/student/:studentId', authenticateToken, async (req, res) => {
         const { studentId } = req.params;
         const { limit = 50, offset = 0 } = req.query;
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 a.session_id,
                 a.attended,
@@ -275,7 +275,7 @@ router.get('/student/:studentId/summary', authenticateToken, async (req, res) =>
     try {
         const { studentId } = req.params;
 
-        const result = await pool.query(`
+        const result = await req.db.query(`
             SELECT 
                 COUNT(*) as total_sessions,
                 COUNT(CASE WHEN a.attended = true THEN 1 END) as attended_sessions,

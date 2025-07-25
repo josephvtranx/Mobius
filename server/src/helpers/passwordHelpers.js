@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import pool from '../config/db.js';
+// import pool from '../config/db.js';
 
 // Common passwords to disallow (this should be much larger in production)
 const COMMON_PASSWORDS = [
@@ -39,7 +39,7 @@ export const validatePasswordStrength = (password) => {
 // Check if password is expired
 export const isPasswordExpired = async (userId) => {
     try {
-        const result = await pool.query(`
+        const result = await db.query(`
             SELECT 
                 CASE 
                     WHEN password_updated_at < NOW() - INTERVAL '90 days' THEN true 
