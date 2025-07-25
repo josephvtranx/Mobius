@@ -29,20 +29,16 @@ import paymentRoutes from './src/routes/paymentRoutes.js';
 import uploadRoutes from './src/routes/uploadRoutes.js';
 import registerInstitutionRouter from './src/routes/registerInstitution.js';
 import { getTenantPool } from './src/db/tenantPool.js';
+import { registryPool } from './src/db/registryPool.js';
 import { toUtcIso } from './src/lib/time.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-// ✅ show a one-line success or error at boot
-pool.connect()
-  .then(() => console.log('✅ Connected to Postgres'))
-  .catch(err  => console.error('❌ Postgres connect error', err));
+// ✅ show a one-line success or error at boot for registry DB
+registryPool.connect()
+  .then(() => console.log('✅ Connected to Registry DB'))
+  .catch(err  => console.error('❌ Registry DB connect error', err));
 
 const app = express();
 dotenv.config();
