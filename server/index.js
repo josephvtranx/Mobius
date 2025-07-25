@@ -43,9 +43,11 @@ registryPool.connect()
 const app = express();
 dotenv.config();
 
+app.set('trust proxy', 1); // trust first proxy (Render)
+
 // CORS (update as needed for production)
 app.use(cors({
-    origin: [process.env.CLIENT_ORIGIN || 'http://localhost:5173'],
+    origin: 'https://mobius-t071.onrender.com',
     credentials: true
 }));
 
