@@ -6,6 +6,15 @@
   },
   "scripts": {
     "build": "npm --prefix server install && npm --prefix client install && npm --prefix client run build",
-    "start": "npm --prefix server start"
+    "start": "npm --prefix server start",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev:server:windows": "cd server && npm run dev:windows",
+    "dev:windows": "concurrently \"npm run dev:server:windows\" \"npm run dev:client\"",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }

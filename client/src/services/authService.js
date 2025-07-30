@@ -114,10 +114,23 @@ const authService = {
     // Set institution code for multi-tenant context
     setInstitutionCode: async (code) => {
         try {
+            console.log('Attempting to set institution code:', code);
             const response = await api.post('/institution', { code });
+            console.log('Institution code response:', response);
             return response.data;
         } catch (error) {
-            console.error('Institution code error:', error);
+            console.error('Institution code error details:', {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    baseURL: error.config?.baseURL,
+                    headers: error.config?.headers
+                }
+            });
             throw error;
         }
     }

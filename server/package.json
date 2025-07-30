@@ -5,7 +5,10 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "NODE_ENV=development nodemon index.js",
+    "dev:windows": "set NODE_ENV=development && nodemon index.js",
+    "build": "echo 'No build step required for Node.js server'"
   },
   "keywords": [],
   "author": "",

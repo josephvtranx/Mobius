@@ -35,21 +35,33 @@ import { toUtcIso } from './src/lib/time.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Load environment variables
+dotenv.config();
+
 // ✅ show a one-line success or error at boot for registry DB
 registryPool.connect()
   .then(() => console.log('✅ Connected to Registry DB'))
   .catch(err  => console.error('❌ Registry DB connect error', err));
 
 const app = express();
-dotenv.config();
+
+// Determine environment
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1); // trust first proxy (Render)
 
-// CORS (update as needed for production)
-app.use(cors({
-    origin: 'https://mobius-t071.onrender.com',
-    credentials: true
-}));
+// CORS configuration for both development and production
+const corsOptions = {
+  origin: isDevelopment 
+    ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', process.env.CORS_ORIGIN].filter(Boolean) // Local development
+    : ['https://mobius-t071.onrender.com'], // Production
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -57,10 +69,13 @@ app.use(express.json());
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: true, sameSite: 'lax' }
+    cookie: {
+      secure: isProduction, // Only use secure cookies in production
+      sameSite: 'lax'
+    }
   })
 );
 
@@ -139,8 +154,9 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`API endpoints available at http://localhost:${PORT}/api`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 }); 

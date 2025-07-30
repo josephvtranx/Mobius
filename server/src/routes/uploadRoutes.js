@@ -1,5 +1,6 @@
 import express from 'express';
 import upload from '../middleware/upload.js';
+import { cleanupOrphanedFiles } from '../middleware/upload.js';
 import auth from '../middleware/auth.js';
 import fs from 'fs';
 import path from 'path';
@@ -82,6 +83,7 @@ router.delete('/profile-picture', auth, async (req, res) => {
       
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        console.log(`Deleted profile picture: ${path.basename(currentImageUrl)}`);
       }
     }
 
@@ -95,6 +97,37 @@ router.delete('/profile-picture', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete profile picture',
+      error: error.message
+    });
+  }
+});
+
+// Cleanup orphaned files (admin only)
+router.post('/cleanup', auth, async (req, res) => {
+  try {
+    // Check if user is admin (you can customize this check)
+    const userQuery = 'SELECT role FROM users WHERE user_id = $1';
+    const userResult = await req.db.query(userQuery, [req.user.user_id]);
+    
+    if (!userResult.rows.length || userResult.rows[0].role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    await cleanupOrphanedFiles(req.db);
+
+    res.json({
+      success: true,
+      message: 'Cleanup completed successfully'
+    });
+
+  } catch (error) {
+    console.error('Cleanup error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cleanup orphaned files',
       error: error.message
     });
   }
