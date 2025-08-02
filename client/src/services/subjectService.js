@@ -4,7 +4,7 @@ const subjectService = {
     // Get all subject groups
     getAllSubjectGroups: async () => {
         try {
-            const response = await api.get('/subjects/subject-groups');
+            const response = await api.get('/subject-groups');
             return response.data;
         } catch (error) {
             console.error('Error fetching subject groups:', error);

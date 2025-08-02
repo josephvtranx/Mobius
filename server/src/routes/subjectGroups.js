@@ -1,5 +1,4 @@
 import express from 'express';
-import { pool } from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -7,7 +6,7 @@ const router = express.Router();
 // GET all subject groups
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query(
+    const result = await req.db.query(
       'SELECT * FROM subject_groups ORDER BY name'
     );
     res.json(result.rows);
@@ -31,7 +30,7 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     // Check if subject group with same name already exists
     console.log('Checking for existing subject group with name:', name.trim()); // Debug log
-    const existingGroup = await pool.query(
+    const existingGroup = await req.db.query(
       'SELECT * FROM subject_groups WHERE name = $1',
       [name.trim()]
     );
@@ -43,7 +42,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Insert new subject group
     console.log('Inserting new subject group...'); // Debug log
-    const result = await pool.query(
+    const result = await req.db.query(
       'INSERT INTO subject_groups (name, description) VALUES ($1, $2) RETURNING *',
       [name.trim(), description ? description.trim() : null]
     );

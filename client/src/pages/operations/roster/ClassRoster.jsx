@@ -25,7 +25,7 @@ function ClassRoster() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${API_URL}/api/subjects/subject-groups`, {
+      const response = await fetch(`${API_URL}/api/subject-groups`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
