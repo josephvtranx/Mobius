@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../../../css/ClassRoster.css';
 import Modal from '../../../components/Modal';
-
-// Define API URL
-const API_URL = 'http://localhost:5001';
+import api from '../../../services/api';
 
 function ClassRoster() {
   const [subjectGroups, setSubjectGroups] = useState([]);
@@ -20,23 +18,8 @@ function ClassRoster() {
 
   const fetchSubjectGroups = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await fetch(`${API_URL}/api/subject-groups`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch subject groups');
-      }
-
-      const data = await response.json();
+      const response = await api.get('/subject-groups');
+      const data = response.data;
       console.log('Raw API response:', data);
       
       // Verify the structure of each group
@@ -59,26 +42,9 @@ function ClassRoster() {
 
   const handleSubjectGroupSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please log in to create a subject group');
-      return;
-    }
 
     try {
-      const response = await fetch('/api/subject-groups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newSubjectGroup)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create subject group');
-      }
+      const response = await api.post('/subject-groups', newSubjectGroup);
 
       // Close modal and reset form
       setShowSubjectGroupModal(false);
@@ -96,26 +62,9 @@ function ClassRoster() {
 
   const handleSubjectSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please log in to create a subject');
-      return;
-    }
 
     try {
-      const response = await fetch('/api/subjects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newSubject)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create subject');
-      }
+      const response = await api.post('/subjects', newSubject);
 
       // Close modal and reset form
       setShowSubjectModal(false);
