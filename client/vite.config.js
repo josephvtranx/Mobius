@@ -27,6 +27,15 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    assetsDir: 'assets',
+    rollupOptions: {
+      input: {
+        main: 'index.html'
+      }
+    }
+  },
+  publicDir: 'public',
   define: {
     global: 'globalThis',
   },
