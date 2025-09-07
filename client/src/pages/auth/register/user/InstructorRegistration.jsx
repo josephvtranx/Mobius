@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import authService from '../../../services/authService';
-import '../../../css/registration.css';
+import authService from '@/services/authService';
+import '@/css/registration.css';
 
-function StaffRegistration() {
+function InstructorRegistration() {
   const navigate = useNavigate();
   const location = useLocation();
   const emailFromState = location.state?.email;
@@ -14,13 +14,11 @@ function StaffRegistration() {
     confirmPassword: '',
     name: '',
     phone: '',
-    role: 'staff',
+    role: 'instructor',
     age: '',
     gender: '',
-    department: '',
-    employment_status: 'full_time',
-    salary: '',
-    hourly_rate: ''
+    college_attended: '',
+    major: ''
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,17 +43,15 @@ function StaffRegistration() {
         password: formData.password,
         name: formData.name,
         phone: formData.phone,
-        role: 'staff',
+        role: 'instructor',
         age: parseInt(formData.age),
         gender: formData.gender,
-        department: formData.department,
-        employment_status: formData.employment_status,
-        salary: formData.salary ? parseFloat(formData.salary) : null,
-        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null
+        college_attended: formData.college_attended,
+        major: formData.major
       };
       await authService.register(registrationData);
       alert('Registration successful! Please login to continue.');
-      navigate('/login');
+      navigate('/auth/login');
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred during registration');
     } finally {
@@ -83,7 +79,7 @@ function StaffRegistration() {
           position: 'relative',
         }}
       >
-        {/* Left column: Staff registration form */}
+        {/* Left column: Instructor registration form */}
         <div
           style={{
             flex: 1,
@@ -95,10 +91,10 @@ function StaffRegistration() {
           }}
         >
           <div style={{ fontSize: 28, fontWeight: 700, color: '#1e3a4c', marginBottom: 18, textAlign: 'left' }}>
-            Staff Registration
+            Instructor Registration
           </div>
           <div style={{ color: '#6b7280', fontSize: 16, marginBottom: 24, textAlign: 'left' }}>
-            Create your staff account
+            Create your instructor account
           </div>
           {error && (
             <div style={{ background: '#fff5f5', color: '#e53e3e', padding: 14, borderRadius: 10, marginBottom: 20, textAlign: 'center', fontSize: 14, border: '1px solid #feb2b2' }}>
@@ -161,7 +157,6 @@ function StaffRegistration() {
                 name="password"
                 type="password"
                 required
-                minLength="8"
                 value={formData.password}
                 onChange={handleChange}
                 style={{
@@ -177,11 +172,8 @@ function StaffRegistration() {
                   background: '#fafdff',
                   transition: 'border 0.2s',
                 }}
-                placeholder="Create a password (minimum 8 characters)"
+                placeholder="Create a password"
               />
-              <small style={{ color: '#b0b4c0', fontSize: 12, marginTop: 2, display: 'block' }}>
-                Password must be at least 8 characters long
-              </small>
             </div>
             <div style={{ marginBottom: 18 }}>
               <label htmlFor="confirmPassword" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Confirm Password*</label>
@@ -190,7 +182,6 @@ function StaffRegistration() {
                 name="confirmPassword"
                 type="password"
                 required
-                minLength="8"
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 style={{
@@ -306,20 +297,20 @@ function StaffRegistration() {
                   transition: 'border 0.2s',
                 }}
               >
-                <option value="">Select gender</option>
+                <option value="">Select your gender</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="other">Other</option>
               </select>
             </div>
             <div style={{ marginBottom: 18 }}>
-              <label htmlFor="department" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Department*</label>
+              <label htmlFor="college_attended" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>College/University*</label>
               <input
-                id="department"
-                name="department"
+                id="college_attended"
+                name="college_attended"
                 type="text"
                 required
-                value={formData.department}
+                value={formData.college_attended}
                 onChange={handleChange}
                 style={{
                   width: '100%',
@@ -334,16 +325,17 @@ function StaffRegistration() {
                   background: '#fafdff',
                   transition: 'border 0.2s',
                 }}
-                placeholder="Enter your department"
+                placeholder="Enter your college or university name"
               />
             </div>
             <div style={{ marginBottom: 18 }}>
-              <label htmlFor="employment_status" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Employment Status*</label>
-              <select
-                id="employment_status"
-                name="employment_status"
+              <label htmlFor="major" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Major/Field of Study*</label>
+              <input
+                id="major"
+                name="major"
+                type="text"
                 required
-                value={formData.employment_status}
+                value={formData.major}
                 onChange={handleChange}
                 style={{
                   width: '100%',
@@ -358,61 +350,7 @@ function StaffRegistration() {
                   background: '#fafdff',
                   transition: 'border 0.2s',
                 }}
-              >
-                <option value="full_time">Full Time</option>
-                <option value="part_time">Part Time</option>
-                <option value="contract">Contract</option>
-                <option value="temporary">Temporary</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label htmlFor="salary" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Salary (optional)</label>
-              <input
-                id="salary"
-                name="salary"
-                type="number"
-                step="0.01"
-                value={formData.salary}
-                onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 16px',
-                  borderRadius: 18,
-                  border: '2px solid #e2e8f0',
-                  fontSize: 14,
-                  marginBottom: 0,
-                  marginTop: 2,
-                  outline: 'none',
-                  color: '#1e3a4c',
-                  background: '#fafdff',
-                  transition: 'border 0.2s',
-                }}
-                placeholder="Enter annual salary"
-              />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              <label htmlFor="hourly_rate" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Hourly Rate (optional)</label>
-              <input
-                id="hourly_rate"
-                name="hourly_rate"
-                type="number"
-                step="0.01"
-                value={formData.hourly_rate}
-                onChange={handleChange}
-                style={{
-                  width: '100%',
-                  padding: '8px 16px',
-                  borderRadius: 18,
-                  border: '2px solid #e2e8f0',
-                  fontSize: 14,
-                  marginBottom: 0,
-                  marginTop: 2,
-                  outline: 'none',
-                  color: '#1e3a4c',
-                  background: '#fafdff',
-                  transition: 'border 0.2s',
-                }}
-                placeholder="Enter hourly rate"
+                placeholder="Enter your major or field of study"
               />
             </div>
             <button
@@ -468,4 +406,4 @@ function StaffRegistration() {
   );
 }
 
-export default StaffRegistration; 
+export default InstructorRegistration; 

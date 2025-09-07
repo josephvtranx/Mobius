@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import authService from '../../../services/authService';
-import '../../../css/registration.css';
+import authService from '@/services/authService';
+import '@/css/registration.css';
 
 function StudentRegistration() {
   const navigate = useNavigate();
@@ -91,7 +91,7 @@ function StudentRegistration() {
       };
       await authService.register(registrationData);
       alert('Registration successful! Please login to continue.');
-      navigate('/login');
+      navigate('/auth/login');
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred during registration');
     } finally {

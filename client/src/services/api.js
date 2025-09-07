@@ -1,8 +1,26 @@
 // This is our base API setup
 import axios from 'axios';
 
-// Use Vite's environment variable for API URL, fallback to /api for local dev
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Use Vite's environment variable for API URL, with smart fallbacks
+const getApiUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Check if we should use proxy in development
+  const useProxy = import.meta.env.VITE_USE_PROXY !== 'false';
+  
+  // In development, use proxy unless explicitly disabled
+  if (import.meta.env.DEV && useProxy) {
+    return '/api';
+  }
+  
+  // In production, use the remote server
+  return 'https://mobius-t071.onrender.com/api';
+};
+
+const API_URL = getApiUrl();
 
 // Create an axios instance with default settings
 const api = axios.create({
@@ -10,7 +28,17 @@ const api = axios.create({
     headers: {
         'Content-Type': 'application/json'
     },
-    withCredentials: true // <-- ensure cookies are sent for session
+    withCredentials: true, // <-- ensure cookies are sent for session
+    timeout: 10000 // 10 second timeout
+});
+
+// Add debugging for API calls
+console.log('API Configuration:', {
+    baseURL: API_URL,
+    environment: import.meta.env.MODE,
+    dev: import.meta.env.DEV,
+    useProxy: import.meta.env.VITE_USE_PROXY,
+    viteApiUrl: import.meta.env.VITE_API_URL
 });
 
 // Add token to requests if it exists

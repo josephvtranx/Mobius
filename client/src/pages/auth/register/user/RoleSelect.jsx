@@ -36,9 +36,9 @@ function RoleSelect() {
   const handleContinue = (e) => {
     e.preventDefault();
     const state = { email };
-    if (selectedRole === 'student') navigate('/auth/register/student', { state });
-    else if (selectedRole === 'instructor') navigate('/auth/register/instructor', { state });
-    else if (selectedRole === 'admin') navigate('/auth/register/staff', { state });
+    if (selectedRole === 'student') navigate('/auth/register/user/student', { state });
+    else if (selectedRole === 'instructor') navigate('/auth/register/user/instructor', { state });
+    else if (selectedRole === 'admin') navigate('/auth/register/user/staff', { state });
   };
 
   return (

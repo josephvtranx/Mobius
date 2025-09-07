@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import '../../../css/login.css';
+import '@/css/login.css';
 
 export default function InstitutionRegistration() {
   const [step, setStep] = useState(1); // 1: Basic Info, 2: Contact Info, 3: Pending Approval
@@ -99,7 +99,7 @@ export default function InstitutionRegistration() {
   };
 
   const handleBackToLogin = () => {
-    navigate('/auth/sign-in');
+    navigate('/auth/login');
   };
 
   const handleBack = () => {

@@ -1,4 +1,8 @@
 {
+  "name": "mobius-lms",
+  "version": "1.0.0",
+  "description": "Mobius Learning Management System",
+  "private": true,
   "dependencies": {
     "date-fns": "^4.1.0",
     "express-session": "^1.18.1",
@@ -12,6 +16,8 @@
     "dev:client": "cd client && npm run dev",
     "dev:server:windows": "cd server && npm run dev:windows",
     "dev:windows": "concurrently \"npm run dev:server:windows\" \"npm run dev:client\"",
+    "dev:setup": "npm run install:all && node setup-dev.js",
+    "env:setup": "node setup-dev.js",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install"
   },
   "devDependencies": {

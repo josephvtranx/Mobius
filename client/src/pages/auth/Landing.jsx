@@ -12,7 +12,7 @@ export default function Landing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleContinue = () => navigate("/auth/login");
+    const handleContinue = () => navigate("/auth/toggle");
     window.addEventListener("keydown", handleContinue);
     window.addEventListener("mousedown", handleContinue);
     return () => {
@@ -47,10 +47,10 @@ export default function Landing() {
         alt="Mobius Logo"
         style={{
           position: "absolute",
-          top: "42%",
+          top: "43%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "320px",
+          width: "300px",
           maxWidth: "80vw",
           height: "auto",
           zIndex: 10,
@@ -72,7 +72,7 @@ export default function Landing() {
           animation: "softBlink 3s infinite"
         }}
       >
-        Interact to continue
+        Click anywhere to continue
       </div>
     </div>
   );

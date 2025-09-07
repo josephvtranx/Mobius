@@ -46,16 +46,40 @@ registryPool.connect()
 const app = express();
 
 // Determine environment
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1); // trust first proxy (Render)
 
 // CORS configuration for both development and production
 const corsOptions = {
-  origin: isDevelopment 
-    ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', process.env.CORS_ORIGIN].filter(Boolean) // Local development
-    : ['https://mobius-t071.onrender.com'], // Production
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Always allow localhost in development, regardless of NODE_ENV
+    const isLocalhost = origin && (
+      origin.includes('localhost') || 
+      origin.includes('127.0.0.1') ||
+      origin.includes('0.0.0.0')
+    );
+    
+    const allowedOrigins = isDevelopment || isLocalhost
+      ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', process.env.CORS_ORIGIN].filter(Boolean)
+      : ['https://mobius-t071.onrender.com'];
+    
+    console.log('CORS check - Environment:', isDevelopment ? 'development' : 'production');
+    console.log('CORS check - Origin:', origin);
+    console.log('CORS check - Is localhost:', isLocalhost);
+    console.log('CORS check - Allowed origins:', allowedOrigins);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']

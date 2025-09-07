@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import authService from '../../../services/authService';
-import '../../../css/login.css';
+import authService from '@/services/authService';
+import '@/css/login.css';
 
 export default function Login() {
   const [step, setStep] = useState(1); // 1: Institution Code, 2: Credentials
@@ -69,9 +69,9 @@ export default function Login() {
 
   const handleRegisterClick = () => {
     if (step === 1) {
-      navigate('/auth/Institution-sign-up');
+      navigate('/auth/register/institution');
     } else if (step === 2) {
-      navigate('/auth/role-select');
+      navigate('/auth/register/user/role-select');
     }
   };
 

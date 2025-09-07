@@ -17,6 +17,7 @@
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.330.0",
     "luxon": "^3.7.1",
+    "mobius-lms": "file:..",
     "moment": "^2.30.1",
     "motion": "^12.23.3",
     "react": "^18.2.0",

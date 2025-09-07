@@ -31,17 +31,53 @@ const app = express();
 dotenv.config();
 
 // Middleware
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-    credentials: true
-}));
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        // Always allow localhost for development
+        const isLocalhost = origin && (
+            origin.includes('localhost') || 
+            origin.includes('127.0.0.1') ||
+            origin.includes('0.0.0.0')
+        );
+        
+        const allowedOrigins = [
+            'http://localhost:5173', 
+            'http://127.0.0.1:5173',
+            'https://mobius-t071.onrender.com',
+            process.env.CORS_ORIGIN
+        ].filter(Boolean);
+        
+        console.log('CORS check - Origin:', origin);
+        console.log('CORS check - Is localhost:', isLocalhost);
+        console.log('CORS check - Allowed origins:', allowedOrigins);
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || isLocalhost) {
+            callback(null, true);
+        } else {
+            console.log('CORS blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
-  secret: 'mobius-secret',
+  secret: process.env.SESSION_SECRET || 'mobius-secret',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
 }));
 
 // Attach tenant pool to every request BEFORE all /api routes
@@ -82,7 +118,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/guardians', guardianRoutes);
-app.use('/api/student-guardian', studentGuardianRoutes);
+app.use('/api/student-guardians', studentGuardianRoutes);
 app.use('/api/class-sessions', classSessionRoutes);
 app.use('/api/class-series', classSeriesRoutes);
 app.use('/api/subjects', subjectRoutes);

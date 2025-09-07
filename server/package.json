@@ -5,9 +5,11 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "NODE_ENV=development node index.js",
+    "start:prod": "NODE_ENV=production node index.js",
     "dev": "NODE_ENV=development nodemon index.js",
     "dev:windows": "set NODE_ENV=development && nodemon index.js",
+    "dev:debug": "NODE_ENV=development nodemon --inspect index.js",
     "build": "echo 'No build step required for Node.js server'"
   },
   "keywords": [],
@@ -23,6 +25,7 @@
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
     "luxon": "^3.7.1",
+    "mobius-lms": "file:..",
     "multer": "^2.0.1",
     "nodemailer": "^7.0.5",
     "pg": "^8.16.0",

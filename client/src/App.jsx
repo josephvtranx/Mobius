@@ -6,13 +6,15 @@ import Navbar from './components/Navbar';
 import SideNav from './components/SideNav';
 import Header from './components/Header';
 import Home from './pages/Home';
-import Landing from './pages/auth/user-sign-up/Landing';
-import Login from './pages/auth/sign in/Login';
-import InstitutionRegistration from './pages/auth/Institution-sign-up/InstitutionRegistration';
-import RoleSelect from './pages/auth/user-sign-up/RoleSelect';
-import StudentRegistration from './pages/auth/user-sign-up/StudentRegistration';
-import InstructorRegistration from './pages/auth/user-sign-up/InstructorRegistration';
-import StaffRegistration from './pages/auth/user-sign-up/StaffRegistration';
+import Landing from './pages/auth/Landing';
+import TogglePage from './pages/auth/TogglePage';
+import ForkPage from './pages/auth/ForkPage';
+import Login from './pages/auth/login/Login';
+import InstitutionRegistration from './pages/auth/register/institution/InstitutionRegistration';
+import RoleSelect from './pages/auth/register/user/RoleSelect';
+import StudentRegistration from './pages/auth/register/user/StudentRegistration';
+import InstructorRegistration from './pages/auth/register/user/InstructorRegistration';
+import StaffRegistration from './pages/auth/register/user/StaffRegistration';
 import ProfileCard from './components/ProfileCard';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -84,13 +86,14 @@ function AppContent() {
             <Route path="/" element={<Landing />} />
             
             {/* Auth routes */}
+            <Route path="/auth/toggle" element={<TogglePage />} />
+            <Route path="/auth/fork" element={<ForkPage />} />
             <Route path="/auth/login" element={<Login />} />
-            <Route path="/auth/sign-in" element={<Login />} />
-            <Route path="/auth/Institution-sign-up" element={<InstitutionRegistration />} />
-            <Route path="/auth/role-select" element={<RoleSelect />} />
-            <Route path="/auth/register/student" element={<StudentRegistration />} />
-            <Route path="/auth/register/instructor" element={<InstructorRegistration />} />
-            <Route path="/auth/register/staff" element={<StaffRegistration />} />
+            <Route path="/auth/register/institution" element={<InstitutionRegistration />} />
+            <Route path="/auth/register/user/role-select" element={<RoleSelect />} />
+            <Route path="/auth/register/user/student" element={<StudentRegistration />} />
+            <Route path="/auth/register/user/instructor" element={<InstructorRegistration />} />
+            <Route path="/auth/register/user/staff" element={<StaffRegistration />} />
 
             {/* Redirect /login to /auth/login */}
             <Route
