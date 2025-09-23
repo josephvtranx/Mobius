@@ -46,39 +46,50 @@ registryPool.connect()
 const app = express();
 
 // Determine environment
-const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1); // trust first proxy (Render)
 
 // CORS configuration for both development and production
+const developmentOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
+const productionOrigins = [
+  // Render app domain
+  'https://mobius-t071.onrender.com',
+  // Custom domains
+  'https://mobiusteach.com',
+  'https://www.mobiusteach.com',
+  process.env.CORS_ORIGIN
+].filter(Boolean);
+
+const allowedOrigins = isDevelopment ? developmentOrigins : productionOrigins;
+
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+  origin: (origin, callback) => {
+    // Allow requests like server-side health checks or direct browser hits (no Origin header)
     if (!origin) return callback(null, true);
-    
-    // Always allow localhost in development, regardless of NODE_ENV
-    const isLocalhost = origin && (
-      origin.includes('localhost') || 
-      origin.includes('127.0.0.1') ||
-      origin.includes('0.0.0.0')
-    );
-    
-    const allowedOrigins = isDevelopment || isLocalhost
-      ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', process.env.CORS_ORIGIN].filter(Boolean)
-      : ['https://mobius-t071.onrender.com'];
-    
-    console.log('CORS check - Environment:', isDevelopment ? 'development' : 'production');
-    console.log('CORS check - Origin:', origin);
-    console.log('CORS check - Is localhost:', isLocalhost);
-    console.log('CORS check - Allowed origins:', allowedOrigins);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+
+    // Fast path: exact match
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Fallback: allow subdomains for custom domain if needed
+    try {
+      const hostname = new URL(origin).hostname;
+      const allowedHostnames = ['mobiusteach.com'];
+      if (allowedHostnames.some(h => hostname === h || hostname.endsWith(`.${h}`))) {
+        return callback(null, true);
+      }
+    } catch (_) {
+      // If URL parsing fails, reject below
     }
+
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
