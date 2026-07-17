@@ -25,6 +25,7 @@ import timePackageRoutes from './routes/timePackageRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import registerInstitutionRouter from './routes/registerInstitution.js';
+import classRoutes from './routes/classRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { toUtcIso } from './lib/time.js';
 
@@ -148,8 +149,9 @@ app.use('/api/students', studentRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/guardians', guardianRoutes);
 app.use('/api/student-guardians', studentGuardianRoutes);
-app.use('/api/class-sessions', classSessionRoutes);
-app.use('/api/class-series', classSeriesRoutes);
+app.use('/api/classes', classRoutes);           // schema-v2 domain (spec 03) — Phase 7.1
+app.use('/api/class-sessions', classSessionRoutes);  // legacy v1 model — replaced by Phase 7.x slices
+app.use('/api/class-series', classSeriesRoutes);     // legacy v1 model — replaced by Phase 7.x slices
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);
 app.use('/api/staff', staffRoutes);
