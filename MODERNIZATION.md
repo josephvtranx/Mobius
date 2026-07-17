@@ -113,9 +113,9 @@ Goal: be able to refactor with confidence. No production behavior changes.
 
 ---
 
-## Phase 1 — Remove dead code
+## Phase 1 — Remove dead code ✅ (done 2026-07-17)
 
-Every item verified unreferenced. Procedure for each: delete → `npm run build` + server boot smoke → Phase 0 tests green → commit individually (easy revert).
+Every item verified unreferenced. Procedure for each: delete → `npm run build` + server boot smoke → Phase 0 tests green → commit individually (easy revert). **All items below landed as individual commits; exit criteria verified (tests 20/20, boot OK, client build OK, `git grep` clean).** 1.7 chose "move": dev scripts now in `server/scripts/dev/`.
 
 | # | Task | Risk | Effort |
 |---|---|---|---|
