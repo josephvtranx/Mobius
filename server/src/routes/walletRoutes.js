@@ -6,7 +6,7 @@
 import express from 'express';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
-import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { notifyFamily } from '../helpers/notify.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { computeWallet } from '../helpers/walletMath.js';
 
@@ -102,10 +102,8 @@ router.post('/:studentId/entries', authenticateToken, authorizeRole('staff'), as
         [req.user.user_id, String(studentId)]);
     }
 
-    const recipients = await familyRecipients(client, studentId);
-    await logNotifications(client, {
-      eventType: 'wallet_credited', recipientUserIds: recipients,
-      subjectType: 'student', subjectId: studentId,
+    await notifyFamily(client, {
+      studentId: studentId, eventType: 'wallet_credited', subjectType: 'student', subjectId: studentId,
       payload: { entry_type, amount, balance }
     });
     await client.query('COMMIT');

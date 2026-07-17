@@ -274,11 +274,12 @@ describe('BIL-2 AC1 — grace: attend into negative balance', () => {
     const { rows: tasks } = await env.tenantDb.query(
       `SELECT 1 FROM staff_tasks WHERE kind = 'delinquent_balance' AND subject_id = '3' AND status = 'open'`);
     expect(tasks.length).toBe(1);
-    // urgent notice to the family: student 3 + guardian user 9
+    // urgent notice: guardian only — billing events reach the student only
+    // when can_purchase (spec 08 trigger table / 05; Phase 7.6 notifyFamily)
     const { rows: notices } = await env.tenantDb.query(
       `SELECT recipient_user_id FROM notification_log
         WHERE event_type = 'balance_negative' AND subject_id = '3' ORDER BY recipient_user_id`);
-    expect(notices.map(n => n.recipient_user_id)).toEqual([3, 9]);
+    expect(notices.map(n => n.recipient_user_id)).toEqual([9]);
   });
 
   it('a second grace deduction does not duplicate the task or the urgent notice', async () => {
@@ -292,7 +293,7 @@ describe('BIL-2 AC1 — grace: attend into negative balance', () => {
     expect(tasks.length).toBe(1);
     const { rows: notices } = await env.tenantDb.query(
       `SELECT 1 FROM notification_log WHERE event_type = 'balance_negative' AND subject_id = '3'`);
-    expect(notices.length).toBe(2); // unchanged
+    expect(notices.length).toBe(1); // unchanged (guardian-only, see above)
 
     // restore: correct s4b back (credit-restoring corrections are never blocked)
     const undo = await mark(ses.s4b, [{ student_id: 3, status: 'absent_excused' }]);

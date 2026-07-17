@@ -6,7 +6,7 @@
 import { DateTime } from 'luxon';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { applyAttendanceWithinTx } from '../helpers/deductionEngine.js';
-import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { notifyFamily } from '../helpers/notify.js';
 
 // Sessions ended > attendance_autocomplete_hours ago with unmarked active
 // enrollees: mark them present/auto (deducting per BIL-1), flag the session
@@ -110,10 +110,8 @@ export async function runLowBalanceScan(db, now = DateTime.utc().toISO()) {
     [settings.low_balance_notify_runway_sessions, dedupeSince]);
 
   for (const row of lowEnrollments) {
-    const recipients = await familyRecipients(db, row.student_id);
-    await logNotifications(db, {
-      eventType: 'low_balance', recipientUserIds: recipients,
-      subjectType: 'enrollment', subjectId: row.enrollment_id,
+    await notifyFamily(db, {
+      studentId: row.student_id, eventType: 'low_balance', subjectType: 'enrollment', subjectId: row.enrollment_id,
       payload: {
         class_id: row.class_id, subject: row.subject,
         balance: row.balance, session_credit_cost: row.cost,

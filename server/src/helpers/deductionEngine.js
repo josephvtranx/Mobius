@@ -4,7 +4,7 @@
 // billing) ever unenrolls a student; the grace/blocked lifecycle only gates
 // attendance marking and raises staff tasks.
 import { DateTime } from 'luxon';
-import { logNotifications, familyRecipients } from './notify.js';
+import { notifyFamily } from './notify.js';
 
 export const ATTENDANCE_STATUSES = [
   'present', 'absent_unexcused', 'absent_excused',
@@ -79,7 +79,7 @@ export async function applyAttendanceWithinTx(client, {
       } };
     }
     if (existing.status === status) {
-      return { ok: true, attendance: existing, cost, delta: 0, balance: wallet.balance, wentNegative: false };
+      return { ok: true, attendance: existing, cost, delta: 0, balance: wallet.balance, wentNegative: false, firstMark: false };
     }
     const { rows: [net] } = await client.query(
       `SELECT COALESCE(SUM(amount), 0)::int AS net FROM credit_ledger WHERE attendance_id = $1`,
@@ -159,14 +159,12 @@ export async function applyAttendanceWithinTx(client, {
          VALUES ('delinquent_balance','urgent','student',$1,$2)`,
         [String(studentId), { balance, cost, session_id: session.session_id, class_id: session.class_id }]
       );
-      const recipients = await familyRecipients(client, studentId);
-      await logNotifications(client, {
-        eventType: 'balance_negative', recipientUserIds: recipients,
-        subjectType: 'student', subjectId: studentId,
+      await notifyFamily(client, {
+        studentId: studentId, eventType: 'balance_negative', subjectType: 'student', subjectId: studentId,
         payload: { balance, cost, class_id: session.class_id, urgency: 'urgent' }
       });
     }
   }
 
-  return { ok: true, attendance, cost, delta, balance, wentNegative };
+  return { ok: true, attendance, cost, delta, balance, wentNegative, firstMark: !existing };
 }

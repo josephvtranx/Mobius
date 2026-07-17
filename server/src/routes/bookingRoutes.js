@@ -12,7 +12,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
-import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { logNotifications, notifyFamily } from '../helpers/notify.js';
 import { assertUtcIso } from '../lib/time.js';
 
 const router = express.Router();
@@ -173,10 +173,8 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
         `INSERT INTO class_sessions (class_id, instructor_id, room_id, starts_at, ends_at)
          VALUES ($1,$2,$3,$4,$5) RETURNING *`,
         [booking.class_id, booking.instructor_id, room.room_id, booking.held_starts_at, booking.held_ends_at]);
-      const recipients = await familyRecipients(client, studentId);
-      await logNotifications(client, {
-        eventType: 'booking_accepted', recipientUserIds: recipients,
-        subjectType: 'class', subjectId: booking.class_id,
+      await notifyFamily(client, {
+        studentId: studentId, eventType: 'booking_accepted', subjectType: 'class', subjectId: booking.class_id,
         payload: { session_id: session.session_id, starts_at: booking.held_starts_at, room: room.name }
       });
       await client.query('COMMIT');
@@ -187,11 +185,9 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
     await client.query(
       `UPDATE slot_holds SET status = 'released' WHERE hold_id = $1 AND status = 'active'`,
       [booking.booking_hold_id]);
-    const recipients = await familyRecipients(client, studentId);
     await client.query(`DELETE FROM classes WHERE class_id = $1`, [booking.class_id]);
-    await logNotifications(client, {
-      eventType: 'booking_rejected', recipientUserIds: recipients,
-      subjectType: 'class', subjectId: booking.class_id,
+    await notifyFamily(client, {
+      studentId: studentId, eventType: 'booking_rejected', subjectType: 'class', subjectId: booking.class_id,
       payload: { reason: reason ?? null, starts_at: booking.held_starts_at, offer_alternatives: true }
     });
     await client.query('COMMIT');

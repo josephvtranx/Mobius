@@ -7,6 +7,8 @@ dotenv.config();
 
 import app from './src/app.js';
 import { registryPool } from './src/db/registryPool.js';
+import { getTenantPool } from './src/db/tenantPool.js';
+import { startScheduler } from './src/jobs/scheduler.js';
 
 // ✅ show a one-line success or error at boot for registry DB
 registryPool.connect()
@@ -18,4 +20,9 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`API endpoints available at http://localhost:${PORT}/api`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+    // multi-tenant background jobs (spec 08) — runtime only, never in tests
+    if (process.env.NODE_ENV !== 'test' && process.env.JOBS_DISABLED !== '1') {
+        startScheduler({ registryPool, getTenantPool });
+    }
 });

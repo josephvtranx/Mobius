@@ -9,7 +9,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { insideWindow } from '../helpers/scheduleWindow.js';
 import { bestFitRoom } from '../helpers/slotFinder.js';
-import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { notifyFamily } from '../helpers/notify.js';
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -63,10 +63,8 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
         `UPDATE class_sessions SET status = 'scheduled' WHERE session_id = $1 AND status = 'reschedule_requested'`,
         [request.session_id]);
       if (studentId) {
-        const recipients = await familyRecipients(client, studentId);
-        await logNotifications(client, {
-          eventType: 'reschedule_expired', recipientUserIds: recipients,
-          subjectType: 'reschedule_request', subjectId: request.request_id,
+        await notifyFamily(client, {
+          studentId: studentId, eventType: 'reschedule_expired', subjectType: 'reschedule_request', subjectId: request.request_id,
           payload: { session_id: request.session_id, original_starts_at: request.original_starts_at }
         });
       }
@@ -98,10 +96,8 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
         `UPDATE class_sessions SET status = 'scheduled' WHERE session_id = $1 AND status = 'reschedule_requested'`,
         [request.session_id]);
       if (studentId) {
-        const recipients = await familyRecipients(client, studentId);
-        await logNotifications(client, {
-          eventType: 'reschedule_rejected', recipientUserIds: recipients,
-          subjectType: 'reschedule_request', subjectId: request.request_id,
+        await notifyFamily(client, {
+          studentId: studentId, eventType: 'reschedule_rejected', subjectType: 'reschedule_request', subjectId: request.request_id,
           payload: { reason: reason ?? null, session_id: request.session_id, offer_other_times: true }
         });
       }
@@ -155,10 +151,8 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
        request.original_starts_at, JSON.stringify(chain)]);
 
     if (studentId) {
-      const recipients = await familyRecipients(client, studentId);
-      await logNotifications(client, {
-        eventType: 'reschedule_accepted', recipientUserIds: recipients,
-        subjectType: 'reschedule_request', subjectId: request.request_id,
+      await notifyFamily(client, {
+        studentId: studentId, eventType: 'reschedule_accepted', subjectType: 'reschedule_request', subjectId: request.request_id,
         payload: {
           from: request.original_starts_at, to: request.proposed_starts_at,
           new_session_id: successor.session_id, room: room.name

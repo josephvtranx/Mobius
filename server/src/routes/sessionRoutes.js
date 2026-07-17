@@ -10,7 +10,7 @@ import { getSettings } from '../helpers/institutionSettings.js';
 import { applyAttendanceWithinTx, ATTENDANCE_STATUSES } from '../helpers/deductionEngine.js';
 import { insideWindow } from '../helpers/scheduleWindow.js';
 import { canActForStudent } from '../helpers/authz.js';
-import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { logNotifications, notifyFamily } from '../helpers/notify.js';
 import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
 import { upsertNoteWithinTx } from '../helpers/sessionNotes.js';
 import { assertUtcIso } from '../lib/time.js';
@@ -112,6 +112,16 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
       });
       if (r.ok) {
         const result = { student_id: studentId, ok: true, status: mark.status, delta: r.delta, balance: r.balance };
+        // 등하원-style trust ping (spec 08): a human present FIRST-mark tells
+        // the family the student is in class. Corrections and the system
+        // auto-completer (which calls the engine directly) never ping.
+        if (mark.status === 'present' && r.firstMark) {
+          await notifyFamily(client, {
+            studentId, eventType: 'attendance_marked',
+            subjectType: 'class_session', subjectId: session.session_id,
+            payload: { status: 'present', starts_at: session.starts_at }
+          });
+        }
         // ACA-1: the note template saves in the same pass; a note failure never
         // blocks the attendance/billing side (notes never block money)
         if (hasNoteContent(mark.note)) {
@@ -215,11 +225,10 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
          { session_id: session.session_id, student_id: studentId, class_id: session.class_id }]);
     }
 
-    const recipients = await familyRecipients(client, studentId);
-    await logNotifications(client, {
-      eventType: late ? 'session_cancelled_late' : 'session_cancelled',
-      recipientUserIds: [...recipients, session.instructor_id],
-      subjectType: 'class_session', subjectId: session.session_id,
+    await notifyFamily(client, {
+      studentId: studentId, eventType: late ? 'session_cancelled_late' : 'session_cancelled',
+      alsoNotify: [session.instructor_id],
+        subjectType: 'class_session', subjectId: session.session_id,
       payload: {
         student_id: studentId, starts_at: session.starts_at,
         money_effect: late ? 'credit_forfeited' : 'no_charge', appeal_available: late
@@ -479,10 +488,8 @@ router.post('/:id/instructor-cancel', authenticateToken, async (req, res) => {
         WHERE session_id = $2`, [reason, session.session_id]);
 
     for (const { student_id } of enrolled) {
-      const recipients = await familyRecipients(client, student_id);
-      await logNotifications(client, {
-        eventType: 'session_cancelled_by_instructor', recipientUserIds: recipients,
-        subjectType: 'class_session', subjectId: session.session_id,
+      await notifyFamily(client, {
+        studentId: student_id, eventType: 'session_cancelled_by_instructor', subjectType: 'class_session', subjectId: session.session_id,
         payload: {
           reason, starts_at: session.starts_at,
           rebook: session.recurrence === 'none' // one-off: family must book another time
@@ -538,10 +545,8 @@ router.post('/:id/staff-cancel', authenticateToken, authorizeRole('staff'), asyn
         WHERE session_id = $2`, [reason, session.session_id]);
 
     for (const { student_id } of enrolled) {
-      const recipients = await familyRecipients(client, student_id);
-      await logNotifications(client, {
-        eventType: 'session_cancelled_by_staff', recipientUserIds: recipients,
-        subjectType: 'class_session', subjectId: session.session_id,
+      await notifyFamily(client, {
+        studentId: student_id, eventType: 'session_cancelled_by_staff', subjectType: 'class_session', subjectId: session.session_id,
         payload: { reason, starts_at: session.starts_at, attendance_status: status }
       });
     }

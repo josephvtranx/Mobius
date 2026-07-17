@@ -8,7 +8,7 @@ import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { materializeOccurrences, RecurrenceError } from '../helpers/recurrence.js';
 import { seatCheck, roomCheck, creditGate } from '../helpers/classGates.js';
-import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { logNotifications, notifyFamily } from '../helpers/notify.js';
 import { applyAttendanceWithinTx } from '../helpers/deductionEngine.js';
 import { insideWindow } from '../helpers/scheduleWindow.js';
 import { assertUtcIso } from '../lib/time.js';
@@ -245,10 +245,9 @@ async function enrollWithinTx(client, cls, studentId, actingUserId, settings) {
     `INSERT INTO enrollments (class_id, student_id, joined_by) VALUES ($1,$2,$3) RETURNING *`,
     [cls.class_id, studentId, actingUserId]
   );
-  const recipients = await familyRecipients(client, studentId);
-  await logNotifications(client, {
-    eventType: 'student_enrolled', recipientUserIds: [...recipients, cls.instructor_id],
-    subjectType: 'class', subjectId: cls.class_id, payload: { student_id: studentId }
+  await notifyFamily(client, {
+    studentId: studentId, eventType: 'student_enrolled', alsoNotify: [cls.instructor_id],
+        subjectType: 'class', subjectId: cls.class_id, payload: { student_id: studentId }
   });
   return { ok: true, enrollment };
 }
@@ -401,10 +400,9 @@ router.post('/membership-requests/:requestId/resolve', authenticateToken, author
         WHERE request_id = $3`,
       [resolvedStatus, req.user.user_id, request.request_id]
     );
-    const recipients = await familyRecipients(client, request.student_id);
-    await logNotifications(client, {
-      eventType: `${request.kind}_request_${resolvedStatus}`,
-      recipientUserIds: recipients, subjectType: 'membership_request', subjectId: request.request_id,
+    await notifyFamily(client, {
+      studentId: request.student_id, eventType: `${request.kind}_request_${resolvedStatus}`,
+      subjectType: 'membership_request', subjectId: request.request_id,
       payload: { class_id: request.class_id, reason: reason ?? null }
     });
     await client.query('COMMIT');
@@ -494,10 +492,8 @@ router.patch('/:id/schedule', authenticateToken, authorizeRole('staff'), async (
     const { rows: enrolled } = await client.query(
       `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [cls.class_id]);
     for (const { student_id } of enrolled) {
-      const recipients = await familyRecipients(client, student_id);
-      await logNotifications(client, {
-        eventType: 'schedule_changed', recipientUserIds: recipients,
-        subjectType: 'class', subjectId: cls.class_id, payload
+      await notifyFamily(client, {
+        studentId: student_id, eventType: 'schedule_changed', subjectType: 'class', subjectId: cls.class_id, payload
       });
     }
     await logNotifications(client, {
@@ -582,10 +578,8 @@ router.post('/:id/price', authenticateToken, authorizeRole('staff'), async (req,
     const { rows: enrolled } = await client.query(
       `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [cls.class_id]);
     for (const { student_id } of enrolled) {
-      const recipients = await familyRecipients(client, student_id);
-      await logNotifications(client, {
-        eventType: 'price_change', recipientUserIds: recipients,
-        subjectType: 'class', subjectId: cls.class_id,
+      await notifyFamily(client, {
+        studentId: student_id, eventType: 'price_change', subjectType: 'class', subjectId: cls.class_id,
         payload: { old: cls.session_credit_cost, new: session_credit_cost, effective_from }
       });
     }
@@ -635,10 +629,8 @@ router.patch('/:id/end', authenticateToken, authorizeRole('staff'), async (req, 
     const { rows: enrolled } = await client.query(
       `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [cls.class_id]);
     for (const { student_id } of enrolled) {
-      const recipients = await familyRecipients(client, student_id);
-      await logNotifications(client, {
-        eventType: 'class_ended', recipientUserIds: recipients,
-        subjectType: 'class', subjectId: cls.class_id, payload: { ends_on, sessions_removed: removed }
+      await notifyFamily(client, {
+        studentId: student_id, eventType: 'class_ended', subjectType: 'class', subjectId: cls.class_id, payload: { ends_on, sessions_removed: removed }
       });
     }
     await client.query('COMMIT');
@@ -672,10 +664,8 @@ router.post('/:id/terminate', authenticateToken, authorizeRole('staff'), async (
     );
     await client.query(`UPDATE classes SET status = 'terminated' WHERE class_id = $1`, [cls.class_id]);
     for (const { student_id } of enrolled) {
-      const recipients = await familyRecipients(client, student_id);
-      await logNotifications(client, {
-        eventType: 'class_terminated', recipientUserIds: recipients,
-        subjectType: 'class', subjectId: cls.class_id, payload: { sessions_removed: removed }
+      await notifyFamily(client, {
+        studentId: student_id, eventType: 'class_terminated', subjectType: 'class', subjectId: cls.class_id, payload: { sessions_removed: removed }
       });
     }
     await client.query('COMMIT');
