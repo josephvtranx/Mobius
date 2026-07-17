@@ -146,6 +146,52 @@ router.post('/:id/guardians/:guardianId/make-primary', authenticateToken, author
 });
 
 // ---------------------------------------------------------------------------
+// GET /:id/record — ACA-2: the session timeline (attendance + note verbatim,
+// latest text with the visible "edited" stamp + edit timestamps). Version
+// PAYLOADS are staff/audit-only; portals see timestamps. A noteless entry
+// still carries subject/class — the deliberate no-shame empty state.
+// ---------------------------------------------------------------------------
+router.get('/:id/record', authenticateToken, async (req, res) => {
+  const student = await loadStudent(req.db, req.params.id);
+  if (!student) return res.status(404).json({ message: 'Student not found' });
+  if (!await canActForStudent(req.db, req.user, student.student_id)) {
+    return res.status(403).json({ message: 'Not authorized' });
+  }
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+  const { rows } = await req.db.query(
+    `SELECT cs.session_id, cs.starts_at, cs.ends_at, cs.status AS session_status,
+            sub.name AS subject, c.class_id, c.class_type,
+            sa.status AS attendance_status, sa.auto_completed, sa.marked_at,
+            n.performance, n.improvements, n.free_notes, n.edited_at, n.versions,
+            n.created_at AS note_created_at
+       FROM session_attendance sa
+       JOIN class_sessions cs ON cs.session_id = sa.session_id
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       LEFT JOIN session_notes n ON n.session_id = sa.session_id AND n.student_id = sa.student_id
+      WHERE sa.student_id = $1
+      ORDER BY cs.starts_at DESC LIMIT $2`,
+    [student.student_id, limit]);
+
+  const isStaff = req.user.role === 'staff';
+  const entries = rows.map(r => ({
+    session_id: r.session_id, starts_at: r.starts_at, ends_at: r.ends_at,
+    session_status: r.session_status, subject: r.subject,
+    class_id: r.class_id, class_type: r.class_type,
+    attendance: { status: r.attendance_status, auto_completed: r.auto_completed, marked_at: r.marked_at },
+    note: (r.performance || r.improvements || r.free_notes) ? {
+      performance: r.performance, improvements: r.improvements, free_notes: r.free_notes,
+      edited_at: r.edited_at,
+      edit_count: (r.versions ?? []).length,
+      edit_history: (r.versions ?? []).map(v => v.edited_at),
+      ...(isStaff ? { versions: r.versions ?? [] } : {})
+    } : null
+  }));
+  res.json({ student_id: student.student_id, entries });
+});
+
+// ---------------------------------------------------------------------------
 // PATCH /:id/purchasing — staff toggles students.can_purchase (spec 05:
 // default false for minors, true for adult no-guardian students; the
 // family-facing enforcement point lands with the Top-Up spec).

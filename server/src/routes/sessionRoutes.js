@@ -12,6 +12,7 @@ import { insideWindow } from '../helpers/scheduleWindow.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { logNotifications, familyRecipients } from '../helpers/notify.js';
 import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
+import { upsertNoteWithinTx } from '../helpers/sessionNotes.js';
 import { assertUtcIso } from '../lib/time.js';
 
 const router = express.Router();
@@ -31,6 +32,12 @@ async function loadSession(db, sessionId) {
 }
 
 const hasStarted = (session) => DateTime.utc() >= DateTime.fromJSDate(session.starts_at);
+
+// a note payload counts only if some template field has content (spec 06:
+// all fields optional — an empty object is "notes skipped", never an error)
+const NOTE_FIELDS = ['performance', 'improvements', 'free_notes'];
+const hasNoteContent = (note) =>
+  note != null && typeof note === 'object' && NOTE_FIELDS.some(f => note[f]);
 
 // ---------------------------------------------------------------------------
 // POST /:id/attendance — bulk mark/correct: { marks: [{ student_id, status }] }
@@ -56,6 +63,11 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
     }
     if (!isStaff && !INSTRUCTOR_SETTABLE.has(mark.status)) {
       return res.status(400).json({ message: `Instructors may only mark present or absent_unexcused (${mark.status} is staff-set)` });
+    }
+    // ACA-1: notes ride along in the same request, but only the session's
+    // instructor authors them (spec 06: everyone reads, the instructor writes)
+    if (hasNoteContent(mark.note) && !isSessionInstructor) {
+      return res.status(400).json({ message: 'Session notes are instructor-authored — only this session\'s instructor can write them' });
     }
     const sid = Number(mark.student_id);
     if (!sid) return res.status(400).json({ message: 'each mark needs a student_id' });
@@ -99,7 +111,17 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
         actorUserId: req.user.user_id, settings, now
       });
       if (r.ok) {
-        results.push({ student_id: studentId, ok: true, status: mark.status, delta: r.delta, balance: r.balance });
+        const result = { student_id: studentId, ok: true, status: mark.status, delta: r.delta, balance: r.balance };
+        // ACA-1: the note template saves in the same pass; a note failure never
+        // blocks the attendance/billing side (notes never block money)
+        if (hasNoteContent(mark.note)) {
+          const noteResult = await upsertNoteWithinTx(client, {
+            session, studentId, fields: mark.note, actorUserId: req.user.user_id, settings, now
+          });
+          result.note_saved = noteResult.ok;
+          if (!noteResult.ok) result.note_error = noteResult.body.code;
+        }
+        results.push(result);
       } else {
         // the engine wrote nothing for this student — the rest still commit
         failures.push(r);
@@ -209,6 +231,121 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
       money_effect: late ? 'credit_forfeited' : 'no_charge',
       delta: r.delta, balance: r.balance
     });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// ACA-1/INV-5 — note-only create/edit (the attendance route saves notes in the
+// same pass; this covers later touch-ups within the 7-day window and edits
+// inside an ACA-4 unlock window). Instructor-of-session only.
+// ---------------------------------------------------------------------------
+router.put('/:id/notes/:studentId', authenticateToken, async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  if (!(req.user.role === 'instructor' && req.user.user_id === session.instructor_id)) {
+    return res.status(403).json({ message: 'Session notes are instructor-authored — only this session\'s instructor can write them' });
+  }
+  const studentId = Number(req.params.studentId);
+  if (!studentId) return res.status(400).json({ message: 'invalid student id' });
+  const { rows: markable } = await req.db.query(
+    `SELECT 1 FROM enrollments WHERE class_id = $1 AND student_id = $2 AND status = 'active'
+      UNION
+     SELECT 1 FROM session_attendance WHERE session_id = $3 AND student_id = $2`,
+    [session.class_id, studentId, session.session_id]);
+  if (!markable.length) return res.status(400).json({ message: 'Student is not on this session' });
+  if (!hasNoteContent(req.body)) {
+    return res.status(400).json({ message: 'At least one of performance, improvements, free_notes is required' });
+  }
+
+  const settings = await getSettings(req.db);
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await upsertNoteWithinTx(client, {
+      session, studentId, fields: req.body, actorUserId: req.user.user_id, settings
+    });
+    if (!r.ok) {
+      await client.query('ROLLBACK');
+      return res.status(r.status).json(r.body);
+    }
+    await client.query('COMMIT');
+    res.json({ note: r.note, edited: r.edited });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// ACA-4 — post-lock correction: instructor requests an unlock (staff task),
+// staff unlocks that note target for 48h (future locked_at stamp → auto-relock
+// when it passes; runRecordLock never touches non-NULL stamps).
+// ---------------------------------------------------------------------------
+router.post('/:id/notes/:studentId/unlock-request', authenticateToken, async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  if (!(req.user.role === 'instructor' && req.user.user_id === session.instructor_id)) {
+    return res.status(403).json({ message: 'Only this session\'s instructor can request an unlock' });
+  }
+  const studentId = Number(req.params.studentId);
+  if (!studentId) return res.status(400).json({ message: 'invalid student id' });
+  const { reason } = req.body;
+  if (!reason) return res.status(400).json({ message: 'A reason is required' });
+
+  const subjectId = `${session.session_id}:${studentId}`;
+  const { rows: open } = await req.db.query(
+    `SELECT 1 FROM staff_tasks
+      WHERE kind = 'note_unlock_request' AND subject_type = 'session_note'
+        AND subject_id = $1 AND status IN ('open','in_progress')`, [subjectId]);
+  if (open.length) return res.status(409).json({ message: 'An unlock request is already pending for this note' });
+
+  await req.db.query(
+    `INSERT INTO staff_tasks (kind, subject_type, subject_id, details)
+     VALUES ('note_unlock_request','session_note',$1,$2)`,
+    [subjectId, { session_id: session.session_id, student_id: studentId, reason, requested_by: req.user.user_id }]);
+  res.status(201).json({ message: 'Unlock request filed — staff will review', subject_id: subjectId });
+});
+
+router.post('/:id/notes/:studentId/unlock', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  const studentId = Number(req.params.studentId);
+  if (!studentId) return res.status(400).json({ message: 'invalid student id' });
+
+  const unlockUntil = DateTime.utc().plus({ hours: 48 }).toISO();
+  const subjectId = `${session.session_id}:${studentId}`;
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    // upsert: a post-lock FIRST write has no row yet — the placeholder carries
+    // the stamp; write-authz keys on the session's instructor, not created_by
+    await client.query(
+      `INSERT INTO session_notes (session_id, student_id, created_by)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (session_id, student_id) DO NOTHING`,
+      [session.session_id, studentId, req.user.user_id]);
+    await client.query(
+      `UPDATE session_notes SET locked_at = $1 WHERE session_id = $2 AND student_id = $3`,
+      [unlockUntil, session.session_id, studentId]);
+    await client.query(
+      `UPDATE staff_tasks SET status = 'done', resolved_by = $1, resolved_at = CURRENT_TIMESTAMP
+        WHERE kind = 'note_unlock_request' AND subject_type = 'session_note'
+          AND subject_id = $2 AND status IN ('open','in_progress')`,
+      [req.user.user_id, subjectId]);
+    await logNotifications(client, {
+      eventType: 'note_unlocked', recipientUserIds: [session.instructor_id],
+      subjectType: 'session_note', subjectId,
+      payload: { session_id: session.session_id, student_id: studentId, unlocked_until: unlockUntil }
+    });
+    await client.query('COMMIT');
+    res.json({ session_id: session.session_id, student_id: studentId, unlocked_until: unlockUntil });
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
