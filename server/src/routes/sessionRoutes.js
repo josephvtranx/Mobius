@@ -5,9 +5,12 @@
 // INV-6: no code path here touches enrollments — billing never unenrolls.
 import express from 'express';
 import { DateTime } from 'luxon';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { applyAttendanceWithinTx, ATTENDANCE_STATUSES } from '../helpers/deductionEngine.js';
+import { insideWindow } from '../helpers/scheduleWindow.js';
+import { canActForStudent } from '../helpers/authz.js';
+import { logNotifications, familyRecipients } from '../helpers/notify.js';
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,15 +19,22 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // excusals and the cancellation trio are staff-side calls.
 const INSTRUCTOR_SETTABLE = new Set(['present', 'absent_unexcused']);
 
+async function loadSession(db, sessionId) {
+  if (!UUID_RE.test(sessionId)) return null;
+  const { rows } = await db.query(
+    `SELECT cs.*, c.class_type, c.recurrence, c.status AS class_status
+       FROM class_sessions cs JOIN classes c ON c.class_id = cs.class_id
+      WHERE cs.session_id = $1`, [sessionId]);
+  return rows[0] ?? null;
+}
+
+const hasStarted = (session) => DateTime.utc() >= DateTime.fromJSDate(session.starts_at);
+
 // ---------------------------------------------------------------------------
 // POST /:id/attendance — bulk mark/correct: { marks: [{ student_id, status }] }
 // ---------------------------------------------------------------------------
 router.post('/:id/attendance', authenticateToken, async (req, res) => {
-  if (!UUID_RE.test(req.params.id)) return res.status(404).json({ message: 'Session not found' });
-  const { rows: [session] } = await req.db.query(
-    `SELECT cs.*, c.status AS class_status
-       FROM class_sessions cs JOIN classes c ON c.class_id = cs.class_id
-      WHERE cs.session_id = $1`, [req.params.id]);
+  const session = await loadSession(req.db, req.params.id);
   if (!session) return res.status(404).json({ message: 'Session not found' });
 
   const isStaff = req.user.role === 'staff';
@@ -117,6 +127,204 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
       return res.status(failures[0].status).json(failures[0].body);
     }
     res.json({ results, session_status: sessionStatus });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// RSC-2 — student/guardian cancels their seat in a session. The Window decides
+// the money effect: outside → cancelled_in_window (never deducted, INV-1);
+// inside → cancelled_late (credit lost; appeal task for staff review).
+// 1:1: the slot is released; group: the session runs, only this seat is out.
+// ---------------------------------------------------------------------------
+router.post('/:id/cancel', authenticateToken, async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  if (session.status !== 'scheduled') return res.status(400).json({ message: `Session is ${session.status}` });
+  if (hasStarted(session)) {
+    return res.status(400).json({ message: 'Session has already started — attendance applies instead' });
+  }
+
+  const studentId = Number(req.body.student_id ?? (req.user.role === 'student' ? req.user.user_id : NaN));
+  if (!studentId) return res.status(400).json({ message: 'student_id is required' });
+  if (!await canActForStudent(req.db, req.user, studentId)) {
+    return res.status(403).json({ message: 'Not authorized to act for this student' });
+  }
+  const { rows: enrolled } = await req.db.query(
+    `SELECT 1 FROM enrollments WHERE class_id = $1 AND student_id = $2 AND status = 'active'`,
+    [session.class_id, studentId]);
+  if (!enrolled.length) return res.status(400).json({ message: 'Student is not enrolled in this class' });
+
+  const settings = await getSettings(req.db);
+  const late = insideWindow(session.starts_at, settings);
+  const status = late ? 'cancelled_late' : 'cancelled_in_window';
+
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await applyAttendanceWithinTx(client, {
+      session, studentId, status, actorUserId: req.user.user_id, settings
+    });
+    if (!r.ok) {
+      // e.g. ATTENDANCE_BLOCKED on a late cancel at the grace floor
+      await client.query('ROLLBACK');
+      return res.status(r.status).json(r.body);
+    }
+
+    let sessionStatus = session.status;
+    if (session.class_type === 'one_on_one') {
+      await client.query(
+        `UPDATE class_sessions SET status = 'cancelled_student' WHERE session_id = $1`,
+        [session.session_id]);
+      sessionStatus = 'cancelled_student';
+    }
+    if (late) {
+      // lightweight appeal affordance: staff may reverse via absent_excused adjustment
+      await client.query(
+        `INSERT INTO staff_tasks (kind, subject_type, subject_id, details)
+         VALUES ('appeal_review','session_attendance',$1,$2)`,
+        [r.attendance.attendance_id,
+         { session_id: session.session_id, student_id: studentId, class_id: session.class_id }]);
+    }
+
+    const recipients = await familyRecipients(client, studentId);
+    await logNotifications(client, {
+      eventType: late ? 'session_cancelled_late' : 'session_cancelled',
+      recipientUserIds: [...recipients, session.instructor_id],
+      subjectType: 'class_session', subjectId: session.session_id,
+      payload: {
+        student_id: studentId, starts_at: session.starts_at,
+        money_effect: late ? 'credit_forfeited' : 'no_charge', appeal_available: late
+      }
+    });
+    await client.query('COMMIT');
+    res.json({
+      attendance_status: status, session_status: sessionStatus,
+      money_effect: late ? 'credit_forfeited' : 'no_charge',
+      delta: r.delta, balance: r.balance
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// RSC-3 — instructor cancels an instance (unilateral; families made whole
+// automatically: instructor_cancelled never deducts and auto-refunds any prior
+// deduction). Reason required. One-offs get a rebook hint (SCH-4 deep link).
+// ---------------------------------------------------------------------------
+router.post('/:id/instructor-cancel', authenticateToken, async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  if (!(req.user.role === 'instructor' && req.user.user_id === session.instructor_id)) {
+    return res.status(403).json({ message: 'Only this session\'s instructor can cancel it' });
+  }
+  const { reason } = req.body;
+  if (!reason) return res.status(400).json({ message: 'A reason is required to cancel a session' });
+  if (session.status !== 'scheduled') return res.status(400).json({ message: `Session is ${session.status}` });
+
+  const settings = await getSettings(req.db);
+  const { rows: enrolled } = await req.db.query(
+    `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [session.class_id]);
+
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    for (const { student_id } of enrolled) {
+      const r = await applyAttendanceWithinTx(client, {
+        session, studentId: student_id, status: 'instructor_cancelled',
+        actorUserId: req.user.user_id, settings
+      });
+      if (!r.ok) {
+        await client.query('ROLLBACK');
+        return res.status(r.status).json(r.body);
+      }
+    }
+    await client.query(
+      `UPDATE class_sessions SET status = 'cancelled_instructor', cancellation_reason = $1
+        WHERE session_id = $2`, [reason, session.session_id]);
+
+    for (const { student_id } of enrolled) {
+      const recipients = await familyRecipients(client, student_id);
+      await logNotifications(client, {
+        eventType: 'session_cancelled_by_instructor', recipientUserIds: recipients,
+        subjectType: 'class_session', subjectId: session.session_id,
+        payload: {
+          reason, starts_at: session.starts_at,
+          rebook: session.recurrence === 'none' // one-off: family must book another time
+        }
+      });
+    }
+    await client.query('COMMIT');
+    res.json({ session_id: session.session_id, status: 'cancelled_instructor', students: enrolled.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// RSC-5 — staff cancels any session: unrestricted by the Window, always logged,
+// always notifies. Money still flows through attendance statuses — staff picks
+// one; default is the never-deduct academy-cancelled equivalent.
+// ---------------------------------------------------------------------------
+const STAFF_CANCEL_STATUSES = new Set(['instructor_cancelled', 'cancelled_in_window', 'cancelled_late']);
+
+router.post('/:id/staff-cancel', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  if (session.status !== 'scheduled') return res.status(400).json({ message: `Session is ${session.status}` });
+  const status = req.body.status ?? 'instructor_cancelled';
+  if (!STAFF_CANCEL_STATUSES.has(status)) {
+    return res.status(400).json({ message: `status must be one of: ${[...STAFF_CANCEL_STATUSES].join(', ')}` });
+  }
+  const reason = req.body.reason ?? null;
+
+  const settings = await getSettings(req.db);
+  const { rows: enrolled } = await req.db.query(
+    `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [session.class_id]);
+
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    for (const { student_id } of enrolled) {
+      const r = await applyAttendanceWithinTx(client, {
+        session, studentId: student_id, status, actorUserId: req.user.user_id, settings
+      });
+      if (!r.ok) {
+        // all-or-nothing: e.g. a cancelled_late deduction floor-blocks one student
+        await client.query('ROLLBACK');
+        return res.status(r.status).json({ ...r.body, student_id });
+      }
+    }
+    await client.query(
+      `UPDATE class_sessions SET status = 'cancelled_staff', cancellation_reason = $1
+        WHERE session_id = $2`, [reason, session.session_id]);
+
+    for (const { student_id } of enrolled) {
+      const recipients = await familyRecipients(client, student_id);
+      await logNotifications(client, {
+        eventType: 'session_cancelled_by_staff', recipientUserIds: recipients,
+        subjectType: 'class_session', subjectId: session.session_id,
+        payload: { reason, starts_at: session.starts_at, attendance_status: status }
+      });
+    }
+    await logNotifications(client, {
+      eventType: 'session_cancelled_by_staff', recipientUserIds: [session.instructor_id],
+      subjectType: 'class_session', subjectId: session.session_id,
+      payload: { reason, starts_at: session.starts_at, attendance_status: status }
+    });
+    await client.query('COMMIT');
+    res.json({ session_id: session.session_id, status: 'cancelled_staff', attendance_status: status, students: enrolled.length });
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

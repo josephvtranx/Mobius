@@ -9,6 +9,8 @@ import { getSettings } from '../helpers/institutionSettings.js';
 import { materializeOccurrences, RecurrenceError } from '../helpers/recurrence.js';
 import { seatCheck, roomCheck, creditGate } from '../helpers/classGates.js';
 import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { applyAttendanceWithinTx } from '../helpers/deductionEngine.js';
+import { insideWindow } from '../helpers/scheduleWindow.js';
 import { assertUtcIso } from '../lib/time.js';
 import { DateTime } from 'luxon';
 
@@ -365,6 +367,29 @@ router.post('/membership-requests/:requestId/resolve', authenticateToken, author
       }
     }
     if (action === 'approve' && request.kind === 'leave') {
+      // RSC-4 anti-loophole: sessions already inside the Window at execution
+      // follow the Window rule (cancelled_late ⇒ credit lost) unless staff
+      // waives via { waive_window: true } — "leave class" is not a free
+      // late-cancel for tonight. Later sessions were never deducted (INV-1),
+      // so there is nothing to refund by construction. Future-dated effective
+      // leaves are deferred: staff simply approve when the date arrives.
+      if (!req.body.waive_window) {
+        const { rows: upcoming } = await client.query(
+          `SELECT * FROM class_sessions
+            WHERE class_id = $1 AND status = 'scheduled' AND starts_at > CURRENT_TIMESTAMP`,
+          [request.class_id]);
+        for (const session of upcoming) {
+          if (!insideWindow(session.starts_at, settings)) continue;
+          const r = await applyAttendanceWithinTx(client, {
+            session, studentId: request.student_id, status: 'cancelled_late',
+            actorUserId: req.user.user_id, settings
+          });
+          if (!r.ok) {
+            await client.query('ROLLBACK');
+            return res.status(r.status).json(r.body);
+          }
+        }
+      }
       await client.query(
         `UPDATE enrollments SET status = 'left', left_at = CURRENT_TIMESTAMP, removed_by = $1
           WHERE class_id = $2 AND student_id = $3 AND status = 'active'`,
@@ -497,6 +522,28 @@ router.patch('/:id/schedule', authenticateToken, authorizeRole('staff'), async (
   } finally {
     client.release();
   }
+});
+
+// ---------------------------------------------------------------------------
+// RSC-5 — instructor requests series termination: an urgent staff task, never
+// a self-serve terminate. Guardians hear nothing until staff confirm a
+// resolution (SCH-5 re-pattern / SCH-6 terminate / re-match).
+// ---------------------------------------------------------------------------
+router.post('/:id/termination-request', authenticateToken, async (req, res) => {
+  const cls = await loadClass(req.db, req.params.id);
+  if (!cls) return res.status(404).json({ message: 'Class not found' });
+  if (!(req.user.role === 'instructor' && req.user.user_id === cls.instructor_id)) {
+    return res.status(403).json({ message: 'Only this class\'s instructor can request termination' });
+  }
+  const { reason } = req.body;
+  if (!reason) return res.status(400).json({ message: 'A reason is required' });
+  if (cls.status !== 'active') return res.status(400).json({ message: `Class is ${cls.status}` });
+
+  await req.db.query(
+    `INSERT INTO staff_tasks (kind, urgency, subject_type, subject_id, details)
+     VALUES ('instructor_termination_request','urgent','class',$1,$2)`,
+    [cls.class_id, { reason, instructor_id: cls.instructor_id }]);
+  res.status(201).json({ class_id: cls.class_id, message: 'Termination request filed — staff will follow up' });
 });
 
 // ---------------------------------------------------------------------------

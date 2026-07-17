@@ -7,19 +7,11 @@ import express from 'express';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { canActForStudent } from '../helpers/authz.js';
 
 const router = express.Router();
 
 const MANUAL_ENTRY_TYPES = new Set(['purchase', 'bonus', 'adjustment']);
-
-// staff, the student themself, or a linked guardian
-async function canActForStudent(db, user, studentId) {
-  if (user.role === 'staff' || user.user_id === studentId) return true;
-  const { rows } = await db.query(
-    `SELECT 1 FROM student_guardians sg JOIN guardians g ON g.guardian_id = sg.guardian_id
-      WHERE sg.student_id = $1 AND g.user_id = $2`, [studentId, user.user_id]);
-  return rows.length > 0;
-}
 
 // ---------------------------------------------------------------------------
 // GET /:studentId — balance, committed (display-only, spec 04 §Committed),
