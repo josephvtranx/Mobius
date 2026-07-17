@@ -102,17 +102,16 @@ router.delete('/profile-picture', auth, async (req, res) => {
   }
 });
 
-// Cleanup orphaned files (admin only)
+// Cleanup orphaned files (staff only — tenant `admin` role removed, MODERNIZATION D2/2.4)
 router.post('/cleanup', auth, async (req, res) => {
   try {
-    // Check if user is admin (you can customize this check)
     const userQuery = 'SELECT role FROM users WHERE user_id = $1';
     const userResult = await req.db.query(userQuery, [req.user.user_id]);
-    
-    if (!userResult.rows.length || userResult.rows[0].role !== 'admin') {
+
+    if (!userResult.rows.length || userResult.rows[0].role !== 'staff') {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: 'Staff access required'
       });
     }
 

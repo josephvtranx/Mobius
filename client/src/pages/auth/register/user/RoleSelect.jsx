@@ -27,8 +27,8 @@ function RoleSelect() {
       icon: FaChalkboardTeacher,
     },
     {
-      id: 'admin',
-      name: 'Admin',
+      id: 'staff',
+      name: 'Staff',
       icon: FaUserShield,
     },
   ];
@@ -38,7 +38,7 @@ function RoleSelect() {
     const state = { email };
     if (selectedRole === 'student') navigate('/auth/register/user/student', { state });
     else if (selectedRole === 'instructor') navigate('/auth/register/user/instructor', { state });
-    else if (selectedRole === 'admin') navigate('/auth/register/user/staff', { state });
+    else if (selectedRole === 'staff') navigate('/auth/register/user/staff', { state });
   };
 
   return (

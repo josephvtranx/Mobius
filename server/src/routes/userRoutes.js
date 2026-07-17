@@ -63,7 +63,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 });
 
 // Admin route to get all users (protected + role-based) - MUST COME BEFORE /:id
-router.get('/all', authenticateToken, authorizeRole('admin'), async (req, res) => {
+router.get('/all', authenticateToken, authorizeRole('staff'), async (req, res) => {
     try {
         const result = await req.db.query(
             'SELECT user_id, name, email, role, is_active, last_login FROM users'
