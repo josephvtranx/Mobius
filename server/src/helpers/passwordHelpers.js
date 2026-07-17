@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-// import pool from '../config/db.js';
 
 // Common passwords to disallow (this should be much larger in production)
 const COMMON_PASSWORDS = [

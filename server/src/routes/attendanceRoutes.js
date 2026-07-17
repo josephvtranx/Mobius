@@ -1,6 +1,5 @@
 import express from 'express';
 import { body } from 'express-validator';
-// import pool from '../config/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { toUtcIso, assertUtcIso } from '../lib/time.js';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';

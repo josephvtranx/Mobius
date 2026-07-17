@@ -1,6 +1,5 @@
 import express from 'express';
 import { body } from 'express-validator';
-// import pool from '../config/db.js';
 import { validateRequest } from '../middleware/validation.js';
 
 const router = express.Router();

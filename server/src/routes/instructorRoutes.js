@@ -1,6 +1,5 @@
 import express from 'express';
 import { body } from 'express-validator';
-// import pool from '../config/db.js';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { toUtcIso, assertUtcIso } from '../lib/time.js';

@@ -1,5 +1,4 @@
 import bcrypt from 'bcryptjs';
-// import pool from '../config/db.js';
 
 // Check if password was used before
 export const checkPasswordHistory = async (db, userId, newPassword) => {
