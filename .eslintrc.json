@@ -1,4 +1,15 @@
 {
+  "root": true,
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": { "jsx": true }
+  },
+  "env": {
+    "node": true,
+    "browser": true,
+    "es2022": true
+  },
   "rules": {
     "no-restricted-globals": [
       "error",
@@ -6,4 +17,4 @@
     ],
     "no-restricted-imports": ["error", { "patterns": ["moment"] }]
   }
-} 
+}

@@ -10,7 +10,9 @@
     "dev": "NODE_ENV=development nodemon index.js",
     "dev:windows": "set NODE_ENV=development && nodemon index.js",
     "dev:debug": "NODE_ENV=development nodemon --inspect index.js",
-    "build": "echo 'No build step required for Node.js server'"
+    "build": "echo 'No build step required for Node.js server'",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +36,10 @@
     "resend": "^4.7.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "@electric-sql/pglite": "^0.5.4",
+    "@electric-sql/pglite-socket": "^0.2.7",
+    "nodemon": "^3.0.3",
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.10"
   }
 }

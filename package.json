@@ -18,9 +18,12 @@
     "dev:windows": "concurrently \"npm run dev:server:windows\" \"npm run dev:client\"",
     "dev:setup": "npm run install:all && node setup-dev.js",
     "env:setup": "node setup-dev.js",
-    "install:all": "npm install && npm --prefix server install && npm --prefix client install"
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "test": "npm --prefix server test",
+    "lint": "eslint . --ext .js,.jsx"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.1"
   }
 }

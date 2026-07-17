@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install dependencies
+        run: npm run install:all
+
+      - name: Build client
+        run: npm --prefix client run build
+
+      - name: Server tests (PGlite-backed, no external DB needed)
+        run: npm --prefix server test
+
+      # Non-blocking while the 54 existing `new Date()` violations are cleared
+      # (MODERNIZATION D8); flips to blocking at Phase 4.5.
+      - name: Lint (non-blocking)
+        run: npm run lint
+        continue-on-error: true

@@ -5,8 +5,9 @@ import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
 
 // Token verification endpoint handler
+// NB: previously checked out a pool client here that was never used (all queries
+// go through req.db.query) — removed; it wasted a connection per request.
 export const verifyTokenHandler = async (req, res) => {
-    const client = await req.db.connect();
     try {
         // Get token from header
         const authHeader = req.headers['authorization'];
@@ -67,8 +68,6 @@ export const verifyTokenHandler = async (req, res) => {
             message: 'Error verifying token',
             error: error.message
         });
-    } finally {
-        client.release();
     }
 };
 

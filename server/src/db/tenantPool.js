@@ -3,6 +3,10 @@ import { registryPool } from './registryPool.js';
 
 const tenantPools = new Map();          // code → pg.Pool
 
+// PGSSLMODE=disable is set by the test harness (local PGlite socket, no TLS);
+// production (Azure) keeps the permissive-SSL default.
+const ssl = process.env.PGSSLMODE === 'disable' ? false : { rejectUnauthorized: false };
+
 export async function getTenantPool(code) {
   if (tenantPools.has(code)) return tenantPools.get(code);
 
@@ -14,7 +18,7 @@ export async function getTenantPool(code) {
 
   const pool = new pg.Pool({
     connectionString: rows[0].conn_string,
-    ssl: { rejectUnauthorized: false }
+    ssl
   });
   tenantPools.set(code, pool);
   return pool;
