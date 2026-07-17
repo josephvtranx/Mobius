@@ -11,6 +11,8 @@ import { applyAttendanceWithinTx, ATTENDANCE_STATUSES } from '../helpers/deducti
 import { insideWindow } from '../helpers/scheduleWindow.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { logNotifications, familyRecipients } from '../helpers/notify.js';
+import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
+import { assertUtcIso } from '../lib/time.js';
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -209,6 +211,94 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// RSC-1 — student/guardian requests a 1:1 reschedule. Creates the request +
+// a TTL'd slot hold (INV-3 backstop: uq_holds_instructor_slot); the original
+// session STAYS on the calendar as reschedule_requested (INV-2) until the
+// instructor responds, the TTL escalates, or the Window hard-stops it.
+// ---------------------------------------------------------------------------
+router.post('/:id/reschedule-request', authenticateToken, async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+  if (session.class_type !== 'one_on_one') {
+    return res.status(400).json({ message: 'Group sessions cannot be rescheduled — the class runs regardless; cancel your seat instead' });
+  }
+  // a pending request already flipped the session to reschedule_requested,
+  // so this guard also enforces one open request per session
+  if (session.status !== 'scheduled') return res.status(400).json({ message: `Session is ${session.status}` });
+
+  const { proposed_starts_at, proposed_ends_at } = req.body;
+  try {
+    assertUtcIso(proposed_starts_at);
+    assertUtcIso(proposed_ends_at);
+  } catch {
+    return res.status(400).json({ message: 'proposed timestamps must be UTC ISO strings with Z suffix' });
+  }
+  const start = DateTime.fromISO(proposed_starts_at);
+  if (DateTime.fromISO(proposed_ends_at) <= start) {
+    return res.status(400).json({ message: 'proposed end must be after its start' });
+  }
+  if (start <= DateTime.utc()) return res.status(400).json({ message: 'proposed time must be in the future' });
+
+  // the 1:1 class's single active enrollee is the student being acted for
+  const { rows: enr } = await req.db.query(
+    `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [session.class_id]);
+  if (!enr.length) return res.status(400).json({ message: 'No active enrollment on this class' });
+  const studentId = enr[0].student_id;
+  if (!await canActForStudent(req.db, req.user, studentId)) {
+    return res.status(403).json({ message: 'Not authorized to act for this student' });
+  }
+
+  const settings = await getSettings(req.db);
+  if (insideWindow(session.starts_at, settings)) {
+    return res.status(400).json({ message: 'Past the change deadline — the reschedule window has closed; contact the academy to appeal' });
+  }
+
+  // RSC-1 step-2 validations (sequential pool reads)
+  if (!await instructorFree(req.db, session.instructor_id, proposed_starts_at, proposed_ends_at, session.session_id)) {
+    return res.status(409).json({ message: 'The instructor is not free at that time' });
+  }
+  if (!await bestFitRoom(req.db, proposed_starts_at, proposed_ends_at, 1)) {
+    return res.status(400).json({ message: 'No room is available at that time' });
+  }
+  const collision = await studentCollision(req.db, studentId, proposed_starts_at, proposed_ends_at, session.session_id);
+  if (collision) {
+    return res.status(400).json({ message: `The new time overlaps the student's ${collision.subject} session` });
+  }
+
+  const expiresAt = DateTime.utc().plus({ hours: settings.instructor_response_window_hours }).toISO();
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [hold] } = await client.query(
+      `INSERT INTO slot_holds (instructor_id, starts_at, ends_at, origin, held_for_student_id, expires_at, created_by)
+       VALUES ($1,$2,$3,'reschedule_request',$4,$5,$6) RETURNING hold_id`,
+      [session.instructor_id, proposed_starts_at, proposed_ends_at, studentId, expiresAt, req.user.user_id]);
+    const { rows: [request] } = await client.query(
+      `INSERT INTO reschedule_requests (session_id, requested_by, proposed_starts_at, proposed_ends_at, hold_id)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [session.session_id, req.user.user_id, proposed_starts_at, proposed_ends_at, hold.hold_id]);
+    await client.query(
+      `UPDATE class_sessions SET status = 'reschedule_requested' WHERE session_id = $1`, [session.session_id]);
+    await logNotifications(client, {
+      eventType: 'reschedule_requested', recipientUserIds: [session.instructor_id],
+      subjectType: 'reschedule_request', subjectId: request.request_id,
+      payload: { session_id: session.session_id, from: session.starts_at, to: proposed_starts_at, student_id: studentId }
+    });
+    await client.query('COMMIT');
+    res.status(201).json({ request });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (err.code === '23505' || err.code === '23P01') {
+      // INV-3: a racing writer already holds or booked that slot
+      return res.status(409).json({ message: 'That slot was just taken — refresh the calendar and pick another time' });
+    }
     throw err;
   } finally {
     client.release();
