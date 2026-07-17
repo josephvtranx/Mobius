@@ -28,20 +28,22 @@ const baseValidation = [
     body('role').isIn(['student', 'instructor', 'staff']).withMessage('Invalid role')
 ];
 
-// Student-specific validation
+// Student-specific validation (schema v2, Phase 7.4): date_of_birth replaces
+// age; guardians are first-class logins so each needs an email (dedupe key).
 const studentValidation = [
     ...baseValidation,
-    body('age').isInt({ min: 5, max: 18 }).withMessage('Student age must be between 5 and 18'),
+    body('date_of_birth').optional().isISO8601().withMessage('date_of_birth must be an ISO date'),
     body('grade').isInt({ min: 1, max: 12 }).withMessage('Grade must be between 1 and 12'),
     body('gender').isIn(['male', 'female', 'other']).withMessage('Invalid gender'),
     body('school').notEmpty().withMessage('School is required'),
     body('status').optional().isIn(['enrolled', 'on_trial']).withMessage('Invalid status'),
     body('pa_code').optional(),
-    // Guardian validation
-    body('guardians').isArray().withMessage('Guardians must be an array'),
+    // Guardian validation — optional (adult students, GRD-4); guardians become
+    // users (role=guardian), so email is required as the account/dedupe key
+    body('guardians').optional().isArray().withMessage('Guardians must be an array'),
     body('guardians.*.name').notEmpty().withMessage('Guardian name is required'),
-    body('guardians.*.phone').matches(/^\+?[\d\s-]+$/).withMessage('Invalid guardian phone number'),
-    body('guardians.*.email').optional().isEmail().withMessage('Invalid guardian email'),
+    body('guardians.*.email').isEmail().withMessage('Guardian email is required'),
+    body('guardians.*.phone').optional().matches(/^\+?[\d\s-]+$/).withMessage('Invalid guardian phone number'),
     body('guardians.*.relationship').isIn(['parent', 'guardian', 'grandparent', 'other']).withMessage('Invalid guardian relationship')
 ];
 

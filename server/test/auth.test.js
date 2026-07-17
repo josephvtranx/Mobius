@@ -213,20 +213,52 @@ describe('POST /api/auth/register (signup)', () => {
     expect(rows[0].department).toBe('Ops');
   });
 
-  it('rolls back the whole transaction when a role insert fails (student path — Phase 7.4 drift)', async () => {
-    // The users INSERT succeeds against schema v2, but the guardian INSERT
-    // still uses the v1 contact-only guardian shape → 400, and the ROLLBACK
-    // must erase the user row. Flips when Phase 7.4 rebuilds guardian signup.
+  it('creates a v2 student with guardian logins (Phase 7.4): 201, links, primary, can_purchase', async () => {
     const agent = await tenantAgent();
     const res = await agent.post('/api/auth/register').send({
       name: 'New Student', email: 'new-student@test.com', password: 'Password123!',
-      role: 'student', age: 15, grade: 9, gender: 'other', school: 'Test High',
-      guardians: [{ name: 'Parent', phone: '555-0100', relationship: 'parent' }]
+      role: 'student', date_of_birth: '2011-03-01', grade: 9, gender: 'other', school: 'Test High',
+      guardians: [
+        { name: 'Parent One', email: 'parent1@test.com', phone: '555-0100', relationship: 'parent' },
+        { name: 'Parent Two', email: 'parent2@test.com', relationship: 'parent' }
+      ]
+    });
+    expect(res.status).toBe(201);
+
+    const { rows: [stu] } = await env.tenantDb.query(
+      `SELECT s.can_purchase, s.date_of_birth FROM students s
+        JOIN users u ON u.user_id = s.student_id WHERE u.email = $1`, ['new-student@test.com']);
+    expect(stu.can_purchase).toBe(false); // minor with guardians
+
+    const { rows: links } = await env.tenantDb.query(
+      `SELECT sg.is_primary, u.role, u.email FROM student_guardians sg
+        JOIN guardians g ON g.guardian_id = sg.guardian_id
+        JOIN users u ON u.user_id = g.user_id
+        JOIN users su ON su.user_id = sg.student_id
+       WHERE su.email = $1 ORDER BY sg.is_primary DESC`, ['new-student@test.com']);
+    expect(links).toHaveLength(2);
+    expect(links.every(l => l.role === 'guardian')).toBe(true);
+    expect(links.filter(l => l.is_primary)).toHaveLength(1); // exactly one primary
+    expect(links[0].email).toBe('parent1@test.com');         // the first listed
+  });
+
+  it('rolls back the whole transaction when a guardian email belongs to a non-guardian', async () => {
+    // second guardian's email is the seed STAFF user → 400 mid-transaction;
+    // the student user row and the first guardian must both be erased
+    const agent = await tenantAgent();
+    const res = await agent.post('/api/auth/register').send({
+      name: 'Rollback Student', email: 'rollback-student@test.com', password: 'Password123!',
+      role: 'student', date_of_birth: '2012-05-01', grade: 8, gender: 'other', school: 'Test High',
+      guardians: [
+        { name: 'Fine Parent', email: 'fine-parent@test.com', relationship: 'parent' },
+        { name: 'Oops', email: SEED_USER.email, relationship: 'parent' }
+      ]
     });
     expect(res.status).toBe(400);
     const { rows } = await env.tenantDb.query(
-      'SELECT count(*)::int AS n FROM users WHERE email = $1', ['new-student@test.com']);
-    expect(rows[0].n).toBe(0);
+      `SELECT count(*)::int AS n FROM users WHERE email IN ($1, $2)`,
+      ['rollback-student@test.com', 'fine-parent@test.com']);
+    expect(rows[0].n).toBe(0); // full rollback erased both
   });
 });
 

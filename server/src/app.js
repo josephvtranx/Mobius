@@ -31,6 +31,8 @@ import walletRoutes from './routes/walletRoutes.js';
 import rescheduleRoutes from './routes/rescheduleRoutes.js';
 import instructorCalendarRoutes from './routes/instructorCalendarRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
+import guardianPortalRoutes from './routes/guardianPortalRoutes.js';
+import studentGuardianV2Routes from './routes/studentGuardianV2Routes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { toUtcIso } from './lib/time.js';
 
@@ -150,10 +152,12 @@ app.post('/api/institution', async (req, res) => {
 // Route middlewares
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/students', studentGuardianV2Routes); // schema-v2 guardian links + purchasing (spec 05) — Phase 7.4
 app.use('/api/students', studentRoutes);
 app.use('/api/instructors', instructorRoutes);
-app.use('/api/guardians', guardianRoutes);
-app.use('/api/student-guardians', studentGuardianRoutes);
+app.use('/api/guardians', guardianPortalRoutes);   // schema-v2 guardian portal (spec 05) — Phase 7.4
+app.use('/api/guardians', guardianRoutes);         // legacy v1 model (guardian contact-blob columns) — superseded by Phase 7.4
+app.use('/api/student-guardians', studentGuardianRoutes); // legacy v1 model (singular table, NO auth middleware) — superseded by /api/students/:id/guardians
 app.use('/api/classes', classRoutes);           // schema-v2 domain (spec 03) — Phase 7.1
 app.use('/api/sessions', sessionRoutes);        // schema-v2 domain (spec 04/06/07) — Phase 7.2/7.3
 app.use('/api/wallets', walletRoutes);          // schema-v2 domain (spec 04) — Phase 7.2

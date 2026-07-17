@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import { generateTokens, verifyAccessToken, verifyRefreshToken, hashPassword } from '../helpers/authHelpers.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
@@ -83,12 +84,13 @@ export const signup = async (req, res) => {
             role,
             // Role-specific fields
             status,          // for students
-            age,            // for students/staff/instructors
+            age,            // form field for staff/instructors (not stored)
+            date_of_birth,  // for students (schema v2 — replaces stored age)
             grade,          // for students
             gender,         // for students/staff/instructors
             school,         // for students
-            pa_code,        // for students
-            guardians,      // for students
+            pa_code,        // for students (resolved to a pa_codes row)
+            guardians,      // for students: [{ name, email, phone?, relationship }]
             department,     // for staff
             employment_status, // for staff
             salary,         // for staff
@@ -116,27 +118,20 @@ export const signup = async (req, res) => {
             });
         }
 
-        // Validate role-specific required fields
+        // Validate role-specific required fields. Guardians are OPTIONAL
+        // (adult students exist — spec 05 GRD-4); each provided guardian
+        // becomes a first-class login, so name + email + relationship are
+        // required (email is the dedupe/account key).
         if (role === 'student') {
-            if (!guardians || !Array.isArray(guardians) || guardians.length === 0) {
-                return res.status(400).json({
-                    message: 'Validation error',
-                    errors: [{
-                        field: 'guardians',
-                        message: 'At least one guardian is required'
-                    }]
-                });
-            }
-
-            // Validate each guardian
-            for (let i = 0; i < guardians.length; i++) {
-                const guardian = guardians[i];
-                if (!guardian.name || !guardian.phone || !guardian.relationship) {
+            const guardianList = Array.isArray(guardians) ? guardians : [];
+            for (let i = 0; i < guardianList.length; i++) {
+                const guardian = guardianList[i];
+                if (!guardian.name || !guardian.email || !guardian.relationship) {
                     return res.status(400).json({
                         message: 'Validation error',
                         errors: [{
                             field: `guardians[${i}]`,
-                            message: 'Guardian name, phone, and relationship are required'
+                            message: 'Guardian name, email, and relationship are required'
                         }]
                     });
                 }
@@ -161,71 +156,91 @@ export const signup = async (req, res) => {
 
         // Create role-specific records
         if (role === 'student') {
-            try {
-                // Create student record first
-                await client.query(
-                    `INSERT INTO students (
-                        student_id,
-                        status,
-                        age,
-                        grade,
-                        gender,
-                        school,
-                        pa_code
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                    [
-                        user.user_id,
-                        status || 'enrolled',
-                        age,
-                        grade,
-                        gender,
-                        school,
-                        pa_code
-                    ]
+            // schema v2 (Phase 7.4): date_of_birth not age, pa_code resolved to a
+            // pa_codes row, guardians are first-class users (role=guardian)
+            // linked via student_guardians — first link is the primary (billing
+            // contact; the partial unique index enforces exactly one).
+            const guardianList = Array.isArray(guardians) ? guardians : [];
+
+            let paCodeId = null;
+            if (pa_code) {
+                const { rows: [pa] } = await client.query(
+                    `INSERT INTO pa_codes (code) VALUES ($1)
+                     ON CONFLICT (code) DO UPDATE SET code = EXCLUDED.code
+                     RETURNING pa_code_id`,
+                    [pa_code]
                 );
+                paCodeId = pa.pa_code_id;
+            }
 
-                // Handle multiple guardians
-                if (guardians && guardians.length > 0) {
-                    for (const guardian of guardians) {
-                        try {
-                            // Create guardian record
-                            const guardianResult = await client.query(
-                                `INSERT INTO guardians (name, phone, email, relationship)
-                                 VALUES ($1, $2, $3, $4)
-                                 RETURNING guardian_id`,
-                                [guardian.name, guardian.phone, guardian.email, guardian.relationship]
-                            );
-                            const guardianId = guardianResult.rows[0].guardian_id;
+            // Purchasing rights (spec 05): false for minors, true for adult
+            // students (KR adulthood = 19) with zero linked guardians; a null
+            // date_of_birth with no guardians is treated as adult. Staff-editable
+            // afterwards; the Top-Up spec owns the enforcement point.
+            let isAdult = true;
+            if (date_of_birth) {
+                const { rows: [ageRow] } = await client.query(
+                    `SELECT date_part('year', age($1::date))::int AS years`, [date_of_birth]);
+                isAdult = ageRow.years >= 19;
+            }
+            const canPurchase = guardianList.length === 0 && isAdult;
 
-                            // Create the student-guardian relationship
-                            await client.query(
-                                `INSERT INTO student_guardian (student_id, guardian_id)
-                                 VALUES ($1, $2)`,
-                                [user.user_id, guardianId]
-                            );
-                        } catch (guardianError) {
-                            console.error('Guardian creation error:', guardianError);
-                            throw {
-                                status: 400,
-                                message: 'Error creating guardian record',
-                                errors: [{
-                                    field: 'guardians',
-                                    message: `Failed to create guardian: ${guardianError.message}`
-                                }]
-                            };
-                        }
+            await client.query(
+                `INSERT INTO students (student_id, status, date_of_birth, grade, gender, school, pa_code_id, can_purchase)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                [user.user_id, status || 'enrolled', date_of_birth ?? null, grade, gender, school, paCodeId, canPurchase]
+            );
+
+            let isFirstGuardian = true;
+            for (const guardian of guardianList) {
+                // Dedupe by email (citext unique): an existing guardian account is
+                // linked as-is — no new credentials (GRD-2 rule). Any other role on
+                // that email aborts the whole signup (transaction rolls back).
+                const { rows: existing } = await client.query(
+                    `SELECT user_id, role FROM users WHERE email = $1`, [guardian.email]);
+                let guardianUserId;
+                if (existing.length) {
+                    if (existing[0].role !== 'guardian') {
+                        throw {
+                            status: 400,
+                            message: 'Validation error',
+                            errors: [{
+                                field: 'guardians',
+                                message: `${guardian.email} belongs to an existing non-guardian account`
+                            }]
+                        };
                     }
+                    guardianUserId = existing[0].user_id;
+                } else {
+                    // System-generated temp credentials (onboarding §6); delivery is
+                    // the Phase 7.6 notification service — the credentials_issued row
+                    // records the issuance. The plaintext is never returned.
+                    const tempHash = await hashPassword(randomBytes(12).toString('base64url'));
+                    const { rows: [gUser] } = await client.query(
+                        `INSERT INTO users (password_hash, name, email, phone, role, is_active)
+                         VALUES ($1, $2, $3, $4, 'guardian', true) RETURNING user_id`,
+                        [tempHash, guardian.name, guardian.email, guardian.phone ?? null]
+                    );
+                    guardianUserId = gUser.user_id;
+                    await client.query(
+                        `INSERT INTO notification_log (event_type, recipient_user_id, channel, subject_type, subject_id)
+                         VALUES ('credentials_issued', $1, 'in_app', 'user', $2)`,
+                        [guardianUserId, String(guardianUserId)]
+                    );
                 }
-            } catch (studentError) {
-                console.error('Student creation error:', studentError);
-                throw {
-                    status: 400,
-                    message: 'Error creating student record',
-                    errors: [{
-                        field: 'student',
-                        message: `Failed to create student record: ${studentError.message}`
-                    }]
-                };
+
+                const { rows: [gRow] } = await client.query(
+                    `INSERT INTO guardians (user_id, relationship) VALUES ($1, $2)
+                     ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+                     RETURNING guardian_id`,
+                    [guardianUserId, guardian.relationship ?? null]
+                );
+                await client.query(
+                    `INSERT INTO student_guardians (student_id, guardian_id, is_primary)
+                     VALUES ($1, $2, $3)`,
+                    [user.user_id, gRow.guardian_id, isFirstGuardian]
+                );
+                isFirstGuardian = false;
             }
         } else if (role === 'instructor') {
             try {
