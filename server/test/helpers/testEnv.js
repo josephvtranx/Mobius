@@ -64,7 +64,6 @@ export async function startTestEnv() {
   process.env.REGISTRY_URL = registry.url;
   process.env.PGSSLMODE = 'disable';
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
-  process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret';
   process.env.NODE_ENV = 'test';
 
   const { default: app } = await import('../../src/app.js');

@@ -16,8 +16,8 @@ if (!fs.existsSync(uploadDir)) {
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     // Optional: Create tenant-specific subdirectories
-    // const tenantDir = req.session?.tenantCode ? 
-    //   path.join(uploadDir, req.session.tenantCode) : uploadDir;
+    // const tenantDir = req.tenantCode ?
+    //   path.join(uploadDir, req.tenantCode) : uploadDir;
     // if (!fs.existsSync(tenantDir)) {
     //   fs.mkdirSync(tenantDir, { recursive: true });
     // }
@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     // Generate unique filename with tenant prefix for better organization
-    const tenantPrefix = req.session?.tenantCode ? `${req.session.tenantCode}-` : '';
+    const tenantPrefix = req.tenantCode ? `${req.tenantCode}-` : ''; // D7: from the JWT claim, not a session
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     cb(null, `${tenantPrefix}profile-${uniqueSuffix}${ext}`);

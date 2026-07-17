@@ -55,6 +55,7 @@ export default function Login() {
       await authService.login({
         email: formData.email,
         password: formData.password,
+        institutionCode: formData.institutionCode.trim(), // D7: sent as a header; no cookie
       });
       navigate('/home');
     } catch (err) {
@@ -101,7 +102,7 @@ export default function Login() {
                   style={{ width: '100%' }}
                 >
                   <div className="login-saas-input-group">
-                    <label htmlFor="institutionCode" className="login-saas-input-label">Institution Code <span style={{ color: '#b0b4c0', fontWeight: 400, fontSize: '0.95em' }}>(optional)</span></label>
+                    <label htmlFor="institutionCode" className="login-saas-input-label">Institution Code</label>
                     <input
                       id="institutionCode"
                       name="institutionCode"

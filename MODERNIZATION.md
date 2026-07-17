@@ -49,12 +49,9 @@ Both handlers exist but no route mounts them; `changePassword` is also bugged (m
 - [x] **Defer** — evaluate later, keep current model for now **(rec — don't block cleanup on this)**
 - [ ] Other: ______
 
-### D7 — Session store & credential model (gates 5.2, 5.3)
-Today: in-memory `MemoryStore` cookie (tenant) + JWT (identity) — breaks under restart / multi-instance.
-- [x] **Embed `tenantCode` in the JWT**, drop the session cookie entirely **(rec — removes MemoryStore *and* the dual-credential complexity)**
-- [ ] Keep the cookie but move to a **persistent store** (Postgres/Redis)
-- [ ] Defer (accept single-instance limitation for now)
-- [ ] Other: ______
+### D7 — Session store & credential model (gates 5.2, 5.3) — ✅ IMPLEMENTED 2026-07-17
+Was: in-memory `MemoryStore` cookie (tenant) + JWT (identity) — broke under restart / multi-instance.
+- [x] **Embed `tenantCode` in the JWT**, drop the session cookie entirely — **DONE.** `express-session` removed; the tenant middleware resolves `req.db` from the Bearer token's `tenantCode` claim (pre-auth requests use the `X-Institution-Code` header); `POST /api/institution` is a stateless validator; refresh tokens carry the tenant. Resolves **5.2** and **5.3**. Client auth layer updated (`withCredentials` gone, `institutionCode` in localStorage).
 
 ### D8 — ESLint enforcement timing (gates 4.5)
 Enabling the `new Date()` ban surfaces **54** existing violations in `client/src`.
@@ -192,8 +189,8 @@ Produce short decision records (`docs/adr/*.md`); implementation, if any, spins 
 | # | Task | Risk | Effort |
 |---|---|---|---|
 | 5.1 | **Per-tenant-DB vs shared-schema-with-`tenant_id`.** Evaluate at current + expected scale: N databases ⇒ N migrations, N connection pools, Azure connection-limit pressure, and no migration framework today (just `scripts/migrate.sh` + raw `schema.sql`). Weigh isolation/compliance benefits vs operational cost. Decide and document. | high | large |
-| 5.2 | **Session store.** `express-session` uses in-memory `MemoryStore` behind `trust proxy` on Render — lost on restart, not shared across instances, so the tenant cookie breaks under horizontal scaling. Decide: move to a persistent store (e.g. Postgres/Redis) **or** eliminate the cookie by embedding `tenantCode` in the JWT (see 5.3). | high | medium |
-| 5.3 | **Dual-credential complexity (cookie tenant + JWT identity).** Evaluate collapsing to a single credential by putting the tenant in the JWT claims — removes `withCredentials`/CORS-credentials and the session store entirely, at the cost of re-issuing tokens on tenant switch. Decide. | high | large |
+| 5.2 | ~~**Session store.**~~ ✅ Resolved by D7 (2026-07-17): the session store is gone entirely — no MemoryStore, nothing tenant-related in server memory. | — | — |
+| 5.3 | ~~**Dual-credential complexity.**~~ ✅ Resolved by D7 (2026-07-17): single JWT credential with a `tenantCode` claim; `withCredentials`/CORS-credentials removed. | — | — |
 | 5.4 | **Migration tooling.** Adopt a real migration tool (node-pg-migrate/Knex/Prisma-migrate) to make per-tenant schema changes repeatable — a prerequisite for whatever 5.1 decides. | medium | medium |
 | 5.5 | **Time-library sprawl.** Standardize on one library (luxon, given the existing helpers) across both apps; drop `date-fns`/`moment` usage. Feeds the Phase 4.5 lint enforcement. | low | medium |
 | 5.6 | **Calendar-library overlap.** Two libs in use (`react-big-calendar` + `react-calendar` in `CalendarWidget`); decide whether to consolidate. | low | medium |

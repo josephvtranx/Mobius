@@ -1,12 +1,17 @@
 import api from './api';
 
 const authService = {
-    // Login user
+    // Login user. D7: the institution code travels in the X-Institution-Code
+    // header on this pre-auth request; after login the JWT carries the tenant.
     login: async (credentials) => {
         try {
+            const institutionCode =
+                credentials.institutionCode || localStorage.getItem('institutionCode');
             const response = await api.post('/auth/login', {
                 email: credentials.email,
                 password: credentials.password
+            }, {
+                headers: { 'X-Institution-Code': institutionCode }
             });
             
             if (response.data.accessToken) {
@@ -38,7 +43,10 @@ const authService = {
             }
 
             console.log('Registration request data:', userData);
-            const response = await api.post('/auth/register', userData);
+            // D7: registration is tenant-scoped via the header (no cookie)
+            const response = await api.post('/auth/register', userData, {
+                headers: { 'X-Institution-Code': localStorage.getItem('institutionCode') }
+            });
 
             // Registration successful - no need to store tokens since we redirect to login
             return response.data;
@@ -64,6 +72,7 @@ const authService = {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
+        localStorage.removeItem('institutionCode');
         // Remove the token from default headers
         delete api.defaults.headers.common['Authorization'];
     },
@@ -111,12 +120,14 @@ const authService = {
         }
     },
 
-    // Set institution code for multi-tenant context
+    // Validate the institution code (D7: stateless — the server keeps no
+    // session; the code is persisted locally and sent as a header on
+    // login/register, then travels inside the JWT)
     setInstitutionCode: async (code) => {
         try {
-            console.log('Attempting to set institution code:', code);
+            console.log('Validating institution code:', code);
             const response = await api.post('/institution', { code });
-            console.log('Institution code response:', response);
+            localStorage.setItem('institutionCode', code);
             return response.data;
         } catch (error) {
             console.error('Institution code error details:', {

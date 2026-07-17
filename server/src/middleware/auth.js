@@ -40,7 +40,14 @@ export const authenticateToken = async (req, res, next) => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
+
+        // D7: the tenant middleware resolves req.db from the token's
+        // tenantCode claim; a valid token whose tenant no longer resolves
+        // (suspended/unknown institution) must not crash the request
+        if (!req.db) {
+            return res.status(401).json({ message: 'Unknown institution' });
+        }
+
         // Query to get user by id instead of username
         const result = await req.db.query(
             'SELECT * FROM users WHERE user_id = $1',

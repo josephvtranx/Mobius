@@ -2,25 +2,29 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 
-// Generate access token (short-lived)
-export const generateAccessToken = (user) => {
+// Generate access token (short-lived). MODERNIZATION D7: the token carries the
+// tenant — tenantCode is the single credential's tenant context (no session).
+export const generateAccessToken = (user, tenantCode) => {
     return jwt.sign(
-        { 
-            userId: user.user_id, 
+        {
+            userId: user.user_id,
             role: user.role,
-            email: user.email 
+            email: user.email,
+            tenantCode
         },
         process.env.JWT_SECRET,
         { expiresIn: '120m' } // 120 minutes (MODERNIZATION D1: intentional; refresh flow covers longer sessions)
     );
 };
 
-// Generate refresh token (long-lived)
-export const generateRefreshToken = (user) => {
+// Generate refresh token (long-lived); carries the tenant so refresh needs no
+// other tenant signal (the controller resolves the pool from this claim).
+export const generateRefreshToken = (user, tenantCode) => {
     return jwt.sign(
-        { 
+        {
             userId: user.user_id,
-            version: user.token_version || 0 // For token invalidation
+            version: user.token_version || 0, // For token invalidation
+            tenantCode
         },
         process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET,
         { expiresIn: '7d' } // 7 days
@@ -28,10 +32,10 @@ export const generateRefreshToken = (user) => {
 };
 
 // Generate both tokens
-export const generateTokens = (user) => {
+export const generateTokens = (user, tenantCode) => {
     return {
-        accessToken: generateAccessToken(user),
-        refreshToken: generateRefreshToken(user)
+        accessToken: generateAccessToken(user, tenantCode),
+        refreshToken: generateRefreshToken(user, tenantCode)
     };
 };
 

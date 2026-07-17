@@ -19,19 +19,21 @@ afterAll(async () => {
   await env?.stop();
 });
 
-// agent with the tenant cookie already established
-async function tenantAgent() {
+// D7: no session — every tenant-scoped request carries the X-Institution-Code
+// header (until a Bearer token, which carries the tenant claim, takes over)
+function tenantAgent() {
   const agent = request.agent(env.app);
-  await agent.post('/api/institution').send({ code: TEST_CODE }).expect(200);
-  return agent;
+  return {
+    post: (url) => agent.post(url).set('x-institution-code', TEST_CODE),
+    get: (url) => agent.get(url).set('x-institution-code', TEST_CODE)
+  };
 }
 
-describe('POST /api/institution', () => {
-  it('accepts a valid code and sets the session cookie', async () => {
-    const agent = request.agent(env.app);
-    const res = await agent.post('/api/institution').send({ code: TEST_CODE });
+describe('POST /api/institution (stateless code validation — D7)', () => {
+  it('accepts a valid code without issuing any cookie', async () => {
+    const res = await request(env.app).post('/api/institution').send({ code: TEST_CODE });
     expect(res.status).toBe(200);
-    expect(res.headers['set-cookie']?.join(';')).toContain('connect.sid');
+    expect(res.headers['set-cookie']).toBeUndefined(); // the session is gone
   });
 
   it('rejects an unknown code with 404 and a plain-text body', async () => {
@@ -90,7 +92,8 @@ describe('POST /api/auth/login', () => {
     });
 
     const decoded = jwt.verify(res.body.accessToken, process.env.JWT_SECRET);
-    expect(decoded).toMatchObject({ userId: 1, role: 'staff', email: SEED_USER.email });
+    // D7: the token carries the tenant — the single credential's tenant context
+    expect(decoded).toMatchObject({ userId: 1, role: 'staff', email: SEED_USER.email, tenantCode: TEST_CODE });
 
     const { rows } = await env.tenantDb.query('SELECT last_login FROM users WHERE user_id = 1');
     expect(rows[0].last_login).not.toBeNull();
@@ -165,6 +168,9 @@ describe('POST /api/auth/refresh-token', () => {
     expect(res.body.accessToken).toBeTypeOf('string');
     expect(res.body.refreshToken).toBeTypeOf('string');
     expect(res.body.user.user_id).toBe(1);
+    // D7: the tenant claim survives rotation
+    const decoded = jwt.verify(res.body.accessToken, process.env.JWT_SECRET);
+    expect(decoded.tenantCode).toBe(TEST_CODE);
   });
 });
 

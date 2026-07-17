@@ -21,7 +21,7 @@ let lastTue;      // the seeded anchor session (Tuesday 10:00 LA)
 let conflictSlot; // lastTue + 2 weeks — occupied by another class
 
 const authAs = (userId) => ({
-  Authorization: `Bearer ${jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '10m' })}`
+  Authorization: `Bearer ${jwt.sign({ userId, tenantCode: TEST_CODE }, process.env.JWT_SECRET, { expiresIn: '10m' })}`
 });
 
 async function seed() {
@@ -99,8 +99,8 @@ beforeAll(async () => {
   env = await startTestEnv();
   await seed();
   const agent = request.agent(env.app);
-  await agent.post('/api/institution').send({ code: TEST_CODE }).expect(200);
   const login = await agent.post('/api/auth/login')
+    .set('x-institution-code', TEST_CODE)  // D7: tenant via header, then via the JWT
     .send({ email: SEED_USER.email, password: SEED_USER.password });
   staff = { agent, auth: { Authorization: `Bearer ${login.body.accessToken}` } };
   pool = await env.getTenantPool(TEST_CODE);

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { generateTokens, verifyAccessToken, verifyRefreshToken, hashPassword } from '../helpers/authHelpers.js';
+import { getTenantPool } from '../db/tenantPool.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
 
@@ -305,7 +306,7 @@ export const signup = async (req, res) => {
         await client.query('COMMIT');
 
         // Generate tokens
-        const { accessToken, refreshToken } = generateTokens(user);
+        const { accessToken, refreshToken } = generateTokens(user, req.tenantCode);
 
         // Send response (accessToken — was `token`, standardized with login; MODERNIZATION 2.2)
         res.status(201).json({
@@ -426,14 +427,10 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    // Debug logs for session and institution code
-    console.log('--- LOGIN ATTEMPT ---');
-    console.log('Session ID:', req.sessionID);
-    console.log('Session:', req.session);
-    console.log('Institution code in session:', req.session?.tenantCode);
-    // Guard for req.db
+    // Guard for req.db (D7: set by the tenant middleware from the
+    // X-Institution-Code header — no session exists anymore)
     if (!req.db) {
-        console.error('No req.db found. Likely missing or invalid institution code or session.');
+        console.error('No req.db found. Missing or invalid institution code.');
         return res.status(400).json({ error: 'No institution selected or DB unavailable.' });
     }
     const client = await req.db.connect();
@@ -477,8 +474,8 @@ export const login = async (req, res) => {
             [user.user_id]
         );
 
-        // Generate tokens
-        const tokens = generateTokens(user);
+        // Generate tokens (D7: the tenant travels in the JWT from here on)
+        const tokens = generateTokens(user, req.tenantCode);
 
         // Send response
         res.json({
@@ -519,8 +516,20 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({ message: 'Invalid refresh token' });
         }
 
+        // D7: the refresh token's tenantCode claim IS the tenant — resolve the
+        // pool from it directly (no header or prior req.db needed)
+        if (!decoded.tenantCode) {
+            return res.status(401).json({ message: 'Invalid refresh token' });
+        }
+        let db;
+        try {
+            db = await getTenantPool(decoded.tenantCode);
+        } catch {
+            return res.status(401).json({ message: 'Unknown institution' });
+        }
+
         // Get user from database
-        const result = await req.db.query(
+        const result = await db.query(
             'SELECT * FROM users WHERE user_id = $1',
             [decoded.userId]
         );
@@ -536,8 +545,8 @@ export const refreshToken = async (req, res) => {
             return res.status(401).json({ message: 'Token has been invalidated' });
         }
 
-        // Generate new tokens
-        const tokens = generateTokens(user);
+        // Generate new tokens (same tenant as the refresh token's claim)
+        const tokens = generateTokens(user, decoded.tenantCode);
 
         res.json({
             message: 'Token refreshed successfully',

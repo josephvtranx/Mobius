@@ -22,13 +22,14 @@ const getApiUrl = () => {
 
 const API_URL = getApiUrl();
 
-// Create an axios instance with default settings
+// Create an axios instance with default settings.
+// D7: no cookies — the JWT (with its tenantCode claim) is the single
+// credential, so no withCredentials.
 const api = axios.create({
     baseURL: API_URL,
     headers: {
         'Content-Type': 'application/json'
     },
-    withCredentials: true, // <-- ensure cookies are sent for session
     timeout: 10000 // 10 second timeout
 });
 
@@ -61,6 +62,7 @@ api.interceptors.response.use(
     async (error) => {
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
             window.location.href = '/login';
         }

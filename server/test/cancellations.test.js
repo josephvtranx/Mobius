@@ -17,7 +17,7 @@ let cls = {};  // class ids by name
 const at = (hours) => DateTime.utc().plus({ hours }).toISO();
 
 function tokenFor(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '10m' });
+  return jwt.sign({ userId, tenantCode: TEST_CODE }, process.env.JWT_SECRET, { expiresIn: '10m' });
 }
 const authAs = (userId) => ({ Authorization: `Bearer ${tokenFor(userId)}` });
 
@@ -103,8 +103,8 @@ beforeAll(async () => {
   env = await startTestEnv();
   await seed();
   const agent = request.agent(env.app);
-  await agent.post('/api/institution').send({ code: TEST_CODE }).expect(200);
   const login = await agent.post('/api/auth/login')
+    .set('x-institution-code', TEST_CODE)  // D7: tenant via header, then via the JWT
     .send({ email: SEED_USER.email, password: SEED_USER.password });
   staff = { agent, auth: { Authorization: `Bearer ${login.body.accessToken}` } };
 }, 60000);

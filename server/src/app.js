@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import session from 'express-session';
+import jwt from 'jsonwebtoken';
 import bodyParser from 'body-parser';
 
 // Import all routes
@@ -91,9 +91,9 @@ const corsOptions = {
 
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  // D7: no cookies — the JWT is the single credential, so no CORS credentials
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Institution-Code']
 };
 
 app.use(cors(corsOptions));
@@ -102,22 +102,34 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: isProduction, // Only use secure cookies in production
-      sameSite: 'lax'
-    }
-  })
-);
-
-// Attach tenant pool to every request BEFORE all /api routes
+// Tenant resolution (MODERNIZATION D7) — BEFORE all /api routes. The JWT is
+// the single credential: a verified Bearer token's tenantCode claim resolves
+// req.db. Pre-auth tenant-scoped requests (login/register) instead send the
+// X-Institution-Code header (or body.code). Any failure leaves req.db
+// undefined — login's 400 guard / authenticateToken's 401 handle it.
 app.use(async (req, _res, next) => {
-  if (!req.session?.tenantCode) return next();    // public routes
-  req.db = await getTenantPool(req.session.tenantCode);
+  try {
+    const bearer = req.headers['authorization']?.split(' ')[1];
+    if (bearer) {
+      try {
+        const decoded = jwt.verify(bearer, process.env.JWT_SECRET);
+        if (decoded.tenantCode) {
+          req.tenantCode = decoded.tenantCode;
+          req.db = await getTenantPool(decoded.tenantCode);
+          return next();
+        }
+      } catch {
+        // invalid/expired token: fall through — authenticateToken 401s later
+      }
+    }
+    const code = req.headers['x-institution-code'] || req.body?.code;
+    if (code) {
+      req.db = await getTenantPool(code);
+      req.tenantCode = code;
+    }
+  } catch {
+    // unknown institution: req.db stays undefined
+  }
   next();
 });
 
@@ -133,18 +145,13 @@ app.use((req, res, next) => {
     next();
 });
 
-// STEP 1 – user submits institution code
+// Institution code validation (D7: stateless — the login UI checks the code
+// exists; the tenant itself travels in the X-Institution-Code header and,
+// after login, inside the JWT)
 app.post('/api/institution', async (req, res) => {
   try {
     await getTenantPool(req.body.code);           // throws if invalid
-    req.session.tenantCode = req.body.code;       // store tenant context
-    req.session.save(err => {
-      if (err) {
-        console.error('Session save error:', err);
-        return res.status(500).send('Session error');
-      }
-      res.sendStatus(200);
-    });
+    res.sendStatus(200);
   } catch {
     res.status(404).send('Invalid institution code');
   }
