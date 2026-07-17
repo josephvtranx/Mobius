@@ -134,9 +134,9 @@ Every item verified unreferenced. Procedure for each: delete → `npm run build`
 
 ---
 
-## Phase 2 — Fix known bugs & inconsistencies
+## Phase 2 — Fix known bugs & inconsistencies ✅ (done 2026-07-17)
 
-Each fix should add/extend a Phase 0 test that pins the corrected behavior.
+Each fix should add/extend a Phase 0 test that pins the corrected behavior. **All tasks below landed (tests 20 → 27, all green).** Notes: 2.4's RoleSelect tile was *relabeled* to "Staff" rather than deleted (it always submitted staff; staff still need a registration path). 2.7 resolved by adding `token_version` + `password_updated_at` to schema v2 `users`. Signup's staff/instructor inserts were aligned to v2 columns so the 201 path is testable; the student/guardian signup path stays v1-shaped until Phase 7.4.
 
 | # | Task | Risk | Effort |
 |---|---|---|---|
