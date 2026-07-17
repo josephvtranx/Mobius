@@ -30,6 +30,7 @@ import sessionRoutes from './routes/sessionRoutes.js';
 import walletRoutes from './routes/walletRoutes.js';
 import rescheduleRoutes from './routes/rescheduleRoutes.js';
 import instructorCalendarRoutes from './routes/instructorCalendarRoutes.js';
+import bookingRoutes from './routes/bookingRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { toUtcIso } from './lib/time.js';
 
@@ -157,6 +158,7 @@ app.use('/api/classes', classRoutes);           // schema-v2 domain (spec 03) �
 app.use('/api/sessions', sessionRoutes);        // schema-v2 domain (spec 04/06/07) — Phase 7.2/7.3
 app.use('/api/wallets', walletRoutes);          // schema-v2 domain (spec 04) — Phase 7.2
 app.use('/api/reschedule-requests', rescheduleRoutes);   // schema-v2 domain (spec 07) — Phase 7.3
+app.use('/api/bookings', bookingRoutes);                 // schema-v2 domain (spec 03 SCH-4) — self-serve 1:1 booking
 app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07) — coexists with the legacy router below
 app.use('/api/class-sessions', classSessionRoutes);  // legacy v1 model — replaced by Phase 7.x slices
 app.use('/api/class-series', classSeriesRoutes);     // legacy v1 model — replaced by Phase 7.x slices

@@ -52,7 +52,7 @@ export async function runRequestDeadlines(db, now = DateTime.utc().toISO()) {
     escalated++;
   }
 
-  // (b) hard stop: the Window before the original session closed unresolved
+  // (b) hard stop: the Window before the original session closed unresolved (RSC-1)
   const windowCloseCutoff = DateTime.fromISO(now).plus({ hours: settings.reschedule_window_hours }).toISO();
   const { rows: closing } = await db.query(
     `SELECT r.request_id, r.hold_id, r.session_id, h.held_for_student_id, cs.starts_at
@@ -77,6 +77,63 @@ export async function runRequestDeadlines(db, now = DateTime.utc().toISO()) {
         eventType: 'reschedule_expired', recipientUserIds: recipients,
         subjectType: 'reschedule_request', subjectId: row.request_id,
         payload: { session_id: row.session_id, original_starts_at: row.starts_at }
+      });
+    }
+    expired++;
+  }
+  return { escalated, expired };
+}
+
+// SCH-4 booking deadlines: instructor silence past the hold TTL escalates to
+// staff (ASSUMPTION[US-8]); a booking still pending when its requested slot
+// arrives is dead — hold expired, pending class removed, family notified.
+export async function runBookingDeadlines(db, now = DateTime.utc().toISO()) {
+  // (a) escalation: pending bookings whose hold has lapsed
+  const { rows: stale } = await db.query(
+    `SELECT c.class_id, h.held_for_student_id
+       FROM classes c JOIN slot_holds h ON h.hold_id = c.booking_hold_id
+      WHERE c.status = 'pending'
+        AND (h.status = 'expired' OR (h.status = 'active' AND h.expires_at < $1))`, [now]);
+  let escalated = 0;
+  for (const row of stale) {
+    const { rows: openTask } = await db.query(
+      `SELECT 1 FROM staff_tasks
+        WHERE kind = 'booking_escalation' AND subject_type = 'class'
+          AND subject_id = $1 AND status IN ('open','in_progress')`, [row.class_id]);
+    if (!openTask.length) {
+      await db.query(
+        `INSERT INTO staff_tasks (kind, subject_type, subject_id, details)
+         VALUES ('booking_escalation','class',$1,$2)`,
+        [row.class_id, { student_id: row.held_for_student_id }]);
+      if (row.held_for_student_id) {
+        const recipients = await familyRecipients(db, row.held_for_student_id);
+        await logNotifications(db, {
+          eventType: 'booking_escalated', recipientUserIds: recipients,
+          subjectType: 'class', subjectId: row.class_id,
+          payload: { message: 'No instructor response yet — academy staff are following up' }
+        });
+      }
+      escalated++;
+    }
+  }
+
+  // (b) expiry: the requested moment arrived with the booking unresolved
+  const { rows: dead } = await db.query(
+    `SELECT c.class_id, c.booking_hold_id, h.held_for_student_id, h.starts_at
+       FROM classes c JOIN slot_holds h ON h.hold_id = c.booking_hold_id
+      WHERE c.status = 'pending' AND h.starts_at <= $1`, [now]);
+  let expired = 0;
+  for (const row of dead) {
+    await db.query(
+      `UPDATE slot_holds SET status = 'expired' WHERE hold_id = $1 AND status IN ('active')`,
+      [row.booking_hold_id]);
+    await db.query(`DELETE FROM classes WHERE class_id = $1`, [row.class_id]);
+    if (row.held_for_student_id) {
+      const recipients = await familyRecipients(db, row.held_for_student_id);
+      await logNotifications(db, {
+        eventType: 'booking_expired', recipientUserIds: recipients,
+        subjectType: 'class', subjectId: row.class_id,
+        payload: { starts_at: row.starts_at }
       });
     }
     expired++;

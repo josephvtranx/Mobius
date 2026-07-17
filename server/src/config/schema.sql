@@ -207,7 +207,9 @@ CREATE TABLE classes (
   recurrence_rule     JSONB,          -- byday/time pairs; RRULE-like for custom
   starts_on           DATE NOT NULL,
   ends_on             DATE,           -- NULL = open-ended (rolling session materialization)
-  status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','ended','terminated')),
+  -- 'pending' = self-serve one-off booking awaiting instructor response (SCH-4);
+  -- invisible to catalog/gates/committed-math, which all filter status='active'
+  status              TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('pending','active','ended','terminated')),
   default_room_id     INT REFERENCES rooms(room_id),
   created_by          INT NOT NULL REFERENCES users(user_id),
   created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -322,6 +324,11 @@ CREATE TABLE slot_holds (
 CREATE UNIQUE INDEX uq_holds_instructor_slot ON slot_holds (instructor_id, starts_at)
   WHERE status = 'active';
 CREATE INDEX idx_holds_expiry ON slot_holds (expires_at) WHERE status = 'active';
+
+-- (SCH-4) a pending self-serve booking class points at its slot hold — the
+-- hold carries the exact requested times until acceptance creates the session.
+-- Added here (not in the classes DDL above) because slot_holds is defined later.
+ALTER TABLE classes ADD COLUMN booking_hold_id UUID REFERENCES slot_holds(hold_id);
 
 CREATE TABLE reschedule_requests (
   request_id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -525,6 +532,9 @@ CREATE TABLE institution_settings (
   low_balance_notify_runway_sessions INT NOT NULL DEFAULT 2   CHECK (low_balance_notify_runway_sessions > 0),
   instructor_response_window_hours   INT NOT NULL DEFAULT 24  CHECK (instructor_response_window_hours > 0),
   self_serve_booking_enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+  -- (SCH-4) academy-wide 1:1 rate for self-serve one-off bookings; the
+  -- per-instructor/subject pricing table arrives with the Top-Up spec
+  default_one_on_one_credit_cost     INT NOT NULL DEFAULT 5 CHECK (default_one_on_one_credit_cost >= 0),
   group_catalog_visible              BOOLEAN NOT NULL DEFAULT TRUE,
   session_generation_horizon_weeks   INT NOT NULL DEFAULT 8   CHECK (session_generation_horizon_weeks > 0),
   updated_by                         INT REFERENCES users(user_id),
