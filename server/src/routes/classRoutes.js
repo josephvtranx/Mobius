@@ -1,7 +1,8 @@
 // Classes domain (schema v2) — spec 03: SCH-1 create, SCH-2 roster gates,
-// SCH-3 catalog + membership requests, SCH-6 end/terminate.
+// SCH-3 catalog + membership requests, SCH-5 series-level schedule edits,
+// SCH-6 end/terminate; plus BIL-3 price changes (spec 04).
 // Deferred to later slices: SCH-4 self-serve booking (needs holds, spec 07),
-// SCH-5 recurrence edits, ranked instructor picker, part-time time requests.
+// ranked instructor picker, part-time time requests, custom recurrence.
 import express from 'express';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';
@@ -387,6 +388,110 @@ router.post('/membership-requests/:requestId/resolve', authenticateToken, author
     await client.query('ROLLBACK');
     if (err.code === '23505') {
       return res.status(409).json({ code: 'ALREADY_ENROLLED', message: 'Student already has an active enrollment in this class' });
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// SCH-5 — series-level schedule change, future-only (INV-4): scheduled
+// sessions on/after the effective date are regenerated on the new pattern;
+// completed/past sessions are untouched. Conflicts re-check via the calendar
+// constraints (409 re-offers with a full rollback).
+// ---------------------------------------------------------------------------
+router.patch('/:id/schedule', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const cls = await loadClass(req.db, req.params.id);
+  if (!cls) return res.status(404).json({ message: 'Class not found' });
+  if (cls.status !== 'active') return res.status(400).json({ message: `Class is ${cls.status}` });
+  if (cls.recurrence === 'none') return res.status(400).json({ message: 'One-off classes have no series to edit' });
+
+  const { recurrence = cls.recurrence, recurrence_rule, effective_from } = req.body;
+  const newTz = recurrence_rule?.timezone;
+  if (!effective_from || !newTz) {
+    return res.status(400).json({ message: 'effective_from and recurrence_rule { timezone, byday } are required' });
+  }
+  const effective = DateTime.fromISO(effective_from, { zone: newTz });
+  if (!effective.isValid) return res.status(400).json({ message: `invalid effective_from: ${effective_from}` });
+  if (effective.startOf('day') <= DateTime.now().setZone(newTz).startOf('day')) {
+    return res.status(400).json({ message: 'effective_from must be a future date (series changes are future-only, INV-4)' });
+  }
+  // pg returns DATE columns as JS Dates; materializeOccurrences takes ISO strings
+  const endsOnIso = cls.ends_on == null ? null
+    : (typeof cls.ends_on === 'string' ? cls.ends_on : DateTime.fromJSDate(cls.ends_on).toISODate());
+  if (endsOnIso && effective_from > endsOnIso) {
+    return res.status(400).json({ message: 'effective_from is after the class end date' });
+  }
+
+  const settings = await getSettings(req.db);
+  let occurrences;
+  try {
+    occurrences = materializeOccurrences({
+      recurrence, recurrenceRule: recurrence_rule, startsOn: effective_from,
+      endsOn: endsOnIso, horizonWeeks: settings.session_generation_horizon_weeks
+    });
+  } catch (err) {
+    if (err instanceof RecurrenceError) return res.status(400).json({ message: err.message });
+    throw err;
+  }
+  if (occurrences.length === 0) return res.status(400).json({ message: 'the new pattern produces no sessions in the window' });
+
+  // the OLD rule's timezone governs which local day existing sessions fall on
+  const oldTz = cls.recurrence_rule?.timezone ?? 'utc';
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rowCount: removed } = await client.query(
+      `DELETE FROM class_sessions
+        WHERE class_id = $1 AND status = 'scheduled'
+          AND (starts_at AT TIME ZONE $3)::date >= $2::date`,
+      [cls.class_id, effective_from, oldTz]
+    );
+    for (const occ of occurrences) {
+      await client.query(
+        `INSERT INTO class_sessions (class_id, instructor_id, room_id, starts_at, ends_at)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [cls.class_id, cls.instructor_id, cls.default_room_id, occ.startsAt, occ.endsAt]
+      );
+    }
+    await client.query(
+      `UPDATE classes SET recurrence = $1, recurrence_rule = $2 WHERE class_id = $3`,
+      [recurrence, recurrence_rule, cls.class_id]
+    );
+
+    // SCH-5: enrolled families + instructor get the old→new pattern diff
+    const payload = {
+      old: { recurrence: cls.recurrence, recurrence_rule: cls.recurrence_rule },
+      new: { recurrence, recurrence_rule },
+      effective_from, sessions_removed: removed, sessions_created: occurrences.length
+    };
+    const { rows: enrolled } = await client.query(
+      `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [cls.class_id]);
+    for (const { student_id } of enrolled) {
+      const recipients = await familyRecipients(client, student_id);
+      await logNotifications(client, {
+        eventType: 'schedule_changed', recipientUserIds: recipients,
+        subjectType: 'class', subjectId: cls.class_id, payload
+      });
+    }
+    await logNotifications(client, {
+      eventType: 'schedule_changed', recipientUserIds: [cls.instructor_id],
+      subjectType: 'class', subjectId: cls.class_id, payload
+    });
+
+    await client.query('COMMIT');
+    res.json({ class_id: cls.class_id, effective_from, sessions_removed: removed, sessions_created: occurrences.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (isCalendarConflict(err)) {
+      return res.status(409).json({
+        message: 'Scheduling conflict — the instructor or room is already booked in that window',
+        detail: err.detail ?? null
+      });
+    }
+    if (err.code === '23503') {
+      return res.status(409).json({ message: 'Sessions on/after the effective date already have attendance records' });
     }
     throw err;
   } finally {

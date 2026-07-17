@@ -320,3 +320,103 @@ describe('SCH-6 — end and terminate', () => {
     expect(reTerm.status).toBe(400);
   });
 });
+
+describe('SCH-5 — series-level schedule change', () => {
+  let classS; // Tue/Thu 13:00–14:00 PT, Aug 4–28 → 8 sessions
+
+  it('regenerates only sessions on/after the effective date, with the old→new diff notice', async () => {
+    const created = await staff.agent.post('/api/classes').set(staff.auth).send({
+      class_type: 'group', subject_id: 1, instructor_id: 2, student_limit: 4,
+      session_credit_cost: 5, recurrence: 'weekly',
+      recurrence_rule: { timezone: TZ, byday: [
+        { day: 'tue', start: '13:00', end: '14:00' },
+        { day: 'thu', start: '13:00', end: '14:00' }
+      ] },
+      starts_on: '2026-08-04', ends_on: '2026-08-28'
+    });
+    expect(created.status).toBe(201);
+    expect(created.body.sessions_created).toBe(8);
+    classS = created.body.class;
+    await staff.agent.post(`/api/classes/${classS.class_id}/enrollments`)
+      .set(staff.auth).send({ student_id: 3 }).expect(201);
+
+    const before = await staff.agent.get(`/api/classes/${classS.class_id}`).set(staff.auth);
+    const keptIds = before.body.sessions.slice(0, 4).map(s => s.session_id); // Aug 4, 6, 11, 13
+
+    const res = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
+      .set(staff.auth).send({
+        recurrence_rule: { timezone: TZ, byday: [{ day: 'fri', start: '13:00', end: '14:00' }] },
+        effective_from: '2026-08-14'
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.sessions_removed).toBe(4); // Aug 18, 20, 25, 27
+    expect(res.body.sessions_created).toBe(3); // Fri Aug 14, 21, 28
+
+    const after = await staff.agent.get(`/api/classes/${classS.class_id}`).set(staff.auth);
+    expect(after.body.sessions.length).toBe(7);
+    expect(after.body.sessions.slice(0, 4).map(s => s.session_id)).toEqual(keptIds); // history untouched
+    expect(after.body.recurrence_rule.byday).toEqual([{ day: 'fri', start: '13:00', end: '14:00' }]);
+
+    // diff notice: enrolled family (student 3, no guardians seeded) + instructor
+    const { rows: notices } = await env.tenantDb.query(
+      `SELECT recipient_user_id, payload FROM notification_log
+        WHERE event_type = 'schedule_changed' AND subject_id = $1
+        ORDER BY recipient_user_id`, [classS.class_id]);
+    expect(notices.map(n => n.recipient_user_id)).toEqual([2, 3]);
+    expect(notices[0].payload.old.recurrence_rule.byday.length).toBe(2);
+    expect(notices[0].payload.new.recurrence_rule.byday.length).toBe(1);
+  });
+
+  it('re-checks conflicts and rolls back fully on 409 (INV-3 re-offer)', async () => {
+    // Mon 17:30 PT collides with classA's kept Mon Aug 10 17:00–18:30 session
+    const res = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
+      .set(staff.auth).send({
+        recurrence_rule: { timezone: TZ, byday: [{ day: 'mon', start: '17:30', end: '18:00' }] },
+        effective_from: '2026-08-05'
+      });
+    expect(res.status).toBe(409);
+    expect(res.body.message).toContain('conflict');
+
+    // rollback left the Friday schedule from the previous test intact
+    const after = await staff.agent.get(`/api/classes/${classS.class_id}`).set(staff.auth);
+    expect(after.body.sessions.length).toBe(7);
+    expect(after.body.recurrence_rule.byday).toEqual([{ day: 'fri', start: '13:00', end: '14:00' }]);
+  });
+
+  it('rejects one-offs, past effective dates, invalid rules, and inactive classes', async () => {
+    const oneOff = await staff.agent.post('/api/classes').set(staff.auth).send({
+      class_type: 'one_on_one', subject_id: 1, instructor_id: 2, student_limit: 1,
+      session_credit_cost: 5, recurrence: 'none', starts_on: '2026-09-10',
+      sessions: [{ starts_at: '2026-09-10T20:00:00.000Z', ends_at: '2026-09-10T21:00:00.000Z' }]
+    });
+    expect(oneOff.status).toBe(201);
+    const newRule = { timezone: TZ, byday: [{ day: 'mon', start: '09:00', end: '10:00' }] };
+
+    const noSeries = await staff.agent.patch(`/api/classes/${oneOff.body.class.class_id}/schedule`)
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-09-15' });
+    expect(noSeries.status).toBe(400);
+    expect(noSeries.body.message).toContain('series');
+
+    const past = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-07-01' });
+    expect(past.status).toBe(400);
+    expect(past.body.message).toContain('future');
+
+    const badRule = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
+      .set(staff.auth).send({
+        recurrence_rule: { timezone: TZ, byday: [{ day: 'xyz', start: '09:00', end: '10:00' }] },
+        effective_from: '2026-08-20'
+      });
+    expect(badRule.status).toBe(400);
+
+    const tooLate = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-09-15' });
+    expect(tooLate.status).toBe(400);
+    expect(tooLate.body.message).toContain('end date');
+
+    const ended = await staff.agent.patch(`/api/classes/${classA.class_id}/schedule`)
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-08-20' });
+    expect(ended.status).toBe(400);
+    expect(ended.body.message).toContain('ended');
+  });
+});
