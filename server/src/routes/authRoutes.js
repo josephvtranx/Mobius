@@ -122,4 +122,8 @@ router.post('/register', roleBasedValidation, signup);
 router.get('/verify', verifyTokenHandler);
 router.post('/refresh-token', refreshTokenValidation, validateRequest, refreshToken);
 
+// Authenticated routes (mounted in MODERNIZATION 2.5)
+router.post('/change-password', authenticateToken, changePasswordValidation, validateRequest, changePassword);
+router.post('/logout', authenticateToken, logout);
+
 export default router; 

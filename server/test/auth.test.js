@@ -1,10 +1,9 @@
-// Characterization tests (MODERNIZATION 0.2): pin CURRENT auth behavior verbatim,
-// including known quirks, so refactors can prove they changed nothing:
-//  - signup returns `token` (not `accessToken`) — quirk pinned until Phase 2.2
+// Characterization tests (MODERNIZATION 0.2) + Phase 2 fix coverage.
+// Remaining pinned quirks:
 //  - validation errors omit `field` (express-validator v7 renamed .param → .path,
 //    validateRequest still reads .param)
-//  - signup's success path currently 400s against schema v2 (v1 columns) — drift
-//    documented in MODERNIZATION Phase 7; the transaction rollback is what's pinned
+//  - student signup still 400s against schema v2 (guardian model changed — Phase 7.4);
+//    the transaction rollback is what's pinned
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
@@ -169,9 +168,6 @@ describe('POST /api/auth/refresh-token', () => {
   });
 });
 
-// Kept last in the file: signup's early returns leave a dangling BEGIN on the
-// pooled connection (bug logged as MODERNIZATION 2.6) which can taint later
-// queries on the same connection.
 describe('POST /api/auth/register (signup)', () => {
   const staffPayload = {
     name: 'New Staff',
@@ -195,17 +191,143 @@ describe('POST /api/auth/register (signup)', () => {
     expect(rows[0].n).toBe(1);
   });
 
-  it('rolls back the whole transaction when a role insert fails (v1 code vs v2 schema drift)', async () => {
-    // The users INSERT succeeds against schema v2, but the staff INSERT still
-    // sends the removed v1 `age` column → the role-specific catch wraps it as a
-    // 400 'Error creating staff record', and the ROLLBACK must erase the user
-    // row. Flips to 201 when Phase 7 aligns signup with v2 — update this test then.
+  it('creates a staff account: 201, accessToken (2.2), 12-round hash (2.1), committed (2.6)', async () => {
+    // Runs right after the duplicate-email early return on the same pool —
+    // before the 2.6 fix that early return left a dangling BEGIN and this
+    // user would have been trapped in an uncommitted transaction.
     const agent = await tenantAgent();
     const res = await agent.post('/api/auth/register').send(staffPayload);
-    expect(res.status).toBe(400);
-    expect(res.body.message).toBe('Error creating staff record');
+    expect(res.status).toBe(201);
+    expect(res.body.message).toBe('User created successfully');
+    expect(res.body.accessToken).toBeTypeOf('string'); // was `token` pre-2.2
+    expect(res.body.token).toBeUndefined();
+    expect(res.body.refreshToken).toBeTypeOf('string');
+    expect(res.body.user).toMatchObject({ email: staffPayload.email, role: 'staff' });
+
+    // asserted through a SEPARATE connection (env.tenantDb) — proves the COMMIT landed
     const { rows } = await env.tenantDb.query(
-      'SELECT count(*)::int AS n FROM users WHERE email = $1', [staffPayload.email]);
+      `SELECT u.password_hash, s.department FROM users u
+       JOIN staff s ON s.staff_id = u.user_id WHERE u.email = $1`, [staffPayload.email]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].password_hash).toMatch(/^\$2[aby]\$12\$/); // 12 rounds via hashPassword
+    expect(rows[0].department).toBe('Ops');
+  });
+
+  it('rolls back the whole transaction when a role insert fails (student path — Phase 7.4 drift)', async () => {
+    // The users INSERT succeeds against schema v2, but the guardian INSERT
+    // still uses the v1 contact-only guardian shape → 400, and the ROLLBACK
+    // must erase the user row. Flips when Phase 7.4 rebuilds guardian signup.
+    const agent = await tenantAgent();
+    const res = await agent.post('/api/auth/register').send({
+      name: 'New Student', email: 'new-student@test.com', password: 'Password123!',
+      role: 'student', age: 15, grade: 9, gender: 'other', school: 'Test High',
+      guardians: [{ name: 'Parent', phone: '555-0100', relationship: 'parent' }]
+    });
+    expect(res.status).toBe(400);
+    const { rows } = await env.tenantDb.query(
+      'SELECT count(*)::int AS n FROM users WHERE email = $1', ['new-student@test.com']);
     expect(rows[0].n).toBe(0);
+  });
+});
+
+describe('POST /api/auth/change-password (mounted in 2.5)', () => {
+  // uses the staff account created by the signup test above
+  const email = 'new-staff@test.com';
+  const oldPassword = 'Password123!';
+  const newPassword = 'Fresh$Word99';
+
+  async function loginAgent(pw) {
+    const agent = await tenantAgent();
+    const res = await agent.post('/api/auth/login').send({ email, password: pw });
+    return { agent, res };
+  }
+
+  it('401s a wrong current password', async () => {
+    const { agent, res } = await loginAgent(oldPassword);
+    const out = await agent.post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${res.body.accessToken}`)
+      .send({ currentPassword: 'Nope-Wrong1!', newPassword });
+    expect(out.status).toBe(401);
+    expect(out.body).toEqual({ message: 'Current password is incorrect' });
+  });
+
+  it('400s a weak new password', async () => {
+    const { agent, res } = await loginAgent(oldPassword);
+    const out = await agent.post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${res.body.accessToken}`)
+      .send({ currentPassword: oldPassword, newPassword: 'alllowercase1' });
+    expect(out.status).toBe(400);
+    expect(out.body.message).toBe('Password requirements not met');
+  });
+
+  it('changes the password, stores history, and invalidates the old one', async () => {
+    const { agent, res } = await loginAgent(oldPassword);
+    const out = await agent.post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${res.body.accessToken}`)
+      .send({ currentPassword: oldPassword, newPassword });
+    expect(out.status).toBe(200);
+    expect(out.body).toEqual({ message: 'Password changed successfully' });
+
+    const oldLogin = await loginAgent(oldPassword);
+    expect(oldLogin.res.status).toBe(401);
+    const newLogin = await loginAgent(newPassword);
+    expect(newLogin.res.status).toBe(200);
+
+    const { rows } = await env.tenantDb.query(
+      `SELECT count(*)::int AS n FROM password_history ph
+       JOIN users u ON u.user_id = ph.user_id WHERE u.email = $1`, [email]);
+    expect(rows[0].n).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects reusing a recent password (history check with db arg — the 2.5 bug)', async () => {
+    const { agent, res } = await loginAgent(newPassword);
+    const out = await agent.post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${res.body.accessToken}`)
+      .send({ currentPassword: newPassword, newPassword });
+    expect(out.status).toBe(400);
+    expect(out.body.message).toContain('used recently');
+  });
+});
+
+describe('POST /api/auth/logout (mounted in 2.5; token_version now in schema — 2.7)', () => {
+  it('bumps token_version so old refresh tokens 401', async () => {
+    const agent = await tenantAgent();
+    const login = await agent.post('/api/auth/login')
+      .send({ email: 'new-staff@test.com', password: 'Fresh$Word99' });
+    expect(login.status).toBe(200);
+
+    const out = await agent.post('/api/auth/logout')
+      .set('Authorization', `Bearer ${login.body.accessToken}`);
+    expect(out.status).toBe(200);
+    expect(out.body).toEqual({ message: 'Logged out successfully' });
+
+    const refresh = await agent.post('/api/auth/refresh-token')
+      .send({ refreshToken: login.body.refreshToken });
+    expect(refresh.status).toBe(401);
+    expect(refresh.body).toEqual({ message: 'Token has been invalidated' });
+  });
+});
+
+describe('GET /api/users/all role gate (2.4: admin → staff)', () => {
+  it('200s for staff, 403s for a student', async () => {
+    const agent = await tenantAgent();
+    const staffLogin = await agent.post('/api/auth/login')
+      .send({ email: SEED_USER.email, password: SEED_USER.password });
+    const ok = await agent.get('/api/users/all')
+      .set('Authorization', `Bearer ${staffLogin.body.accessToken}`);
+    expect(ok.status).toBe(200);
+    expect(Array.isArray(ok.body)).toBe(true);
+
+    // craft a student directly (student signup is Phase 7.4) + a signed JWT
+    await env.tenantDb.query(
+      `INSERT INTO users (password_hash, name, email, role) VALUES ('h','Stu','stu-gate@test.com','student')`);
+    const { rows } = await env.tenantDb.query(
+      `SELECT user_id FROM users WHERE email = 'stu-gate@test.com'`);
+    const studentToken = jwt.sign(
+      { userId: rows[0].user_id, role: 'student', email: 'stu-gate@test.com' },
+      process.env.JWT_SECRET, { expiresIn: '5m' });
+    const denied = await agent.get('/api/users/all')
+      .set('Authorization', `Bearer ${studentToken}`);
+    expect(denied.status).toBe(403);
   });
 });

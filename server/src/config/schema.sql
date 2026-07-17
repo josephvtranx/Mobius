@@ -32,6 +32,8 @@ CREATE TABLE users (
   is_active       BOOLEAN NOT NULL DEFAULT TRUE,
   last_login      TIMESTAMPTZ,
   profile_pic_url TEXT,
+  token_version   INT NOT NULL DEFAULT 0,   -- bumped on logout/password change to invalidate refresh tokens
+  password_updated_at TIMESTAMPTZ,          -- set by change-password; used by password-expiry checks
   created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

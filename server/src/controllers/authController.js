@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { generateTokens, verifyAccessToken, verifyRefreshToken } from '../helpers/authHelpers.js';
+import { generateTokens, verifyAccessToken, verifyRefreshToken, hashPassword } from '../helpers/authHelpers.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
 
@@ -97,8 +97,8 @@ export const signup = async (req, res) => {
             major           // for instructors
         } = req.body;
 
-        // Start transaction
-        await client.query('BEGIN');
+        // Validate BEFORE opening the transaction — the early returns below must
+        // not leave a dangling BEGIN on the pooled connection (MODERNIZATION 2.6)
 
         // Check if email already exists
         const emailCheck = await client.query(
@@ -143,9 +143,11 @@ export const signup = async (req, res) => {
             }
         }
 
-        // Hash password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        // Hash password (12 rounds via shared helper — MODERNIZATION 2.1)
+        const hashedPassword = await hashPassword(password);
+
+        // Start transaction (validation is done; every path from here commits or rolls back)
+        await client.query('BEGIN');
 
         // Insert user
         const userResult = await client.query(
@@ -227,15 +229,16 @@ export const signup = async (req, res) => {
             }
         } else if (role === 'instructor') {
             try {
+                // schema v2: instructors no longer store age (date_of_birth exists but
+                // is not collected by this form)
                 await client.query(
                     `INSERT INTO instructors (
                         instructor_id,
-                        age,
                         gender,
                         college_attended,
                         major
-                    ) VALUES ($1, $2, $3, $4, $5)`,
-                    [user.user_id, age, gender, college_attended, major]
+                    ) VALUES ($1, $2, $3, $4)`,
+                    [user.user_id, gender, college_attended, major]
                 );
             } catch (instructorError) {
                 console.error('Instructor creation error:', instructorError);
@@ -250,6 +253,8 @@ export const signup = async (req, res) => {
             }
         } else if (role === 'staff') {
             try {
+                // schema v2: staff no longer store age (date_of_birth exists but is
+                // not collected by this form)
                 await client.query(
                     `INSERT INTO staff (
                         staff_id,
@@ -257,16 +262,14 @@ export const signup = async (req, res) => {
                         employment_status,
                         salary,
                         hourly_rate,
-                        age,
                         gender
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    ) VALUES ($1, $2, $3, $4, $5, $6)`,
                     [
                         user.user_id,
                         department,
                         employment_status || 'full_time',
                         salary,
                         hourly_rate,
-                        age,
                         gender
                     ]
                 );
@@ -289,10 +292,10 @@ export const signup = async (req, res) => {
         // Generate tokens
         const { accessToken, refreshToken } = generateTokens(user);
 
-        // Send response
+        // Send response (accessToken — was `token`, standardized with login; MODERNIZATION 2.2)
         res.status(201).json({
             message: 'User created successfully',
-            token: accessToken,
+            accessToken,
             refreshToken,
             user: {
                 user_id: user.user_id,
@@ -595,17 +598,16 @@ export const changePassword = async (req, res) => {
             });
         }
 
-        // Check if password was used before
-        const historyCheck = await checkPasswordHistory(userId, newPassword);
+        // Check if password was used before (helpers take db as first arg)
+        const historyCheck = await checkPasswordHistory(req.db, userId, newPassword);
         if (!historyCheck.isValid) {
             return res.status(400).json({
                 message: historyCheck.error
             });
         }
 
-        // Hash new password
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        // Hash new password (12 rounds via shared helper — MODERNIZATION 2.1)
+        const hashedPassword = await hashPassword(newPassword);
 
         // Start transaction
         const client = await req.db.connect();
@@ -622,8 +624,8 @@ export const changePassword = async (req, res) => {
                 [hashedPassword, userId]
             );
 
-            // Add to password history
-            await addToPasswordHistory(userId, hashedPassword);
+            // Add to password history (on the transaction client, so it rolls back together)
+            await addToPasswordHistory(client, userId, hashedPassword);
 
             await client.query('COMMIT');
 
