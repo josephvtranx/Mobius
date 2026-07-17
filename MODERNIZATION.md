@@ -211,18 +211,18 @@ Greenfield rewrite of `server/src/config/schema.sql` + `regestryschema.sql` (no 
 - **2.4** — the `admin` role CHECK removal is already done in v2; only the two route gates + `RoleSelect.jsx` remain.
 - **5.4** — migration tooling baselines on v2 as V1; no live-DB migration path needed.
 
-## Phase 7 — Spec implementation (server/client alignment to v2)
+## Phase 7 — Spec implementation (server alignment to v2) ✅ (server side done 2026-07-17)
 
-The schema now leads the code. Each domain below is its own work package against `docs/mobius-spec/`; all follow the Phase 0 test-first rule. Order roughly: SCH → BIL → RSC → GRD → ACA → jobs.
+The schema now leads the code. Each domain below was its own work package against `docs/mobius-spec/`; all followed the Phase 0 test-first rule (server test suite: 132 tests across 10 files, PGlite-backed). **The server now fully implements the spec bundle.** Client (React) migration to the v2 API is a separate future workstream — the legacy v1 routers stay mounted (annotated in `app.js`) until it lands.
 
-| # | Domain | Spec file | Core surface |
+| # | Domain | Spec file | Landed |
 |---|---|---|---|
-| 7.1 | Scheduling & classes (SCH-1…6) | `03` | class CRUD, session materialization, enrollment gates, catalog, self-serve booking |
-| 7.2 | Billing & wallet (BIL-1…3) | `04` | deduction engine, credit gates, low-balance lifecycle, price changes |
-| 7.3 | Reschedules & cancellations (RSC-1…5) | `07` | the Window, atomic swap, holds, capability matrix |
-| 7.4 | Guardians & accounts (GRD-1…5) | `05` | guardian login/portal, multi-child, purchasing rights |
-| 7.5 | Academic layer (ACA-1…4) | `06` | attendance+notes surface, locks, completion dashboards |
-| 7.6 | Notifications & background jobs | `08` | notification service, sweeper/generator/auto-completer/scanner jobs, dashboard signals |
+| 7.1 | Scheduling & classes (SCH-1…6) | `03` | ✅ 5846ac86 (SCH-1/2/3/6), a88fba56 (SCH-5), e81558fe (SCH-4 + pending classes + 1:1 rate knob) |
+| 7.2 | Billing & wallet (BIL-1…3) | `04` | ✅ 77cc3099 (deduction engine, wallet surface, price changes, job fns) |
+| 7.3 | Reschedules & cancellations (RSC-1…5) | `07` | ✅ 44e94d0b (cancellations + Window), f070252d (RSC-1 holds/atomic swap/open calendar) |
+| 7.4 | Guardians & accounts (GRD-1…5) | `05` | ✅ 8663b6a0 (guardian logins + portal, v2 student signup, can_purchase) |
+| 7.5 | Academic layer (ACA-1…4) | `06` | ✅ 36bc2c62 (notes, INV-5 locks, unlock flow, completion report) |
+| 7.6 | Notifications & background jobs | `08` | ✅ bd41e803 (notification service + prefs, session generator, multi-tenant scheduler, dashboard signals) |
 
 Open items riding along: `ASSUMPTION[ONBOARDING-§8]` reconciliation when the onboarding PDF lands; Top-Up spec (`ASSUMPTION[TOPUP]`) for purchases/bundles + KR-REFUND statutory cash-out (`BIL-OPEN-1`).
 
