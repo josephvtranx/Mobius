@@ -26,6 +26,8 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import registerInstitutionRouter from './routes/registerInstitution.js';
 import classRoutes from './routes/classRoutes.js';
+import sessionRoutes from './routes/sessionRoutes.js';
+import walletRoutes from './routes/walletRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { toUtcIso } from './lib/time.js';
 
@@ -150,14 +152,16 @@ app.use('/api/instructors', instructorRoutes);
 app.use('/api/guardians', guardianRoutes);
 app.use('/api/student-guardians', studentGuardianRoutes);
 app.use('/api/classes', classRoutes);           // schema-v2 domain (spec 03) — Phase 7.1
+app.use('/api/sessions', sessionRoutes);        // schema-v2 domain (spec 04/06) — Phase 7.2
+app.use('/api/wallets', walletRoutes);          // schema-v2 domain (spec 04) — Phase 7.2
 app.use('/api/class-sessions', classSessionRoutes);  // legacy v1 model — replaced by Phase 7.x slices
 app.use('/api/class-series', classSeriesRoutes);     // legacy v1 model — replaced by Phase 7.x slices
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);
 app.use('/api/staff', staffRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/time-packages', timePackageRoutes);
-app.use('/api/payments', paymentRoutes);
+app.use('/api/attendance', attendanceRoutes);     // legacy v1 model (dropped tables) — superseded by /api/sessions (Phase 7.2)
+app.use('/api/time-packages', timePackageRoutes); // legacy v1 model (dropped tables) — superseded by wallets/credit_ledger (Phase 7.2)
+app.use('/api/payments', paymentRoutes);          // partially legacy: credits/packages halves hit dropped v1 tables (→ /api/wallets)
 app.use('/api/upload', uploadRoutes);
 app.use('/api/register-institution', registerInstitutionRouter);
 

@@ -395,6 +395,62 @@ router.post('/membership-requests/:requestId/resolve', authenticateToken, author
 });
 
 // ---------------------------------------------------------------------------
+// BIL-3 — future-only price change (INV-4). Sessions bill at the price row
+// active at their start (deductionEngine.priceAtSessionStart); completed
+// deductions never change. classes.session_credit_cost stays the "current
+// value" for the gate/catalog and is refreshed by billingJobs.runPriceSync.
+// ---------------------------------------------------------------------------
+router.post('/:id/price', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const cls = await loadClass(req.db, req.params.id);
+  if (!cls) return res.status(404).json({ message: 'Class not found' });
+  if (cls.status !== 'active') return res.status(400).json({ message: `Class is ${cls.status}` });
+
+  const { session_credit_cost, effective_from } = req.body;
+  if (!Number.isInteger(session_credit_cost) || session_credit_cost < 0) {
+    return res.status(400).json({ message: 'session_credit_cost must be a non-negative integer' });
+  }
+  try {
+    assertUtcIso(effective_from);
+  } catch {
+    return res.status(400).json({ message: 'effective_from must be a UTC ISO string with Z suffix' });
+  }
+  if (DateTime.fromISO(effective_from) <= DateTime.utc()) {
+    return res.status(400).json({ message: 'effective_from must be in the future (price changes are future-only, INV-4)' });
+  }
+
+  const client = await req.db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO class_price_history (class_id, session_credit_cost, effective_from, set_by)
+       VALUES ($1,$2,$3,$4)`,
+      [cls.class_id, session_credit_cost, effective_from, req.user.user_id]
+    );
+    // BIL-3 AC: every enrolled guardian/student gets exactly one old→new notice
+    const { rows: enrolled } = await client.query(
+      `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [cls.class_id]);
+    for (const { student_id } of enrolled) {
+      const recipients = await familyRecipients(client, student_id);
+      await logNotifications(client, {
+        eventType: 'price_change', recipientUserIds: recipients,
+        subjectType: 'class', subjectId: cls.class_id,
+        payload: { old: cls.session_credit_cost, new: session_credit_cost, effective_from }
+      });
+    }
+    await client.query('COMMIT');
+    res.status(201).json({ class_id: cls.class_id, session_credit_cost, effective_from });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    if (err.code === '23505') {
+      return res.status(409).json({ message: 'A price is already set for that effective time' });
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// ---------------------------------------------------------------------------
 // SCH-6 — end (future-dated) or terminate (immediate)
 // ---------------------------------------------------------------------------
 router.patch('/:id/end', authenticateToken, authorizeRole('staff'), async (req, res) => {
