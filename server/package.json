@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Mobius Learning Management System Backend",
   "type": "module",
-  "main": "src/server.js",
+  "main": "index.js",
   "scripts": {
     "start": "NODE_ENV=development node index.js",
     "start:prod": "NODE_ENV=production node index.js",

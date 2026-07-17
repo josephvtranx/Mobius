@@ -8,7 +8,7 @@ import cors from 'cors';
 import session from 'express-session';
 import bodyParser from 'body-parser';
 
-// Import all routes (as in src/server.js)
+// Import all routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
