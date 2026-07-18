@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/services/api';
 import '../../../css/StudentRoster.css';
 import ProfileCard from '../../../components/ProfileCard';
 
@@ -19,11 +19,7 @@ function StudentRoster() {
         setLoading(true);
         setError(null);
         
-        const response = await axios.get('/api/students/roster', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+        const response = await api.get('/students/roster');
 
         if (!response.data) {
           throw new Error('No data received from server');

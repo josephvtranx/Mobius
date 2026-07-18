@@ -32,13 +32,15 @@ const authService = {
     // Register user with all data in one request
     register: async (userData) => {
         try {
-            // Ensure guardians array exists and has required fields
+            // v2 guardian shape: guardians become logins keyed by email
+            // (email/name/relationship required server-side; phone optional —
+            // never default email to '' or the server validation gets confusing)
             if (userData.role === 'student' && userData.guardians) {
                 userData.guardians = userData.guardians.map(guardian => ({
-                    name: guardian.name || '',
-                    phone: guardian.phone || '',
-                    email: guardian.email || '',
-                    relationship: guardian.relationship || ''
+                    name: guardian.name,
+                    email: guardian.email,
+                    phone: guardian.phone || undefined,
+                    relationship: guardian.relationship
                 }));
             }
 

@@ -58,7 +58,7 @@ const studentService = {
 
     getRoster: async () => {
         try {
-            const response = await api.get('/api/students/roster');
+            const response = await api.get('/students/roster'); // baseURL already includes /api
             return response.data;
         } catch (error) {
             throw error;

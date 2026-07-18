@@ -16,7 +16,7 @@ function StudentRegistration() {
     phone: '',
     role: 'student',
     status: 'enrolled',
-    age: '',
+    date_of_birth: '',
     grade: '',
     gender: '',
     school: '',
@@ -82,7 +82,7 @@ function StudentRegistration() {
         phone: formData.phone,
         role: 'student',
         status: formData.status,
-        age: parseInt(formData.age),
+        date_of_birth: formData.date_of_birth, // v2: replaces stored age
         grade: parseInt(formData.grade),
         gender: formData.gender,
         school: formData.school,
@@ -234,18 +234,15 @@ function StudentRegistration() {
             <div className="form-section">
               <h2>Student Information</h2>
               <div className="form-group">
-                <label htmlFor="age">Age*</label>
+                <label htmlFor="date_of_birth">Date of birth*</label>
                 <input
-                  id="age"
-                  name="age"
-                  type="number"
+                  id="date_of_birth"
+                  name="date_of_birth"
+                  type="date"
                   required
-                  min="5"
-                  max="18"
-                  value={formData.age}
+                  value={formData.date_of_birth}
                   onChange={handleChange}
                   className="form-input"
-                  placeholder="Enter your age"
                 />
               </div>
 
@@ -353,12 +350,11 @@ function StudentRegistration() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor={`guardians[${index}].phone`}>Guardian Phone*</label>
+                    <label htmlFor={`guardians[${index}].phone`}>Guardian Phone</label>
                     <input
                       id={`guardians[${index}].phone`}
                       name={`guardians[${index}].phone`}
                       type="tel"
-                      required
                       value={guardian.phone}
                       onChange={handleChange}
                       className="form-input"
@@ -367,11 +363,12 @@ function StudentRegistration() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor={`guardians[${index}].email`}>Guardian Email</label>
+                    <label htmlFor={`guardians[${index}].email`}>Guardian Email* (their portal login)</label>
                     <input
                       id={`guardians[${index}].email`}
                       name={`guardians[${index}].email`}
                       type="email"
+                      required
                       value={guardian.email}
                       onChange={handleChange}
                       className="form-input"

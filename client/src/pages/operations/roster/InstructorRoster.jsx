@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '@/services/api';
 import '../../../css/InstructorRoster.css';
 import Modal from '../../../components/Modal';
 import SearchableDropdown from '../../../components/SearchableDropdown';
@@ -46,8 +46,8 @@ function InstructorRoster() {
       }
       
       const [availabilityRes, unavailabilityRes] = await Promise.all([
-        axios.get(`/api/instructors/${instructor.instructorId}/availability`),
-        axios.get(`/api/instructors/${instructor.instructorId}/unavailability`)
+        api.get(`/instructors/${instructor.instructorId}/availability`),
+        api.get(`/instructors/${instructor.instructorId}/unavailability`)
       ]);
       
       setAvailabilityData(prev => ({
@@ -66,7 +66,7 @@ function InstructorRoster() {
     const fetchInstructors = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/instructors/roster');
+        const response = await api.get('/instructors/roster');
         console.log('Raw instructor data from backend:', response.data);
         
         const processedData = response.data.map((instructor, index) => {
@@ -98,8 +98,8 @@ function InstructorRoster() {
           if (instructor.instructorId) {
             try {
               const [availabilityRes, unavailabilityRes] = await Promise.all([
-                axios.get(`/api/instructors/${instructor.instructorId}/availability`),
-                axios.get(`/api/instructors/${instructor.instructorId}/unavailability`)
+                api.get(`/instructors/${instructor.instructorId}/availability`),
+                api.get(`/instructors/${instructor.instructorId}/unavailability`)
               ]);
               
               return {
@@ -259,9 +259,9 @@ function InstructorRoster() {
 
   const handleSaveEdit = async (updatedData) => {
     try {
-      await axios.put(`/api/instructors/${updatedData.id}`, updatedData);
+      await api.put(`/instructors/${updatedData.id}`, updatedData);
       // Refresh the data
-      const response = await axios.get('/api/instructors/roster');
+      const response = await api.get('/instructors/roster');
       setInstructors(response.data);
       setEditModal({ open: false, instructor: null });
     } catch (error) {
@@ -291,7 +291,7 @@ function InstructorRoster() {
       
       // Create all availability blocks in parallel
       const promises = blocks.map(block => 
-        axios.post(`/api/instructors/${instructor.instructorId}/availability`, block)
+        api.post(`/instructors/${instructor.instructorId}/availability`, block)
       );
       
       await Promise.all(promises);
@@ -311,7 +311,7 @@ function InstructorRoster() {
         return;
       }
       
-      await axios.put(`/api/instructors/${instructor.instructorId}/availability/${availabilityId}`, availabilityData);
+      await api.put(`/instructors/${instructor.instructorId}/availability/${availabilityId}`, availabilityData);
       await fetchAvailabilityData(instructorId);
       setEditingAvailability(prev => ({ ...prev, [availabilityId]: false }));
     } catch (error) {
@@ -328,7 +328,7 @@ function InstructorRoster() {
         return;
       }
       
-      await axios.delete(`/api/instructors/${instructor.instructorId}/availability/${availabilityId}`);
+      await api.delete(`/instructors/${instructor.instructorId}/availability/${availabilityId}`);
       await fetchAvailabilityData(instructorId);
     } catch (error) {
       console.error('Error deleting availability:', error);
@@ -344,7 +344,7 @@ function InstructorRoster() {
         return;
       }
       
-      await axios.post(`/api/instructors/${instructor.instructorId}/unavailability`, unavailabilityData);
+      await api.post(`/instructors/${instructor.instructorId}/unavailability`, unavailabilityData);
       await fetchAvailabilityData(instructorId);
       setShowAddUnavailability(prev => ({ ...prev, [instructorId]: false }));
     } catch (error) {
@@ -361,7 +361,7 @@ function InstructorRoster() {
         return;
       }
       
-      await axios.delete(`/api/instructors/${instructor.instructorId}/unavailability/${unavailabilityId}`);
+      await api.delete(`/instructors/${instructor.instructorId}/unavailability/${unavailabilityId}`);
       await fetchAvailabilityData(instructorId);
     } catch (error) {
       console.error('Error deleting unavailability:', error);
