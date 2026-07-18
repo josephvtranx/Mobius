@@ -29,6 +29,10 @@ import Testing from './pages/academics/academic-hub/Testing';
 
 // Operations pages
 import Scheduling from './pages/operations/Scheduling';
+import ClassesList from './pages/operations/classes/ClassesList';
+import CreateClass from './pages/operations/classes/CreateClass';
+import ClassDetail from './pages/operations/classes/ClassDetail';
+import SessionAttendance from './pages/operations/classes/SessionAttendance';
 import StudentRoster from './pages/operations/roster/StudentRoster';
 import InstructorRoster from './pages/operations/roster/InstructorRoster';
 import StaffRoster from './pages/operations/roster/StaffRoster';
@@ -159,6 +163,39 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Scheduling />
+                </ProtectedRoute>
+              }
+            />
+            {/* v2 classes domain (template pages — staff-gated) */}
+            <Route
+              path="/operations/classes"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <ClassesList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/classes/new"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <CreateClass />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/classes/:classId"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <ClassDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/classes/:classId/sessions/:sessionId/attendance"
+              element={
+                <ProtectedRoute allowedRoles={['staff', 'instructor']}>
+                  <SessionAttendance />
                 </ProtectedRoute>
               }
             />

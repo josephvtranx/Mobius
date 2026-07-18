@@ -53,6 +53,12 @@ function ExtendedMenu({ variant = 'operations' }) {
         icon: 'fa-regular fa-calendar',
         path: '/operations/scheduling',
         submenu: null,
+        },
+      {
+        label: 'Classes',
+        icon: 'fa-solid fa-chalkboard',
+        path: '/operations/classes',
+        submenu: null,
         }
       ] : [
         {
