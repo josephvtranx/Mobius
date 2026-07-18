@@ -18,7 +18,11 @@ export async function getTenantPool(code) {
 
   const pool = new pg.Pool({
     connectionString: rows[0].conn_string,
-    ssl
+    ssl,
+    // PG_POOL_MAX=1 serializes all queries through one connection — required
+    // for PGlite-backed sandboxes (its socket serves one connection at a time;
+    // extra connects hang). Unset in production (pg default: 10).
+    ...(process.env.PG_POOL_MAX ? { max: Number(process.env.PG_POOL_MAX) } : {})
   });
   tenantPools.set(code, pool);
   return pool;

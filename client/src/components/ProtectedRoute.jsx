@@ -26,11 +26,19 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
                     throw new Error('Invalid token');
                 }
             } catch (error) {
-                console.error('Authentication error:', error);
-                // Clear invalid credentials
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                setIsAuthenticated(false);
+                // Only an explicit auth rejection logs the user out. Transient
+                // failures (timeout, network blip, 5xx) keep the session — the
+                // server still enforces the JWT on every request regardless.
+                const status = error.response?.status;
+                if (status === 401 || error.message === 'No token or user found' || error.message === 'Invalid token') {
+                    console.error('Authentication error:', error);
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setIsAuthenticated(false);
+                } else {
+                    console.warn('Verify check failed transiently — keeping session:', error.message);
+                    setIsAuthenticated(true);
+                }
             } finally {
                 setIsVerifying(false);
             }

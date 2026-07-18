@@ -8,5 +8,7 @@ const ssl = process.env.PGSSLMODE === 'disable' ? false : { rejectUnauthorized: 
 
 export const registryPool = new pg.Pool({
   connectionString: process.env.REGISTRY_URL,   // points to mobius_registry
-  ssl
-}); 
+  ssl,
+  // PG_POOL_MAX=1 for PGlite-backed sandboxes (single-connection socket)
+  ...(process.env.PG_POOL_MAX ? { max: Number(process.env.PG_POOL_MAX) } : {})
+});
