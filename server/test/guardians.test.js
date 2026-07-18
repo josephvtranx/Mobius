@@ -231,3 +231,16 @@ describe('GRD-5 — notification prefs, and the privacy boundary', () => {
     expect(guardianStaff.status).toBe(403);
   });
 });
+
+describe('student schedule (slice-3 endpoint)', () => {
+  it('linked guardians read upcoming sessions; unlinked callers 403', async () => {
+    const res = await staff.agent.get(`/api/students/${ids.studentA}/schedule`).set(authAs(ids.gp1));
+    expect(res.status).toBe(200);
+    expect(res.body.sessions).toHaveLength(2); // the two future fixtures
+    expect(res.body.sessions[0]).toHaveProperty('subject');
+
+    const instructor = await staff.agent.get(`/api/students/${ids.studentA}/schedule`)
+      .set(authAs(ids.instructor));
+    expect(instructor.status).toBe(403);
+  });
+});

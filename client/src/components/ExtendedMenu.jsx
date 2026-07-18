@@ -11,6 +11,28 @@ function ExtendedMenu({ variant = 'operations' }) {
   const [prevVariant, setPrevVariant] = useState(variant);
   const user = authService.getCurrentUser();
   const isStaff = user?.role === 'staff';
+  const role = user?.role;
+
+  // v2 family/instructor links (template-first; per-role, additive)
+  const roleLinks = [];
+  if (role === 'guardian') {
+    roleLinks.push(
+      { label: 'My Children', icon: 'fa-solid fa-house', path: '/portal', submenu: null },
+      { label: 'Class Catalog', icon: 'fa-solid fa-book-open', path: '/catalog', submenu: null }
+    );
+  }
+  if (role === 'student' && user?.user_id) {
+    roleLinks.push(
+      { label: 'My Schedule', icon: 'fa-regular fa-calendar', path: `/family/students/${user.user_id}/schedule`, submenu: null },
+      { label: 'My Record', icon: 'fa-solid fa-book', path: `/family/students/${user.user_id}/record`, submenu: null },
+      { label: 'Class Catalog', icon: 'fa-solid fa-book-open', path: '/catalog', submenu: null }
+    );
+  }
+  if (role === 'instructor') {
+    roleLinks.push(
+      { label: 'Inbox', icon: 'fa-solid fa-inbox', path: '/inbox', submenu: null }
+    );
+  }
   
   // State for active items and open submenus (now an array to track multiple open submenus)
   const [activeMain, setActiveMain] = useState(null);
@@ -47,6 +69,7 @@ function ExtendedMenu({ variant = 'operations' }) {
   // Define menu structures for both variants
   const menuStructures = {
     operations: [
+      ...roleLinks,
       ...(isStaff ? [
       {
         label: 'Scheduling',
@@ -70,6 +93,12 @@ function ExtendedMenu({ variant = 'operations' }) {
         label: 'Reports',
         icon: 'fa-solid fa-chart-line',
         path: '/operations/reports',
+        submenu: null,
+        },
+      {
+        label: 'Requests',
+        icon: 'fa-solid fa-envelope-open-text',
+        path: '/operations/requests',
         submenu: null,
         }
       ] : [

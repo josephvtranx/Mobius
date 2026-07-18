@@ -28,6 +28,20 @@ const sessionServiceV2 = {
         }
     },
 
+    // RSC-1: 1:1 reschedule request (times as UTC ISO-Z; the server holds the
+    // slot and flips the original to reschedule_requested)
+    requestReschedule: async (sessionId, { proposed_starts_at, proposed_ends_at }) => {
+        try {
+            const response = await api.post(`/sessions/${sessionId}/reschedule-request`, {
+                proposed_starts_at, proposed_ends_at
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error requesting reschedule:', error);
+            throw error;
+        }
+    },
+
     // RSC-5: staff cancel — unbound by the Window; status defaults to the
     // never-deduct instructor_cancelled equivalent server-side
     staffCancel: async (sessionId, { status, reason } = {}) => {

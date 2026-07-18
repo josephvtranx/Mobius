@@ -32,6 +32,13 @@ import Scheduling from './pages/operations/Scheduling';
 import ClassesList from './pages/operations/classes/ClassesList';
 import WalletView from './pages/operations/wallets/WalletView';
 import ReportsDashboard from './pages/operations/ReportsDashboard';
+import MembershipRequests from './pages/operations/MembershipRequests';
+import GuardianPortal from './pages/family/GuardianPortal';
+import StudentSchedule from './pages/family/StudentSchedule';
+import StudentRecord from './pages/family/StudentRecord';
+import Catalog from './pages/family/Catalog';
+import BookSession from './pages/family/BookSession';
+import InstructorInbox from './pages/instructor/InstructorInbox';
 import CreateClass from './pages/operations/classes/CreateClass';
 import ClassDetail from './pages/operations/classes/ClassDetail';
 import SessionAttendance from './pages/operations/classes/SessionAttendance';
@@ -201,6 +208,28 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            {/* v2 family surfaces (template pages) */}
+            <Route path="/portal" element={
+              <ProtectedRoute allowedRoles={['guardian']}><GuardianPortal /></ProtectedRoute>
+            } />
+            <Route path="/catalog" element={
+              <ProtectedRoute><Catalog /></ProtectedRoute>
+            } />
+            <Route path="/family/students/:studentId/schedule" element={
+              <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><StudentSchedule /></ProtectedRoute>
+            } />
+            <Route path="/family/students/:studentId/record" element={
+              <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><StudentRecord /></ProtectedRoute>
+            } />
+            <Route path="/family/students/:studentId/book" element={
+              <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><BookSession /></ProtectedRoute>
+            } />
+            <Route path="/inbox" element={
+              <ProtectedRoute allowedRoles={['instructor', 'staff']}><InstructorInbox /></ProtectedRoute>
+            } />
+            <Route path="/operations/requests" element={
+              <ProtectedRoute allowedRoles={['staff']}><MembershipRequests /></ProtectedRoute>
+            } />
             {/* v2 billing + reports (template pages — staff-gated) */}
             <Route
               path="/operations/wallets"

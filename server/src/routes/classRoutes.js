@@ -172,6 +172,23 @@ router.get('/catalog', authenticateToken, async (req, res) => {
   res.json(rows.map(r => ({ ...r, seats_left: Number(r.seats_left), full: Number(r.seats_left) <= 0 })));
 });
 
+// Staff request-resolution list (registered before /:id — same ordering
+// reason as /catalog). The requests themselves are the demand signal (SCH-3);
+// resolution runs the SCH-2 gates via POST /membership-requests/:id/resolve.
+router.get('/membership-requests', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const statuses = String(req.query.status ?? 'pending').split(',');
+  const { rows } = await req.db.query(
+    `SELECT r.*, u.name AS student_name, sub.name AS subject, c.class_type
+       FROM class_membership_requests r
+       JOIN users u ON u.user_id = r.student_id
+       JOIN classes c ON c.class_id = r.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+      WHERE r.status = ANY($1)
+      ORDER BY r.created_at`,
+    [statuses]);
+  res.json(rows);
+});
+
 router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
   const { rows } = await req.db.query(
     `SELECT c.*, s.name AS subject, u.name AS instructor,

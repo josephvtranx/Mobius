@@ -130,6 +130,28 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET / — pending bookings inbox: instructors see their own, staff see all
+// ---------------------------------------------------------------------------
+router.get('/', authenticateToken, async (req, res) => {
+  const isStaff = req.user.role === 'staff';
+  if (!isStaff && req.user.role !== 'instructor') {
+    return res.status(403).json({ message: 'Staff or instructors only' });
+  }
+  const { rows } = await req.db.query(
+    `SELECT c.class_id, c.instructor_id, c.session_credit_cost, c.created_at,
+            sub.name AS subject, h.starts_at, h.ends_at, h.expires_at,
+            h.status AS hold_status, h.held_for_student_id, u.name AS student_name
+       FROM classes c
+       JOIN slot_holds h ON h.hold_id = c.booking_hold_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       LEFT JOIN users u ON u.user_id = h.held_for_student_id
+      WHERE c.status = 'pending' AND ($1 OR c.instructor_id = $2)
+      ORDER BY h.starts_at`,
+    [isStaff, req.user.user_id]);
+  res.json(rows);
+});
+
+// ---------------------------------------------------------------------------
 // POST /:classId/respond — the instructor (or staff, after escalation)
 // accepts or rejects the pending booking
 // ---------------------------------------------------------------------------

@@ -223,3 +223,22 @@ describe('SCH-4 — deadlines (US-8)', () => {
     expect(expNotices.length).toBe(2); // student 3 + guardian 5
   });
 });
+
+describe('pending bookings list (slice-3 endpoint)', () => {
+  it('instructors see their own pending bookings; others scoped out', async () => {
+    const created = await book(authAs(3), { starts_at: at(60), ends_at: at(61) });
+    expect(created.status).toBe(201);
+
+    const own = await staff.agent.get('/api/bookings').set(authAs(2));
+    expect(own.status).toBe(200);
+    expect(own.body.length).toBe(1);
+    expect(own.body[0]).toHaveProperty('student_name');
+    expect(own.body[0]).toHaveProperty('starts_at');
+
+    const other = await staff.agent.get('/api/bookings').set(authAs(7));
+    expect(other.body.length).toBe(0);
+
+    const student = await staff.agent.get('/api/bookings').set(authAs(3));
+    expect(student.status).toBe(403);
+  });
+});

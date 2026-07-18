@@ -146,6 +146,32 @@ router.post('/:id/guardians/:guardianId/make-primary', authenticateToken, author
 });
 
 // ---------------------------------------------------------------------------
+// GET /:id/schedule — upcoming sessions across the student's active
+// enrollments (the family schedule surface; staff/self/linked guardian).
+// ---------------------------------------------------------------------------
+router.get('/:id/schedule', authenticateToken, async (req, res) => {
+  const student = await loadStudent(req.db, req.params.id);
+  if (!student) return res.status(404).json({ message: 'Student not found' });
+  if (!await canActForStudent(req.db, req.user, student.student_id)) {
+    return res.status(403).json({ message: 'Not authorized' });
+  }
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const { rows } = await req.db.query(
+    `SELECT cs.session_id, cs.starts_at, cs.ends_at, cs.status,
+            c.class_id, c.class_type, c.instructor_id, sub.name AS subject
+       FROM enrollments e
+       JOIN classes c ON c.class_id = e.class_id AND c.status = 'active'
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       JOIN class_sessions cs ON cs.class_id = c.class_id
+      WHERE e.student_id = $1 AND e.status = 'active'
+        AND cs.status IN ('scheduled','reschedule_requested')
+        AND cs.starts_at > CURRENT_TIMESTAMP
+      ORDER BY cs.starts_at LIMIT $2`,
+    [student.student_id, limit]);
+  res.json({ student_id: student.student_id, sessions: rows });
+});
+
+// ---------------------------------------------------------------------------
 // GET /:id/record — ACA-2: the session timeline (attendance + note verbatim,
 // latest text with the visible "edited" stamp + edit timestamps). Version
 // PAYLOADS are staff/audit-only; portals see timestamps. A noteless entry

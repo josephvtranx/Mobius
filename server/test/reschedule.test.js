@@ -302,3 +302,21 @@ describe('deadline jobs and hard stops', () => {
     await env.tenantDb.query(`UPDATE institution_settings SET reschedule_window_hours = 24`);
   });
 });
+
+describe('request list (slice-3 endpoint)', () => {
+  it('scopes to the instructor; staff see all; students 403', async () => {
+    // end-state: origC + origD requests are expired
+    const own = await staff.agent.get('/api/reschedule-requests')
+      .query({ status: 'expired' }).set(authAs(2));
+    expect(own.status).toBe(200);
+    expect(own.body.length).toBe(2);
+    expect(own.body[0]).toHaveProperty('student_name');
+
+    const other = await staff.agent.get('/api/reschedule-requests')
+      .query({ status: 'expired' }).set(authAs(7));
+    expect(other.body.length).toBe(0); // not instructor 7's sessions
+
+    const student = await staff.agent.get('/api/reschedule-requests').set(authAs(3));
+    expect(student.status).toBe(403);
+  });
+});

@@ -105,6 +105,41 @@ const classService = {
             console.error('Error updating schedule:', error);
             throw error;
         }
+    },
+
+    // SCH-3: join/leave requests (family-filed, staff-resolved)
+    getMembershipRequests: async (status = 'pending') => {
+        try {
+            const response = await api.get('/classes/membership-requests', { params: { status } });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching membership requests:', error);
+            throw error;
+        }
+    },
+
+    createMembershipRequest: async (classId, { kind, student_id, reason }) => {
+        try {
+            const response = await api.post(`/classes/${classId}/membership-requests`, {
+                kind, student_id, reason
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error creating membership request:', error);
+            throw error;
+        }
+    },
+
+    resolveMembershipRequest: async (requestId, { action, reason, waive_window }) => {
+        try {
+            const response = await api.post(`/classes/membership-requests/${requestId}/resolve`, {
+                action, reason, waive_window
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error resolving membership request:', error);
+            throw error;
+        }
     }
 };
 

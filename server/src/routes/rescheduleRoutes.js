@@ -18,6 +18,30 @@ function isCalendarConflict(err) {
   return err?.code === '23P01' || err?.code === '23505';
 }
 
+// The inbox list: what needs a response. Instructors see their own sessions'
+// requests; staff see all (they act on escalations).
+router.get('/', authenticateToken, async (req, res) => {
+  const isStaff = req.user.role === 'staff';
+  if (!isStaff && req.user.role !== 'instructor') {
+    return res.status(403).json({ message: 'Staff or instructors only' });
+  }
+  const statuses = String(req.query.status ?? 'pending,escalated').split(',');
+  const { rows } = await req.db.query(
+    `SELECT r.request_id, r.status, r.proposed_starts_at, r.proposed_ends_at, r.created_at,
+            cs.session_id, cs.starts_at AS original_starts_at, cs.instructor_id,
+            sub.name AS subject, h.held_for_student_id, u.name AS student_name
+       FROM reschedule_requests r
+       JOIN class_sessions cs ON cs.session_id = r.session_id
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       LEFT JOIN slot_holds h ON h.hold_id = r.hold_id
+       LEFT JOIN users u ON u.user_id = h.held_for_student_id
+      WHERE r.status = ANY($1) AND ($2 OR cs.instructor_id = $3)
+      ORDER BY r.created_at`,
+    [statuses, isStaff, req.user.user_id]);
+  res.json(rows);
+});
+
 router.post('/:id/respond', authenticateToken, async (req, res) => {
   const { action, reason } = req.body;
   if (!['accept', 'reject'].includes(action)) {

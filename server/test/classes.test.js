@@ -321,6 +321,21 @@ describe('SCH-6 — end and terminate', () => {
   });
 });
 
+describe('membership request list (slice-3 endpoint)', () => {
+  it('staff list pending requests with names; non-staff 403', async () => {
+    const res = await staff.agent.get('/api/classes/membership-requests').set(staff.auth);
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeGreaterThanOrEqual(1); // student 6's waitlisted join
+    expect(res.body[0]).toHaveProperty('student_name');
+    expect(res.body[0]).toHaveProperty('subject');
+    expect(res.body[0]).toHaveProperty('is_waitlist');
+
+    const notStaff = await staff.agent.get('/api/classes/membership-requests')
+      .set({ Authorization: `Bearer ${tokenFor(3)}` });
+    expect(notStaff.status).toBe(403);
+  });
+});
+
 describe('SCH-5 — series-level schedule change', () => {
   let classS; // Tue/Thu 13:00–14:00 PT, Aug 4–28 → 8 sessions
 
