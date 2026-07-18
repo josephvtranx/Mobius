@@ -59,6 +59,18 @@ function ExtendedMenu({ variant = 'operations' }) {
         icon: 'fa-solid fa-chalkboard',
         path: '/operations/classes',
         submenu: null,
+        },
+      {
+        label: 'Wallets',
+        icon: 'fa-solid fa-wallet',
+        path: '/operations/wallets',
+        submenu: null,
+        },
+      {
+        label: 'Reports',
+        icon: 'fa-solid fa-chart-line',
+        path: '/operations/reports',
+        submenu: null,
         }
       ] : [
         {

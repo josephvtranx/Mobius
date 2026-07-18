@@ -30,6 +30,8 @@ import Testing from './pages/academics/academic-hub/Testing';
 // Operations pages
 import Scheduling from './pages/operations/Scheduling';
 import ClassesList from './pages/operations/classes/ClassesList';
+import WalletView from './pages/operations/wallets/WalletView';
+import ReportsDashboard from './pages/operations/ReportsDashboard';
 import CreateClass from './pages/operations/classes/CreateClass';
 import ClassDetail from './pages/operations/classes/ClassDetail';
 import SessionAttendance from './pages/operations/classes/SessionAttendance';
@@ -196,6 +198,23 @@ function AppContent() {
               element={
                 <ProtectedRoute allowedRoles={['staff', 'instructor']}>
                   <SessionAttendance />
+                </ProtectedRoute>
+              }
+            />
+            {/* v2 billing + reports (template pages — staff-gated) */}
+            <Route
+              path="/operations/wallets"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <WalletView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/reports"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <ReportsDashboard />
                 </ProtectedRoute>
               }
             />
