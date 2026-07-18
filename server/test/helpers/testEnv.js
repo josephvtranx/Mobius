@@ -10,12 +10,25 @@ import { btree_gist } from '@electric-sql/pglite/contrib/btree_gist';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 import bcrypt from 'bcryptjs';
 import net from 'net';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CONFIG_DIR = path.join(__dirname, '..', '..', 'src', 'config');
+const MIGRATIONS_DIR = path.join(__dirname, '..', '..', 'migrations');
+
+// Replay the up-sections of a migration chain in filename order (ADR-0002:
+// migrations are the single schema source — schema.sql is gone). Fresh
+// ephemeral DBs don't need node-pg-migrate's pgmigrations bookkeeping, and
+// db.exec is much faster than driving the wire protocol per migration.
+function migrationChainSql(dir) {
+  const full = path.join(MIGRATIONS_DIR, dir);
+  return readdirSync(full)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => readFileSync(path.join(full, f), 'utf8').split('-- Down Migration')[0])
+    .join('\n');
+}
 
 export const TEST_CODE = 'TEST01';
 export const SEED_USER = {
@@ -33,9 +46,9 @@ const freePort = () => new Promise((resolve) => {
   });
 });
 
-async function startPg(schemaFile, extensions) {
+async function startPg(migrationsSubdir, extensions) {
   const db = await PGlite.create({ extensions });
-  await db.exec(readFileSync(path.join(CONFIG_DIR, schemaFile), 'utf8'));
+  await db.exec(migrationChainSql(migrationsSubdir));
   const port = await freePort();
   const server = new PGLiteSocketServer({ db, port, host: '127.0.0.1' });
   await server.start();
@@ -43,8 +56,8 @@ async function startPg(schemaFile, extensions) {
 }
 
 export async function startTestEnv() {
-  const registry = await startPg('regestryschema.sql', { citext });
-  const tenant = await startPg('schema.sql', { citext, btree_gist });
+  const registry = await startPg('registry', { citext });
+  const tenant = await startPg('tenant', { citext, btree_gist });
 
   await registry.db.query(
     `INSERT INTO institutions (code, name, conn_string) VALUES ($1, $2, $3)`,

@@ -1,3 +1,9 @@
+-- Up Migration
+-- Baseline: schema v2 verbatim (was src/config/schema.sql — deleted in
+-- MODERNIZATION 5.4; migrations are now the single source of truth).
+-- Applied to every NEW tenant DB; existing v1 production DBs need the
+-- separate v1->v2 data-migration task before this runner touches them.
+
 -- =====================================================================
 -- PostgreSQL Tenant Schema for Mobius — v2 (spec-aligned)
 -- Design doc: docs/schema-v2.md  •  Spec bundle: docs/mobius-spec/
@@ -642,3 +648,6 @@ CREATE TABLE financial_periods (
   is_closed   BOOLEAN NOT NULL DEFAULT FALSE,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Down Migration
+-- (baseline: no down)

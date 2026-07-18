@@ -186,10 +186,10 @@ Produce short decision records (`docs/adr/*.md`); implementation, if any, spins 
 
 | # | Task | Risk | Effort |
 |---|---|---|---|
-| 5.1 | **Per-tenant-DB vs shared-schema-with-`tenant_id`.** Evaluate at current + expected scale: N databases ⇒ N migrations, N connection pools, Azure connection-limit pressure, and no migration framework today (just `scripts/migrate.sh` + raw `schema.sql`). Weigh isolation/compliance benefits vs operational cost. Decide and document. | high | large |
+| 5.1 | ~~**Per-tenant-DB vs shared-schema-with-`tenant_id`.**~~ ✅ Decided 2026-07-18: **stay per-tenant** — see `docs/adr/0001-per-tenant-databases.md` (rationale + revisit triggers: ~100+ tenants, connection exhaustion, migration-fleet pain). | — | — |
 | 5.2 | ~~**Session store.**~~ ✅ Resolved by D7 (2026-07-17): the session store is gone entirely — no MemoryStore, nothing tenant-related in server memory. | — | — |
 | 5.3 | ~~**Dual-credential complexity.**~~ ✅ Resolved by D7 (2026-07-17): single JWT credential with a `tenantCode` claim; `withCredentials`/CORS-credentials removed. | — | — |
-| 5.4 | **Migration tooling.** Adopt a real migration tool (node-pg-migrate/Knex/Prisma-migrate) to make per-tenant schema changes repeatable — a prerequisite for whatever 5.1 decides. | medium | medium |
+| 5.4 | ~~**Migration tooling.**~~ ✅ Done 2026-07-18: **node-pg-migrate** with SQL migrations in `server/migrations/{registry,tenant}/` (baseline = schema v2 verbatim; `schema.sql`/`regestryschema.sql` deleted — migrations are the single source of truth). Fleet runner `server/scripts/migrate.js` (`npm run migrate`): registry first, then every tenant `conn_string`, fail-fast, `--only`/`--dry-run`/`--no-lock`; replaces the fictional Flyway `migrate.sh`. Test harness replays the migration chains. See `docs/adr/0002-migrations-node-pg-migrate.md`. **Prod v1→v2 for existing DBs is a separate task** — the baseline assumes an empty database. | — | — |
 | 5.5 | **Time-library sprawl.** Standardize on one library (luxon, given the existing helpers) across both apps; drop `date-fns`/`moment` usage. Feeds the Phase 4.5 lint enforcement. | low | medium |
 | 5.6 | **Calendar-library overlap.** Two libs in use (`react-big-calendar` + `react-calendar` in `CalendarWidget`); decide whether to consolidate. | low | medium |
 

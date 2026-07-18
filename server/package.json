@@ -12,7 +12,8 @@
     "dev:debug": "NODE_ENV=development nodemon --inspect index.js",
     "build": "echo 'No build step required for Node.js server'",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate": "node scripts/migrate.js"
   },
   "keywords": [],
   "author": "",
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.4",
     "@electric-sql/pglite-socket": "^0.2.7",
+    "node-pg-migrate": "^9.0.0",
     "nodemon": "^3.0.3",
     "supertest": "^7.2.2",
     "vitest": "^4.1.10"

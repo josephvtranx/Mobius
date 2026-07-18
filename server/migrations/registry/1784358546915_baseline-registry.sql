@@ -1,3 +1,7 @@
+-- Up Migration
+-- Baseline: registry schema verbatim (was src/config/regestryschema.sql —
+-- deleted in MODERNIZATION 5.4). institutions + user_directory.
+
 -- =====================================================================
 -- Mobius Registry Schema — v2
 -- One global DB mapping institution code → tenant database.
@@ -33,3 +37,6 @@ CREATE TABLE user_directory (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_user_directory_code ON user_directory (code);
+
+-- Down Migration
+-- (baseline: no down)
