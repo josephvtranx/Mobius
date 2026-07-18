@@ -9,8 +9,10 @@ const getStaffRoster = async (req, res) => {
     console.log('Fetching staff roster for user:', req.user.user_id);
     
     const query = `
+      -- schema v2 (2026-07-17): age computed from date_of_birth;
+      -- total hours derived from time_logs (no stored column)
       WITH recent_time_logs AS (
-        SELECT 
+        SELECT
           staff_id,
           json_agg(
             jsonb_build_object(
@@ -19,11 +21,12 @@ const getStaffRoster = async (req, res) => {
               'clock_out', clock_out,
               'notes', notes
             ) ORDER BY clock_in DESC
-          ) FILTER (WHERE log_id IS NOT NULL) as recent_logs
+          ) FILTER (WHERE log_id IS NOT NULL) as recent_logs,
+          COALESCE(SUM(EXTRACT(EPOCH FROM (clock_out - clock_in)) / 3600.0), 0) as total_hours
         FROM time_logs
         GROUP BY staff_id
       )
-      SELECT 
+      SELECT
         u.user_id,
         u.name,
         u.email,
@@ -32,14 +35,14 @@ const getStaffRoster = async (req, res) => {
         s.employment_status,
         COALESCE(s.salary, 0) as salary,
         COALESCE(s.hourly_rate, 0) as hourly_rate,
-        COALESCE(s.total_hours_worked, 0) as total_hours_worked,
-        s.age,
+        COALESCE(rtl.total_hours, 0) as total_hours_worked,
+        date_part('year', age(s.date_of_birth))::int as age,
         s.gender,
         COALESCE(rtl.recent_logs, '[]'::json) as time_logs
       FROM users u
       INNER JOIN staff s ON u.user_id = s.staff_id
       LEFT JOIN recent_time_logs rtl ON s.staff_id = rtl.staff_id
-      WHERE u.role = 'staff' 
+      WHERE u.role = 'staff'
         AND u.is_active = true
       ORDER BY u.name;
     `;

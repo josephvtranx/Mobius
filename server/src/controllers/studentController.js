@@ -9,85 +9,55 @@ export const getStudentRoster = async (req, res) => {
     console.log('Fetching student roster for user:', req.user.user_id);
     
     const query = `
-      WITH student_instructors AS (
-        SELECT 
-          cs.student_id,
-          ARRAY_AGG(DISTINCT u.name) as instructor_names
-        FROM class_series cs
-        JOIN instructors i ON cs.instructor_id = i.instructor_id
-        JOIN users u ON i.instructor_id = u.user_id
-        GROUP BY cs.student_id
-      ),
-      student_classes AS (
-        SELECT 
-          cs.student_id,
-          ARRAY_AGG(DISTINCT sub.name) as class_names,
-          ARRAY_AGG(
-            json_build_object(
-              'days', cs.days_of_week,
-              'start_date', cs.start_date,
-              'end_date', cs.end_date,
-              'start_time', cs.start_time,
-              'end_time', cs.end_time,
-              'subject_name', sub.name
-            )
-          ) as schedule
-        FROM class_series cs
-        JOIN subjects sub ON cs.subject_id = sub.subject_id
-        WHERE cs.status != 'canceled'
-        GROUP BY cs.student_id
-      ),
-      student_guardians AS (
-        SELECT 
-          sg.student_id,
-          json_agg(
-            json_build_object(
-              'name', g.name,
-              'email', g.email,
-              'phone', g.phone
-            ) ORDER BY g.name
-          ) as guardian_data
-        FROM student_guardian sg
-        JOIN guardians g ON sg.guardian_id = g.guardian_id
-        GROUP BY sg.student_id
-      )
-      SELECT 
-        u.user_id as id,
+      -- schema v2 (2026-07-17): enrollments/classes/guardian-logins replace
+      -- the dropped class_series / guardian contact-blob model
+      SELECT
+        u.user_id AS id,
         u.name,
-        u.email as student_email,
-        u.phone as student_phone,
-        COALESCE(
-          ARRAY(
-            SELECT (guardian->>'name')::text 
-            FROM json_array_elements(sg.guardian_data) AS guardian
-          ), 
-          ARRAY[]::text[]
-        ) as parent_names,
-        COALESCE(
-          ARRAY(
-            SELECT (guardian->>'email')::text 
-            FROM json_array_elements(sg.guardian_data) AS guardian
-          ), 
-          ARRAY[]::text[]
-        ) as parent_emails,
-        COALESCE(
-          ARRAY(
-            SELECT (guardian->>'phone')::text 
-            FROM json_array_elements(sg.guardian_data) AS guardian
-          ), 
-          ARRAY[]::text[]
-        ) as parent_phones,
+        u.email AS student_email,
+        u.phone AS student_phone,
         s.status,
-        COALESCE(si.instructor_names, ARRAY[]::text[]) as instructors,
-        COALESCE(sc.class_names, ARRAY[]::text[]) as enrolled_classes,
-        COALESCE(sc.schedule, ARRAY[]::json[]) as schedule
+        COALESCE(g.names, ARRAY[]::text[]) AS parent_names,
+        COALESCE(g.emails, ARRAY[]::text[]) AS parent_emails,
+        COALESCE(g.phones, ARRAY[]::text[]) AS parent_phones,
+        COALESCE(i.names, ARRAY[]::text[]) AS instructors,
+        COALESCE(c.names, ARRAY[]::text[]) AS enrolled_classes,
+        COALESCE(c.schedule, '[]'::json) AS schedule
       FROM users u
       JOIN students s ON u.user_id = s.student_id
-      LEFT JOIN student_guardians sg ON s.student_id = sg.student_id
-      LEFT JOIN student_instructors si ON s.student_id = si.student_id
-      LEFT JOIN student_classes sc ON s.student_id = sc.student_id
-      WHERE u.role = 'student'
-        AND u.is_active = true
+      LEFT JOIN LATERAL (
+        SELECT ARRAY_AGG(gu.name ORDER BY gu.name) AS names,
+               ARRAY_AGG(gu.email::text ORDER BY gu.name) AS emails,
+               ARRAY_AGG(gu.phone ORDER BY gu.name) AS phones
+          FROM student_guardians sg
+          JOIN guardians gg ON gg.guardian_id = sg.guardian_id
+          JOIN users gu ON gu.user_id = gg.user_id
+         WHERE sg.student_id = s.student_id
+      ) g ON true
+      LEFT JOIN LATERAL (
+        SELECT ARRAY_AGG(DISTINCT iu.name) AS names
+          FROM enrollments e
+          JOIN classes c2 ON c2.class_id = e.class_id
+          JOIN users iu ON iu.user_id = c2.instructor_id
+         WHERE e.student_id = s.student_id AND e.status = 'active'
+      ) i ON true
+      LEFT JOIN LATERAL (
+        SELECT ARRAY_AGG(DISTINCT sub.name) AS names,
+               json_agg(json_build_object(
+                 'subject_name', sub.name,
+                 'days', (SELECT ARRAY_AGG(b->>'day')
+                            FROM jsonb_array_elements(c2.recurrence_rule->'byday') b),
+                 'start_time', c2.recurrence_rule->'byday'->0->>'start',
+                 'end_time', c2.recurrence_rule->'byday'->0->>'end',
+                 'start_date', c2.starts_on,
+                 'end_date', c2.ends_on
+               )) AS schedule
+          FROM enrollments e
+          JOIN classes c2 ON c2.class_id = e.class_id AND c2.status = 'active'
+          JOIN subjects sub ON sub.subject_id = c2.subject_id
+         WHERE e.student_id = s.student_id AND e.status = 'active'
+      ) c ON true
+      WHERE u.role = 'student' AND u.is_active = true
       ORDER BY u.name;
     `;
 

@@ -3,7 +3,9 @@ const getInstructorRoster = async (req, res) => {
     console.log('Fetching instructor roster...');
     
     const query = `
-      SELECT 
+      -- schema v2 (2026-07-17): classes replaces class_series; availability
+      -- slots counted; age computed from date_of_birth
+      SELECT
         u.user_id,
         u.name,
         u.email,
@@ -12,47 +14,32 @@ const getInstructorRoster = async (req, res) => {
         i.employment_type,
         i.salary,
         i.hourly_rate,
-        i.age,
+        date_part('year', age(i.date_of_birth))::int AS age,
         i.gender,
         i.college_attended,
         i.major,
-        COALESCE(
-          (SELECT COUNT(*) FROM class_series cs WHERE cs.instructor_id = i.instructor_id AND cs.status IN ('confirmed', 'in_progress')),
-          0
-        ) as active_classes_count,
-        ARRAY_AGG(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL) as teaching_subjects,
-        ARRAY_AGG(DISTINCT 
-          CASE 
-            WHEN cs.series_id IS NOT NULL THEN cs_subject.name
-            WHEN css.session_id IS NOT NULL THEN css_subject.name
-            ELSE NULL
-          END
-        ) FILTER (WHERE 
-          (cs.series_id IS NOT NULL AND cs.status IN ('confirmed', 'in_progress')) OR
-          (css.session_id IS NOT NULL AND css.status = 'scheduled')
-        ) as active_class_names
+        COALESCE(cl.n, 0)::int AS active_classes_count,
+        COALESCE(cl.names, ARRAY[]::text[]) AS active_class_names,
+        COALESCE(ts.subjects, ARRAY[]::text[]) AS teaching_subjects,
+        COALESCE(av.n, 0)::int AS availability_slots
       FROM users u
       JOIN instructors i ON u.user_id = i.instructor_id
-      LEFT JOIN instructor_specialties ins ON i.instructor_id = ins.instructor_id
-      LEFT JOIN subjects s ON ins.subject_id = s.subject_id
-      LEFT JOIN class_series cs ON i.instructor_id = cs.instructor_id
-      LEFT JOIN subjects cs_subject ON cs.subject_id = cs_subject.subject_id
-      LEFT JOIN class_sessions css ON i.instructor_id = css.instructor_id
-      LEFT JOIN subjects css_subject ON css.subject_id = css_subject.subject_id
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS n, ARRAY_AGG(DISTINCT sub.name) AS names
+          FROM classes c JOIN subjects sub ON sub.subject_id = c.subject_id
+         WHERE c.instructor_id = i.instructor_id AND c.status = 'active'
+      ) cl ON true
+      LEFT JOIN LATERAL (
+        SELECT ARRAY_AGG(sub.name) AS subjects
+          FROM instructor_specialties sp
+          JOIN subjects sub ON sub.subject_id = sp.subject_id
+         WHERE sp.instructor_id = i.instructor_id
+      ) ts ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*) AS n FROM instructor_availability a
+         WHERE a.instructor_id = i.instructor_id AND a.status = 'active'
+      ) av ON true
       WHERE u.role = 'instructor' AND u.is_active = true
-      GROUP BY 
-        u.user_id,
-        u.name,
-        u.email,
-        u.phone,
-        i.instructor_id,
-        i.employment_type,
-        i.salary,
-        i.hourly_rate,
-        i.age,
-        i.gender,
-        i.college_attended,
-        i.major
       ORDER BY u.name;
     `;
 
