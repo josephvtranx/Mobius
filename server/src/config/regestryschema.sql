@@ -20,3 +20,16 @@ CREATE TABLE institutions (
   schema_version TEXT,                           -- tenant DB migration version (Phase 5.4 tooling)
   created_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Global login directory: email + password hash + institution. Login
+-- authenticates AGAINST THE REGISTRY (the tenant users row is the profile);
+-- the PK makes emails globally unique across institutions going forward.
+-- Written on signup/guardian creation; hash kept in sync by change-password.
+CREATE TABLE user_directory (
+  email         CITEXT PRIMARY KEY,
+  password_hash TEXT NOT NULL,
+  code          CITEXT NOT NULL REFERENCES institutions(code),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_user_directory_code ON user_directory (code);

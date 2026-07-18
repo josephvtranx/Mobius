@@ -19,6 +19,15 @@ const at = (days, hour) => DateTime.now().setZone(TZ).plus({ days }).set({ hour,
 
 const hash = await bcrypt.hash('Password123!', 10);
 
+// registry login directory: email+password locate the institution (no code)
+for (const email of ['staff@test.com', 'instructor@demo.com', 'alice@demo.com',
+                     'ben@demo.com', 'grace@demo.com', 'charlie@demo.com']) {
+  await env.registryDb.query(
+    `INSERT INTO user_directory (email, password_hash, code) VALUES ($1, $2, $3)
+     ON CONFLICT (email) DO NOTHING`,
+    [email, hash, TEST_CODE]);
+}
+
 // people (staff@test.com is user 1, seeded by the harness)
 await db.query(`
   INSERT INTO users (password_hash, name, email, role) VALUES

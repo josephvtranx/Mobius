@@ -9,6 +9,7 @@ function StaffRegistration() {
   const emailFromState = location.state?.email;
   
   const [formData, setFormData] = useState({
+    institutionCode: '',
     email: emailFromState || '',
     password: '',
     confirmPassword: '',
@@ -46,6 +47,7 @@ function StaffRegistration() {
         name: formData.name,
         phone: formData.phone,
         role: 'staff',
+        institutionCode: formData.institutionCode.trim(),
         age: parseInt(formData.age),
         gender: formData.gender,
         department: formData.department,
@@ -106,6 +108,19 @@ function StaffRegistration() {
             </div>
           )}
           <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+            <div style={{ marginBottom: 18 }}>
+              <label htmlFor="institutionCode" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Institution Code*</label>
+              <input
+                id="institutionCode"
+                name="institutionCode"
+                type="text"
+                required
+                value={formData.institutionCode}
+                onChange={handleChange}
+                style={{ width: '100%', padding: '8px 16px', borderRadius: 18, border: '2px solid #e2e8f0', fontSize: 14, marginTop: 2, outline: 'none' }}
+                placeholder="Your institution's code (from your academy)"
+              />
+            </div>
             <div style={{ marginBottom: 18 }}>
               <label htmlFor="email" style={{ color: '#4a5568', fontSize: 14, fontWeight: 500, marginBottom: 4, display: 'block' }}>Email address*</label>
               {emailFromState ? (

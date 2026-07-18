@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { generateTokens, verifyAccessToken, verifyRefreshToken, hashPassword } from '../helpers/authHelpers.js';
 import { getTenantPool } from '../db/tenantPool.js';
+import { directoryLookup, directoryRegister, directoryUpdatePassword, directoryRemove } from '../db/userDirectory.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
 
@@ -75,7 +76,12 @@ export const verifyTokenHandler = async (req, res) => {
 
 export const signup = async (req, res) => {
     const client = await req.db.connect();
-    
+    // Registry rows inserted during this signup — removed again if the tenant
+    // transaction rolls back (cross-DB writes aren't atomic; a crash between
+    // the two can orphan a row — accepted pre-launch). Function-scoped so the
+    // catch block can clean up.
+    const directoryEmails = [];
+
     try {
         const {
             password,
@@ -110,6 +116,18 @@ export const signup = async (req, res) => {
         );
 
         if (emailCheck.rows.length > 0) {
+            return res.status(400).json({
+                message: 'Email already registered',
+                errors: [{
+                    field: 'email',
+                    message: 'This email address is already registered'
+                }]
+            });
+        }
+
+        // Global uniqueness: the registry user_directory is the auth source,
+        // so an email taken in ANY institution is taken everywhere
+        if (await directoryLookup(email)) {
             return res.status(400).json({
                 message: 'Email already registered',
                 errors: [{
@@ -228,6 +246,9 @@ export const signup = async (req, res) => {
                          VALUES ('credentials_issued', $1, 'in_app', 'user', $2)`,
                         [guardianUserId, String(guardianUserId)]
                     );
+                    // registry auth row for the new guardian login
+                    await directoryRegister(guardian.email, tempHash, req.tenantCode);
+                    directoryEmails.push(guardian.email);
                 }
 
                 const { rows: [gRow] } = await client.query(
@@ -302,6 +323,11 @@ export const signup = async (req, res) => {
             }
         }
 
+        // registry auth row for the new user (just before COMMIT to minimize
+        // the cross-DB orphan window)
+        await directoryRegister(email, hashedPassword, req.tenantCode);
+        directoryEmails.push(email);
+
         // Commit transaction
         await client.query('COMMIT');
 
@@ -323,6 +349,12 @@ export const signup = async (req, res) => {
 
     } catch (error) {
         await client.query('ROLLBACK');
+        // undo any registry rows THIS request inserted (only successfully
+        // registered emails are tracked, so a 23505 loser's pre-existing
+        // owner row is never touched)
+        for (const dirEmail of directoryEmails) {
+            await directoryRemove(dirEmail);
+        }
         console.error('Signup error details:', {
             message: error.message,
             stack: error.stack,
@@ -427,14 +459,56 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-    // Guard for req.db (D7: set by the tenant middleware from the
-    // X-Institution-Code header — no session exists anymore)
+    // Registry-first: the global user_directory (email → hash + institution)
+    // is the auth source — email+password alone locate the tenant, no code
+    // needed. Legacy/direct-seeded users without a directory row fall through
+    // to the header-based per-tenant path below.
+    try {
+        const dir = await directoryLookup(req.body.email);
+        if (dir) {
+            if (!await bcrypt.compare(req.body.password, dir.password_hash)) {
+                return res.status(401).json({ message: 'Invalid email or password' });
+            }
+            let db;
+            try {
+                db = await getTenantPool(dir.code);
+            } catch {
+                return res.status(401).json({ message: 'Unknown institution' });
+            }
+            const { rows: [user] } = await db.query(
+                'SELECT * FROM users WHERE email = $1', [req.body.email]);
+            if (!user) return res.status(401).json({ message: 'Invalid email or password' });
+            if (!user.is_active) {
+                return res.status(401).json({ message: 'Account is inactive. Please contact support.' });
+            }
+            await db.query(
+                'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = $1', [user.user_id]);
+            const tokens = generateTokens(user, dir.code);
+            return res.json({
+                message: 'Login successful',
+                ...tokens,
+                user: {
+                    user_id: user.user_id,
+                    username: user.username,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Registry login error:', error);
+        return res.status(500).json({ message: 'Error during login', error: error.message });
+    }
+
+    // Fallback: per-tenant auth via the X-Institution-Code header (legacy rows
+    // created before the directory existed)
     if (!req.db) {
         console.error('No req.db found. Missing or invalid institution code.');
         return res.status(400).json({ error: 'No institution selected or DB unavailable.' });
     }
     const client = await req.db.connect();
-    
+
     try {
         const { email, password } = req.body;
 
@@ -652,6 +726,9 @@ export const changePassword = async (req, res) => {
             await addToPasswordHistory(client, userId, hashedPassword);
 
             await client.query('COMMIT');
+
+            // keep the registry auth hash in sync (0 rows = legacy user, fine)
+            await directoryUpdatePassword(req.user.email, hashedPassword);
 
             res.json({ message: 'Password changed successfully' });
         } catch (error) {

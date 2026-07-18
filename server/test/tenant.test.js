@@ -30,10 +30,12 @@ describe('getTenantPool', () => {
 });
 
 describe('tenant middleware (req.db attachment — D7 single credential)', () => {
-  it('leaves req.db unset with no header and no token → login guard 400s', async () => {
+  it('leaves req.db unset with no header/token → 400 for directory-unknown emails', async () => {
+    // (a directory-KNOWN email like the seed staff now logs in with no header
+    // at all — the registry finds the tenant; see auth.test.js)
     const res = await request(env.app)
       .post('/api/auth/login')
-      .send({ email: SEED_USER.email, password: SEED_USER.password });
+      .send({ email: 'not-in-directory@test.com', password: SEED_USER.password });
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: 'No institution selected or DB unavailable.' });
   });
@@ -47,10 +49,10 @@ describe('tenant middleware (req.db attachment — D7 single credential)', () =>
     expect(res.body).toEqual({ message: 'Invalid email or password' });
   });
 
-  it('an unknown header code leaves req.db unset → 400 guard', async () => {
+  it('an unknown header code leaves req.db unset → 400 guard (directory-unknown email)', async () => {
     const res = await request(env.app).post('/api/auth/login')
       .set('x-institution-code', 'GHOST1')
-      .send({ email: SEED_USER.email, password: SEED_USER.password });
+      .send({ email: 'not-in-directory@test.com', password: SEED_USER.password });
     expect(res.status).toBe(400);
   });
 

@@ -1,8 +1,9 @@
 import api from './api';
 
 const authService = {
-    // Login user. D7: the institution code travels in the X-Institution-Code
-    // header on this pre-auth request; after login the JWT carries the tenant.
+    // Login user. Registry-based: email+password locate the institution via
+    // the global user directory — no code needed. A code is still sent as a
+    // header when one is around (legacy accounts created before the directory).
     login: async (credentials) => {
         try {
             const institutionCode =
@@ -11,7 +12,7 @@ const authService = {
                 email: credentials.email,
                 password: credentials.password
             }, {
-                headers: { 'X-Institution-Code': institutionCode }
+                headers: institutionCode ? { 'X-Institution-Code': institutionCode } : {}
             });
             
             if (response.data.accessToken) {
@@ -45,9 +46,13 @@ const authService = {
             }
 
             console.log('Registration request data:', userData);
-            // D7: registration is tenant-scoped via the header (no cookie)
-            const response = await api.post('/auth/register', userData, {
-                headers: { 'X-Institution-Code': localStorage.getItem('institutionCode') }
+            // registration is still invite-by-code: the form supplies the code
+            const { institutionCode, ...payload } = userData;
+            const response = await api.post('/auth/register', payload, {
+                headers: {
+                    'X-Institution-Code':
+                        institutionCode || localStorage.getItem('institutionCode') || ''
+                }
             });
 
             // Registration successful - no need to store tokens since we redirect to login

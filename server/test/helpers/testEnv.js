@@ -58,6 +58,11 @@ export async function startTestEnv() {
     [hash, SEED_USER.name, SEED_USER.email, SEED_USER.role]
   );
   await tenant.db.query(`INSERT INTO staff (staff_id, employment_status) VALUES (1, 'full_time')`);
+  // registry auth row: email+password locate the institution (no code needed)
+  await registry.db.query(
+    `INSERT INTO user_directory (email, password_hash, code) VALUES ($1, $2, $3)`,
+    [SEED_USER.email, hash, TEST_CODE]
+  );
 
   // Env must be set BEFORE the app (and thus registryPool) is imported.
   // dotenv.config() never overrides pre-set values, so server/.env stays inert here.

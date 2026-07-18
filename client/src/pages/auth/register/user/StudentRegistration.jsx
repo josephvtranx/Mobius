@@ -9,6 +9,7 @@ function StudentRegistration() {
   const emailFromState = location.state?.email;
   
   const [formData, setFormData] = useState({
+    institutionCode: '',
     email: emailFromState || '',
     password: '',
     confirmPassword: '',
@@ -81,6 +82,7 @@ function StudentRegistration() {
         name: formData.name,
         phone: formData.phone,
         role: 'student',
+        institutionCode: formData.institutionCode.trim(),
         status: formData.status,
         date_of_birth: formData.date_of_birth, // v2: replaces stored age
         grade: parseInt(formData.grade),
@@ -144,6 +146,20 @@ function StudentRegistration() {
           <form onSubmit={handleSubmit} style={{ width: '100%' }}>
             <div className="form-section">
               <h2>Basic Information</h2>
+              <div className="form-group">
+                <label htmlFor="institutionCode">Institution Code*</label>
+                <input
+                  id="institutionCode"
+                  name="institutionCode"
+                  type="text"
+                  required
+                  value={formData.institutionCode}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="Your institution's code (from your academy)"
+                />
+              </div>
+
               <div className="form-group">
                 <label htmlFor="email">Email address*</label>
                 {emailFromState ? (

@@ -8,6 +8,7 @@ import { randomBytes } from 'crypto';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { hashPassword } from '../helpers/authHelpers.js';
 import { canActForStudent } from '../helpers/authz.js';
+import { directoryRegister, directoryRemove, directoryLookup } from '../db/userDirectory.js';
 
 const router = express.Router();
 
@@ -59,6 +60,11 @@ router.post('/:id/guardians', authenticateToken, authorizeRole('staff'), async (
   if (!existingUser.length && !name) {
     return res.status(400).json({ message: 'name is required when creating a new guardian' });
   }
+  // global uniqueness: creating a NEW guardian requires the email to be free
+  // in the registry directory too (an existing guardian already has their row)
+  if (!existingUser.length && await directoryLookup(email)) {
+    return res.status(400).json({ message: `${email} belongs to an existing account at another institution` });
+  }
 
   const { rows: primaryRows } = await req.db.query(
     `SELECT 1 FROM student_guardians WHERE student_id = $1 AND is_primary`, [student.student_id]);
@@ -68,6 +74,7 @@ router.post('/:id/guardians', authenticateToken, authorizeRole('staff'), async (
   }
 
   const client = await req.db.connect();
+  const directoryEmails = []; // registry rows to undo on rollback
   try {
     await client.query('BEGIN');
     let guardianUserId;
@@ -85,6 +92,8 @@ router.post('/:id/guardians', authenticateToken, authorizeRole('staff'), async (
         `INSERT INTO notification_log (event_type, recipient_user_id, channel, subject_type, subject_id)
          VALUES ('credentials_issued', $1, 'in_app', 'user', $2)`,
         [guardianUserId, String(guardianUserId)]);
+      await directoryRegister(email, tempHash, req.tenantCode);
+      directoryEmails.push(email);
       credentialsIssued = true;
     }
     const { rows: [gRow] } = await client.query(
@@ -103,6 +112,7 @@ router.post('/:id/guardians', authenticateToken, authorizeRole('staff'), async (
     res.status(201).json({ link, credentials_issued: credentialsIssued });
   } catch (err) {
     await client.query('ROLLBACK');
+    for (const dirEmail of directoryEmails) await directoryRemove(dirEmail);
     if (err.code === '23505') {
       return res.status(409).json({ message: 'This guardian is already linked to the student' });
     }

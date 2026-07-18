@@ -44,10 +44,12 @@ describe('POST /api/institution (stateless code validation — D7)', () => {
 });
 
 describe('POST /api/auth/login', () => {
-  it('400s when no institution was selected (the !req.db guard)', async () => {
+  it('400s a directory-unknown email with no institution header (the !req.db guard)', async () => {
+    // registry login supersedes the old always-400: emails IN the directory
+    // log in with no header at all (see the registry-based login suite below)
     const res = await request(env.app)
       .post('/api/auth/login')
-      .send({ email: SEED_USER.email, password: SEED_USER.password });
+      .send({ email: 'not-in-directory@test.com', password: SEED_USER.password });
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: 'No institution selected or DB unavailable.' });
   });
@@ -368,4 +370,67 @@ describe('GET /api/users/all role gate (2.4: admin → staff)', () => {
       .set('Authorization', `Bearer ${studentToken}`);
     expect(denied.status).toBe(403);
   });
+});
+
+describe('registry-based login (email+password locate the institution)', () => {
+  it('logs in the seed staff with NO header and NO code — the directory finds the tenant', async () => {
+    const res = await request(env.app).post('/api/auth/login')
+      .send({ email: SEED_USER.email, password: SEED_USER.password });
+    expect(res.status).toBe(200);
+    const decoded = jwt.verify(res.body.accessToken, process.env.JWT_SECRET);
+    expect(decoded.tenantCode).toBe(TEST_CODE);
+  });
+
+  it('signup writes the directory: the new user logs in header-less; guardians get rows too', async () => {
+    const agent = tenantAgent();
+    const created = await agent.post('/api/auth/register').send({
+      name: 'Directory Student', email: 'dir-student@test.com', password: 'Password123!',
+      role: 'student', date_of_birth: '2012-01-01', grade: 8, gender: 'other', school: 'Test High',
+      guardians: [{ name: 'Dir Parent', email: 'dir-parent@test.com', relationship: 'parent' }]
+    });
+    expect(created.status).toBe(201);
+
+    const login = await request(env.app).post('/api/auth/login')
+      .send({ email: 'dir-student@test.com', password: 'Password123!' });
+    expect(login.status).toBe(200);
+    expect(jwt.verify(login.body.accessToken, process.env.JWT_SECRET).tenantCode).toBe(TEST_CODE);
+
+    const { rows: gdir } = await env.registryDb.query(
+      `SELECT code FROM user_directory WHERE email = 'dir-parent@test.com'`);
+    expect(gdir).toHaveLength(1);
+  });
+
+  it('an email taken at ANY institution blocks signup (global uniqueness)', async () => {
+    await env.registryDb.query(
+      `INSERT INTO institutions (code, name, conn_string) VALUES ('OTHER1','Other','postgres://x'),
+       ('OTHER2','Other2','postgres://y') ON CONFLICT DO NOTHING`);
+    await env.registryDb.query(
+      `INSERT INTO user_directory (email, password_hash, code) VALUES ('taken@other.com','h','OTHER1')`);
+
+    const agent = tenantAgent();
+    const res = await agent.post('/api/auth/register')
+      .send({
+        name: 'Squatter', email: 'taken@other.com', password: 'Password123!',
+        role: 'staff', age: 30, gender: 'other', department: 'Ops'
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Email already registered');
+  });
+
+  it('change-password rotates the registry hash (header-less login with the new password)', async () => {
+    const login = await request(env.app).post('/api/auth/login')
+      .send({ email: 'dir-student@test.com', password: 'Password123!' });
+    const change = await request(env.app).post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${login.body.accessToken}`)
+      .send({ currentPassword: 'Password123!', newPassword: 'NewPassword456!' });
+    expect(change.status).toBe(200);
+
+    const relogin = await request(env.app).post('/api/auth/login')
+      .send({ email: 'dir-student@test.com', password: 'NewPassword456!' });
+    expect(relogin.status).toBe(200);
+    const stale = await request(env.app).post('/api/auth/login')
+      .send({ email: 'dir-student@test.com', password: 'Password123!' });
+    expect(stale.status).toBe(401);
+  });
+
 });
