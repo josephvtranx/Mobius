@@ -90,6 +90,14 @@ export default function Login() {
                 <span>New user? Register with your institution code</span>
                 <span className="login-saas-register-arrow"><FaArrowRight /></span>
               </button>
+              <button
+                type="button"
+                className="login-saas-register-btn"
+                onClick={() => navigate('/auth/register/institution')}
+              >
+                <span>Setting up a new institution? Request a workspace</span>
+                <span className="login-saas-register-arrow"><FaArrowRight /></span>
+              </button>
             </div>
           </form>
         </div>
