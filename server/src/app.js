@@ -35,7 +35,8 @@ import guardianPortalRoutes from './routes/guardianPortalRoutes.js';
 import studentGuardianV2Routes from './routes/studentGuardianV2Routes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
-import { toUtcIso } from './lib/time.js';
+import { HttpError } from './helpers/httpError.js';
+import { DateTime } from 'luxon';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,7 +139,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Logging middleware
 app.use((req, res, next) => {
-    console.log(`${toUtcIso(new Date())} - ${req.method} ${req.url}`);
+    console.log(`${DateTime.utc().toISO()} - ${req.method} ${req.url}`);
     if (req.method !== 'GET') {
         console.log('Request body:', req.body);
     }
@@ -192,8 +193,12 @@ app.get('*', (_, res) =>
   res.sendFile(path.join(__dirname, '..', '..', 'client', 'dist', 'index.html'))
 );
 
-// Error handling middleware
+// Error handling middleware. HttpError (MODERNIZATION 4.3) renders with its
+// own status/body; everything else is a 500.
 app.use((err, req, res, next) => {
+    if (err instanceof HttpError) {
+        return res.status(err.status).json(err.body);
+    }
     console.error('Error details:', {
         message: err.message,
         stack: err.stack,

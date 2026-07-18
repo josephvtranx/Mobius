@@ -6,6 +6,7 @@ import { DateTime } from 'luxon';
 import { getSettings } from '../helpers/institutionSettings.js';
 import { notifyFamily } from '../helpers/notify.js';
 import { materializeOccurrences, RecurrenceError } from '../helpers/recurrence.js';
+import { withTransaction } from '../helpers/withTransaction.js';
 
 // Sweeper: active holds past their TTL expire. Generic over origins — also
 // covers self_serve_booking (SCH-4) and consultation holds when those land.
@@ -173,9 +174,9 @@ export async function runSessionGenerator(db, now = DateTime.utc().toISO()) {
     if (!occurrences.length) continue;
 
     touched++;
-    const client = await db.connect();
-    try {
-      await client.query('BEGIN');
+    // per-occurrence SAVEPOINTs inside the class-level transaction: a
+    // conflicting slot is skipped without aborting the batch
+    await withTransaction(db, async (client) => {
       for (const occ of occurrences) {
         await client.query('SAVEPOINT occ');
         try {
@@ -194,13 +195,7 @@ export async function runSessionGenerator(db, now = DateTime.utc().toISO()) {
         }
         await client.query('RELEASE SAVEPOINT occ');
       }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
   return { classes: touched, created, skipped };
 }

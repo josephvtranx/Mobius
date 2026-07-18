@@ -9,6 +9,7 @@ import { getSettings } from '../helpers/institutionSettings.js';
 import { notifyFamily } from '../helpers/notify.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { computeWallet } from '../helpers/walletMath.js';
+import { withTransaction } from '../helpers/withTransaction.js';
 
 const router = express.Router();
 
@@ -78,9 +79,7 @@ router.post('/:studentId/entries', authenticateToken, authorizeRole('staff'), as
     `SELECT 1 FROM students WHERE student_id = $1`, [studentId]);
   if (!student) return res.status(404).json({ message: 'Student not found' });
 
-  const client = await req.db.connect();
-  try {
-    await client.query('BEGIN');
+  const outcome = await withTransaction(req.db, async (client) => {
     await client.query(
       `INSERT INTO wallets (student_id) VALUES ($1) ON CONFLICT (student_id) DO NOTHING`, [studentId]);
     const { rows: [wallet] } = await client.query(
@@ -106,14 +105,9 @@ router.post('/:studentId/entries', authenticateToken, authorizeRole('staff'), as
       studentId: studentId, eventType: 'wallet_credited', subjectType: 'student', subjectId: studentId,
       payload: { entry_type, amount, balance }
     });
-    await client.query('COMMIT');
-    res.status(201).json({ entry, balance });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+    return { entry, balance };
+  });
+  res.status(201).json(outcome);
 });
 
 export default router;

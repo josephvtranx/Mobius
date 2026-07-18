@@ -1,5 +1,26 @@
 {
   "root": true,
+  // Exempt from the repo-wide Date/moment bans (MODERNIZATION 4.5):
+  // - legacy v1 server routers/helpers queued for deletion once the client
+  //   stops calling them (post UI redo)
+  // - legacy client pages/components queued for the user's UI redo
+  // Clean these up (or delete them) at the redo, then drop the exemptions.
+  "ignorePatterns": [
+    "server/src/routes/attendanceRoutes.js",
+    "server/src/routes/classSeriesRoutes.js",
+    "server/src/routes/instructorRoutes.js",
+    "server/src/routes/paymentRoutes.js",
+    "server/src/routes/studentRoutes.js",
+    "server/src/helpers/timeSlotHelpers.js",
+    "client/src/components/CalendarWidget.jsx",
+    "client/src/components/ScheduleViewCalendar.jsx",
+    "client/src/components/SmartSchedulingCalendar.jsx",
+    "client/src/pages/Home.jsx",
+    "client/src/pages/operations/Financial-Dashboard/",
+    "client/src/pages/operations/Schedule.jsx",
+    "client/src/pages/operations/Scheduling.jsx",
+    "client/src/pages/operations/roster/"
+  ],
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "module",

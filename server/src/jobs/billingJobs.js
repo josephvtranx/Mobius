@@ -5,6 +5,7 @@
 // drive the clock. INV-6: nothing here touches enrollments.
 import { DateTime } from 'luxon';
 import { getSettings } from '../helpers/institutionSettings.js';
+import { withTransaction } from '../helpers/withTransaction.js';
 import { applyAttendanceWithinTx } from '../helpers/deductionEngine.js';
 import { notifyFamily } from '../helpers/notify.js';
 
@@ -29,9 +30,7 @@ export async function runAutoComplete(db, now = DateTime.utc().toISO()) {
   for (const session of sessions) {
     // one transaction per session, one client at a time; a failing session
     // doesn't poison the rest of the run
-    const client = await db.connect();
-    try {
-      await client.query('BEGIN');
+    await withTransaction(db, async (client) => {
       const { rows: unmarked } = await client.query(
         `SELECT e.student_id FROM enrollments e
           WHERE e.class_id = $1 AND e.status = 'active'
@@ -74,13 +73,7 @@ export async function runAutoComplete(db, now = DateTime.utc().toISO()) {
         await client.query(
           `UPDATE class_sessions SET status = 'completed' WHERE session_id = $1`, [session.session_id]);
       }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
   }
   return { sessions: sessions.length, marked, blocked };
 }

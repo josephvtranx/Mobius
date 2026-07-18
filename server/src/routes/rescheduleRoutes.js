@@ -10,13 +10,12 @@ import { getSettings } from '../helpers/institutionSettings.js';
 import { insideWindow } from '../helpers/scheduleWindow.js';
 import { bestFitRoom } from '../helpers/slotFinder.js';
 import { notifyFamily } from '../helpers/notify.js';
+import { withTransaction } from '../helpers/withTransaction.js';
+import { HttpError } from '../helpers/httpError.js';
+import { isCalendarConflict } from '../helpers/pgErrors.js';
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function isCalendarConflict(err) {
-  return err?.code === '23P01' || err?.code === '23505';
-}
 
 // The inbox list: what needs a response. Instructors see their own sessions'
 // requests; staff see all (they act on escalations).
@@ -74,9 +73,7 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
   // before the ORIGINAL session closes, the request expires and the original
   // stands. Applies to accepts and rejects alike.
   if (insideWindow(request.original_starts_at, settings)) {
-    const client = await req.db.connect();
-    try {
-      await client.query('BEGIN');
+    await withTransaction(req.db, async (client) => {
       await client.query(
         `UPDATE reschedule_requests SET status = 'expired' WHERE request_id = $1`, [request.request_id]);
       if (request.hold_id) {
@@ -92,13 +89,7 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
           payload: { session_id: request.session_id, original_starts_at: request.original_starts_at }
         });
       }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
+    });
     return res.status(400).json({
       message: 'The reschedule window has closed — the original session stands',
       request_status: 'expired'
@@ -106,9 +97,7 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
   }
 
   if (action === 'reject') {
-    const client = await req.db.connect();
-    try {
-      await client.query('BEGIN');
+    await withTransaction(req.db, async (client) => {
       await client.query(
         `UPDATE reschedule_requests SET status = 'rejected', responded_by = $1, responded_at = CURRENT_TIMESTAMP
           WHERE request_id = $2`, [req.user.user_id, request.request_id]);
@@ -125,15 +114,8 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
           payload: { reason: reason ?? null, session_id: request.session_id, offer_other_times: true }
         });
       }
-      await client.query('COMMIT');
-      res.json({ request_id: request.request_id, status: 'rejected' });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-    return;
+    });
+    return res.json({ request_id: request.request_id, status: 'rejected' });
   }
 
   // accept — the atomic swap
@@ -141,9 +123,8 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
     `SELECT count(*)::int AS roster FROM enrollments WHERE class_id = $1 AND status = 'active'`,
     [request.class_id]);
 
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
+    const successor = await withTransaction(req.db, async (client) => {
     await client.query(
       `UPDATE reschedule_requests SET status = 'accepted', responded_by = $1, responded_at = CURRENT_TIMESTAMP
         WHERE request_id = $2`, [req.user.user_id, request.request_id]);
@@ -158,15 +139,14 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
     // room auto-assign, capacity-fit, re-resolved inside the swap
     const room = await bestFitRoom(client, request.proposed_starts_at, request.proposed_ends_at, Math.max(roster, 1));
     if (!room) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ message: 'No room is available at that time anymore — pick another slot' });
+      throw new HttpError(409, { message: 'No room is available at that time anymore — pick another slot' });
     }
 
     const chain = [...(request.reschedule_chain ?? []), {
       from: request.original_starts_at, to: request.proposed_starts_at,
       requested_by: request.requested_by, responded_by: req.user.user_id, responded_at: nowIso
     }];
-    const { rows: [successor] } = await client.query(
+    const { rows: [row] } = await client.query(
       `INSERT INTO class_sessions (class_id, instructor_id, room_id, starts_at, ends_at,
                                    rescheduled_from, reschedule_chain)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
@@ -179,14 +159,15 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
         studentId: studentId, eventType: 'reschedule_accepted', subjectType: 'reschedule_request', subjectId: request.request_id,
         payload: {
           from: request.original_starts_at, to: request.proposed_starts_at,
-          new_session_id: successor.session_id, room: room.name
+          new_session_id: row.session_id, room: room.name
         }
       });
     }
-    await client.query('COMMIT');
+    return row;
+    });
     res.json({ request_id: request.request_id, status: 'accepted', new_session: successor });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
     if (isCalendarConflict(err)) {
       return res.status(409).json({
         message: 'Scheduling conflict — the instructor or room is already booked in that window',
@@ -194,8 +175,6 @@ router.post('/:id/respond', authenticateToken, async (req, res) => {
       });
     }
     throw err;
-  } finally {
-    client.release();
   }
 });
 

@@ -9,6 +9,7 @@ import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { hashPassword } from '../helpers/authHelpers.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { directoryRegister, directoryRemove, directoryLookup } from '../db/userDirectory.js';
+import { withTransaction } from '../helpers/withTransaction.js';
 
 const router = express.Router();
 
@@ -73,10 +74,9 @@ router.post('/:id/guardians', authenticateToken, authorizeRole('staff'), async (
     return res.status(409).json({ message: 'Student already has a primary guardian — use make-primary to reassign' });
   }
 
-  const client = await req.db.connect();
   const directoryEmails = []; // registry rows to undo on rollback
   try {
-    await client.query('BEGIN');
+    const outcome = await withTransaction(req.db, async (client) => {
     let guardianUserId;
     let credentialsIssued = false;
     if (existingUser.length) {
@@ -108,17 +108,15 @@ router.post('/:id/guardians', authenticateToken, authorizeRole('staff'), async (
       `INSERT INTO student_guardians (student_id, guardian_id, is_primary, linked_by)
        VALUES ($1, $2, $3, $4) RETURNING *`,
       [student.student_id, gRow.guardian_id, makePrimary, req.user.user_id]);
-    await client.query('COMMIT');
-    res.status(201).json({ link, credentials_issued: credentialsIssued });
+    return { link, credentials_issued: credentialsIssued };
+    });
+    res.status(201).json(outcome);
   } catch (err) {
-    await client.query('ROLLBACK');
     for (const dirEmail of directoryEmails) await directoryRemove(dirEmail);
     if (err.code === '23505') {
       return res.status(409).json({ message: 'This guardian is already linked to the student' });
     }
     throw err;
-  } finally {
-    client.release();
   }
 });
 
@@ -132,9 +130,7 @@ router.post('/:id/guardians/:guardianId/make-primary', authenticateToken, author
   const guardianId = Number(req.params.guardianId);
   if (!guardianId) return res.status(400).json({ message: 'invalid guardian id' });
 
-  const client = await req.db.connect();
-  try {
-    await client.query('BEGIN');
+  const linked = await withTransaction(req.db, async (client) => {
     await client.query(
       `UPDATE student_guardians SET is_primary = false WHERE student_id = $1 AND is_primary`,
       [student.student_id]);
@@ -142,17 +138,18 @@ router.post('/:id/guardians/:guardianId/make-primary', authenticateToken, author
       `UPDATE student_guardians SET is_primary = true WHERE student_id = $1 AND guardian_id = $2`,
       [student.student_id, guardianId]);
     if (!rowCount) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ message: 'That guardian is not linked to this student' });
+      // throwing rolls the primary-clear back too
+      const err = new Error('not linked');
+      err.notLinked = true;
+      throw err;
     }
-    await client.query('COMMIT');
-    res.json({ student_id: student.student_id, primary_guardian_id: guardianId });
-  } catch (err) {
-    await client.query('ROLLBACK');
+    return true;
+  }).catch((err) => {
+    if (err.notLinked) return false;
     throw err;
-  } finally {
-    client.release();
-  }
+  });
+  if (!linked) return res.status(404).json({ message: 'That guardian is not linked to this student' });
+  res.json({ student_id: student.student_id, primary_guardian_id: guardianId });
 });
 
 // ---------------------------------------------------------------------------

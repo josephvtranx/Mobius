@@ -12,6 +12,9 @@ import { insideWindow } from '../helpers/scheduleWindow.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { logNotifications, notifyFamily } from '../helpers/notify.js';
 import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
+import { withTransaction } from '../helpers/withTransaction.js';
+import { HttpError } from '../helpers/httpError.js';
+import { isCalendarConflict } from '../helpers/pgErrors.js';
 import { upsertNoteWithinTx } from '../helpers/sessionNotes.js';
 import { assertUtcIso } from '../lib/time.js';
 
@@ -99,9 +102,7 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
   const settings = await getSettings(req.db);
   const now = DateTime.utc().toISO();
 
-  const client = await req.db.connect();
-  try {
-    await client.query('BEGIN');
+  const outcome = await withTransaction(req.db, async (client) => {
     const results = [];
     const failures = [];
     for (const mark of marks) {
@@ -155,18 +156,13 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
         sessionStatus = 'completed';
       }
     }
-    await client.query('COMMIT');
+    return { results, failures, sessionStatus };
+  });
 
-    if (failures.length === marks.length) {
-      return res.status(failures[0].status).json(failures[0].body);
-    }
-    res.json({ results, session_status: sessionStatus });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
+  if (outcome.failures.length === marks.length) {
+    return res.status(outcome.failures[0].status).json(outcome.failures[0].body);
   }
+  res.json({ results: outcome.results, session_status: outcome.sessionStatus });
 });
 
 // ---------------------------------------------------------------------------
@@ -197,17 +193,13 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
   const late = insideWindow(session.starts_at, settings);
   const status = late ? 'cancelled_late' : 'cancelled_in_window';
 
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
+    const view = await withTransaction(req.db, async (client) => {
     const r = await applyAttendanceWithinTx(client, {
       session, studentId, status, actorUserId: req.user.user_id, settings
     });
-    if (!r.ok) {
-      // e.g. ATTENDANCE_BLOCKED on a late cancel at the grace floor
-      await client.query('ROLLBACK');
-      return res.status(r.status).json(r.body);
-    }
+    // e.g. ATTENDANCE_BLOCKED on a late cancel at the grace floor
+    if (!r.ok) throw new HttpError(r.status, r.body);
 
     let sessionStatus = session.status;
     if (session.class_type === 'one_on_one') {
@@ -234,17 +226,16 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
         money_effect: late ? 'credit_forfeited' : 'no_charge', appeal_available: late
       }
     });
-    await client.query('COMMIT');
-    res.json({
+    return {
       attendance_status: status, session_status: sessionStatus,
       money_effect: late ? 'credit_forfeited' : 'no_charge',
       delta: r.delta, balance: r.balance
+    };
     });
+    res.json(view);
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
     throw err;
-  } finally {
-    client.release();
   }
 });
 
@@ -272,23 +263,18 @@ router.put('/:id/notes/:studentId', authenticateToken, async (req, res) => {
   }
 
   const settings = await getSettings(req.db);
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
-    const r = await upsertNoteWithinTx(client, {
-      session, studentId, fields: req.body, actorUserId: req.user.user_id, settings
+    const r = await withTransaction(req.db, async (client) => {
+      const result = await upsertNoteWithinTx(client, {
+        session, studentId, fields: req.body, actorUserId: req.user.user_id, settings
+      });
+      if (!result.ok) throw new HttpError(result.status, result.body);
+      return result;
     });
-    if (!r.ok) {
-      await client.query('ROLLBACK');
-      return res.status(r.status).json(r.body);
-    }
-    await client.query('COMMIT');
     res.json({ note: r.note, edited: r.edited });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
     throw err;
-  } finally {
-    client.release();
   }
 });
 
@@ -330,9 +316,7 @@ router.post('/:id/notes/:studentId/unlock', authenticateToken, authorizeRole('st
 
   const unlockUntil = DateTime.utc().plus({ hours: 48 }).toISO();
   const subjectId = `${session.session_id}:${studentId}`;
-  const client = await req.db.connect();
-  try {
-    await client.query('BEGIN');
+  await withTransaction(req.db, async (client) => {
     // upsert: a post-lock FIRST write has no row yet — the placeholder carries
     // the stamp; write-authz keys on the session's instructor, not created_by
     await client.query(
@@ -353,14 +337,8 @@ router.post('/:id/notes/:studentId/unlock', authenticateToken, authorizeRole('st
       subjectType: 'session_note', subjectId,
       payload: { session_id: session.session_id, student_id: studentId, unlocked_until: unlockUntil }
     });
-    await client.query('COMMIT');
-    res.json({ session_id: session.session_id, student_id: studentId, unlocked_until: unlockUntil });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  });
+  res.json({ session_id: session.session_id, student_id: studentId, unlocked_until: unlockUntil });
 });
 
 // ---------------------------------------------------------------------------
@@ -419,14 +397,13 @@ router.post('/:id/reschedule-request', authenticateToken, async (req, res) => {
   }
 
   const expiresAt = DateTime.utc().plus({ hours: settings.instructor_response_window_hours }).toISO();
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
+    const request = await withTransaction(req.db, async (client) => {
     const { rows: [hold] } = await client.query(
       `INSERT INTO slot_holds (instructor_id, starts_at, ends_at, origin, held_for_student_id, expires_at, created_by)
        VALUES ($1,$2,$3,'reschedule_request',$4,$5,$6) RETURNING hold_id`,
       [session.instructor_id, proposed_starts_at, proposed_ends_at, studentId, expiresAt, req.user.user_id]);
-    const { rows: [request] } = await client.query(
+    const { rows: [row] } = await client.query(
       `INSERT INTO reschedule_requests (session_id, requested_by, proposed_starts_at, proposed_ends_at, hold_id)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [session.session_id, req.user.user_id, proposed_starts_at, proposed_ends_at, hold.hold_id]);
@@ -434,20 +411,18 @@ router.post('/:id/reschedule-request', authenticateToken, async (req, res) => {
       `UPDATE class_sessions SET status = 'reschedule_requested' WHERE session_id = $1`, [session.session_id]);
     await logNotifications(client, {
       eventType: 'reschedule_requested', recipientUserIds: [session.instructor_id],
-      subjectType: 'reschedule_request', subjectId: request.request_id,
+      subjectType: 'reschedule_request', subjectId: row.request_id,
       payload: { session_id: session.session_id, from: session.starts_at, to: proposed_starts_at, student_id: studentId }
     });
-    await client.query('COMMIT');
+    return row;
+    });
     res.status(201).json({ request });
   } catch (err) {
-    await client.query('ROLLBACK');
-    if (err.code === '23505' || err.code === '23P01') {
+    if (isCalendarConflict(err)) {
       // INV-3: a racing writer already holds or booked that slot
       return res.status(409).json({ message: 'That slot was just taken — refresh the calendar and pick another time' });
     }
     throw err;
-  } finally {
-    client.release();
   }
 });
 
@@ -470,39 +445,33 @@ router.post('/:id/instructor-cancel', authenticateToken, async (req, res) => {
   const { rows: enrolled } = await req.db.query(
     `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [session.class_id]);
 
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
-    for (const { student_id } of enrolled) {
-      const r = await applyAttendanceWithinTx(client, {
-        session, studentId: student_id, status: 'instructor_cancelled',
-        actorUserId: req.user.user_id, settings
-      });
-      if (!r.ok) {
-        await client.query('ROLLBACK');
-        return res.status(r.status).json(r.body);
+    await withTransaction(req.db, async (client) => {
+      for (const { student_id } of enrolled) {
+        const r = await applyAttendanceWithinTx(client, {
+          session, studentId: student_id, status: 'instructor_cancelled',
+          actorUserId: req.user.user_id, settings
+        });
+        if (!r.ok) throw new HttpError(r.status, r.body);
       }
-    }
-    await client.query(
-      `UPDATE class_sessions SET status = 'cancelled_instructor', cancellation_reason = $1
-        WHERE session_id = $2`, [reason, session.session_id]);
+      await client.query(
+        `UPDATE class_sessions SET status = 'cancelled_instructor', cancellation_reason = $1
+          WHERE session_id = $2`, [reason, session.session_id]);
 
-    for (const { student_id } of enrolled) {
-      await notifyFamily(client, {
-        studentId: student_id, eventType: 'session_cancelled_by_instructor', subjectType: 'class_session', subjectId: session.session_id,
-        payload: {
-          reason, starts_at: session.starts_at,
-          rebook: session.recurrence === 'none' // one-off: family must book another time
-        }
-      });
-    }
-    await client.query('COMMIT');
+      for (const { student_id } of enrolled) {
+        await notifyFamily(client, {
+          studentId: student_id, eventType: 'session_cancelled_by_instructor', subjectType: 'class_session', subjectId: session.session_id,
+          payload: {
+            reason, starts_at: session.starts_at,
+            rebook: session.recurrence === 'none' // one-off: family must book another time
+          }
+        });
+      }
+    });
     res.json({ session_id: session.session_id, status: 'cancelled_instructor', students: enrolled.length });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
     throw err;
-  } finally {
-    client.release();
   }
 });
 
@@ -527,41 +496,35 @@ router.post('/:id/staff-cancel', authenticateToken, authorizeRole('staff'), asyn
   const { rows: enrolled } = await req.db.query(
     `SELECT student_id FROM enrollments WHERE class_id = $1 AND status = 'active'`, [session.class_id]);
 
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
-    for (const { student_id } of enrolled) {
-      const r = await applyAttendanceWithinTx(client, {
-        session, studentId: student_id, status, actorUserId: req.user.user_id, settings
-      });
-      if (!r.ok) {
+    await withTransaction(req.db, async (client) => {
+      for (const { student_id } of enrolled) {
+        const r = await applyAttendanceWithinTx(client, {
+          session, studentId: student_id, status, actorUserId: req.user.user_id, settings
+        });
         // all-or-nothing: e.g. a cancelled_late deduction floor-blocks one student
-        await client.query('ROLLBACK');
-        return res.status(r.status).json({ ...r.body, student_id });
+        if (!r.ok) throw new HttpError(r.status, { ...r.body, student_id });
       }
-    }
-    await client.query(
-      `UPDATE class_sessions SET status = 'cancelled_staff', cancellation_reason = $1
-        WHERE session_id = $2`, [reason, session.session_id]);
+      await client.query(
+        `UPDATE class_sessions SET status = 'cancelled_staff', cancellation_reason = $1
+          WHERE session_id = $2`, [reason, session.session_id]);
 
-    for (const { student_id } of enrolled) {
-      await notifyFamily(client, {
-        studentId: student_id, eventType: 'session_cancelled_by_staff', subjectType: 'class_session', subjectId: session.session_id,
+      for (const { student_id } of enrolled) {
+        await notifyFamily(client, {
+          studentId: student_id, eventType: 'session_cancelled_by_staff', subjectType: 'class_session', subjectId: session.session_id,
+          payload: { reason, starts_at: session.starts_at, attendance_status: status }
+        });
+      }
+      await logNotifications(client, {
+        eventType: 'session_cancelled_by_staff', recipientUserIds: [session.instructor_id],
+        subjectType: 'class_session', subjectId: session.session_id,
         payload: { reason, starts_at: session.starts_at, attendance_status: status }
       });
-    }
-    await logNotifications(client, {
-      eventType: 'session_cancelled_by_staff', recipientUserIds: [session.instructor_id],
-      subjectType: 'class_session', subjectId: session.session_id,
-      payload: { reason, starts_at: session.starts_at, attendance_status: status }
     });
-    await client.query('COMMIT');
     res.json({ session_id: session.session_id, status: 'cancelled_staff', attendance_status: status, students: enrolled.length });
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
     throw err;
-  } finally {
-    client.release();
   }
 });
 

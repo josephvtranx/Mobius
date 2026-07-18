@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 
 export function toUtcIso(input) {
+  // eslint-disable-next-line no-restricted-globals -- the sanctioned Date bridge: this helper IS the wrapper
   return (input instanceof Date
           ? DateTime.fromJSDate(input, { zone: "local" })
           : DateTime.fromISO(input,    { zone: "local" }))

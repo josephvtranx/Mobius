@@ -161,7 +161,7 @@ describe('SCH-4 — instructor response', () => {
     const res = await respond(bookedClassId, { action: 'accept' });
     expect(res.status).toBe(200);
     expect(res.body.session.room_id).not.toBeNull();
-    expect(DateTime.fromJSDate(new Date(res.body.session.starts_at)).toUTC().toISO()).toBe(at(48));
+    expect(DateTime.fromISO(res.body.session.starts_at).toUTC().toISO()).toBe(at(48));
 
     const cls = await rowOf('classes', 'class_id', bookedClassId);
     expect(cls.status).toBe('active');

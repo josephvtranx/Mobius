@@ -14,13 +14,12 @@ import { canActForStudent } from '../helpers/authz.js';
 import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
 import { logNotifications, notifyFamily } from '../helpers/notify.js';
 import { assertUtcIso } from '../lib/time.js';
+import { withTransaction } from '../helpers/withTransaction.js';
+import { HttpError } from '../helpers/httpError.js';
+import { isCalendarConflict } from '../helpers/pgErrors.js';
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function isCalendarConflict(err) {
-  return err?.code === '23P01' || err?.code === '23505';
-}
 
 // ---------------------------------------------------------------------------
 // POST / — request a one-off 1:1 slot
@@ -95,9 +94,8 @@ router.post('/', authenticateToken, async (req, res) => {
 
   const expiresAt = DateTime.utc().plus({ hours: settings.instructor_response_window_hours }).toISO();
   const startsOn = DateTime.fromISO(starts_at).setZone(tz).toISODate();
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
+    const created = await withTransaction(req.db, async (client) => {
     const { rows: [hold] } = await client.query(
       `INSERT INTO slot_holds (instructor_id, starts_at, ends_at, origin, held_for_student_id, expires_at, created_by)
        VALUES ($1,$2,$3,'self_serve_booking',$4,$5,$6) RETURNING hold_id, expires_at`,
@@ -115,17 +113,15 @@ router.post('/', authenticateToken, async (req, res) => {
       subjectType: 'class', subjectId: cls.class_id,
       payload: { student_id: studentId, starts_at, ends_at, subject_id }
     });
-    await client.query('COMMIT');
-    res.status(201).json({ class_id: cls.class_id, hold_expires_at: hold.expires_at, cost });
+    return { class_id: cls.class_id, hold_expires_at: hold.expires_at, cost };
+    });
+    res.status(201).json(created);
   } catch (err) {
-    await client.query('ROLLBACK');
     if (isCalendarConflict(err)) {
       // INV-3: a racing family already holds or booked that slot
       return res.status(409).json({ message: 'That slot was just taken — refresh the calendar and pick another time' });
     }
     throw err;
-  } finally {
-    client.release();
   }
 });
 
@@ -177,9 +173,8 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
   }
 
   const studentId = booking.held_for_student_id;
-  const client = await req.db.connect();
   try {
-    await client.query('BEGIN');
+    const outcome = await withTransaction(req.db, async (client) => {
     if (action === 'accept') {
       await client.query(`UPDATE classes SET status = 'active' WHERE class_id = $1`, [booking.class_id]);
       await client.query(
@@ -188,8 +183,7 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
       // room auto-assign, capacity-fit, resolved inside the tx
       const room = await bestFitRoom(client, booking.held_starts_at, booking.held_ends_at, 1);
       if (!room) {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ message: 'No room is available at that time anymore' });
+        throw new HttpError(409, { message: 'No room is available at that time anymore' });
       }
       const { rows: [session] } = await client.query(
         `INSERT INTO class_sessions (class_id, instructor_id, room_id, starts_at, ends_at)
@@ -199,8 +193,7 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
         studentId: studentId, eventType: 'booking_accepted', subjectType: 'class', subjectId: booking.class_id,
         payload: { session_id: session.session_id, starts_at: booking.held_starts_at, room: room.name }
       });
-      await client.query('COMMIT');
-      return res.json({ class_id: booking.class_id, status: 'active', session });
+      return { class_id: booking.class_id, status: 'active', session };
     }
 
     // reject: release the slot, drop the never-active pending class
@@ -212,10 +205,11 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
       studentId: studentId, eventType: 'booking_rejected', subjectType: 'class', subjectId: booking.class_id,
       payload: { reason: reason ?? null, starts_at: booking.held_starts_at, offer_alternatives: true }
     });
-    await client.query('COMMIT');
-    res.json({ class_id: booking.class_id, status: 'rejected' });
+    return { class_id: booking.class_id, status: 'rejected' };
+    });
+    res.json(outcome);
   } catch (err) {
-    await client.query('ROLLBACK');
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
     if (isCalendarConflict(err)) {
       return res.status(409).json({
         message: 'Scheduling conflict — the instructor or room is already booked in that window',
@@ -223,8 +217,6 @@ router.post('/:classId/respond', authenticateToken, async (req, res) => {
       });
     }
     throw err;
-  } finally {
-    client.release();
   }
 });
 

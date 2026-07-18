@@ -1,4 +1,5 @@
 import multer from 'multer';
+import { DateTime } from 'luxon';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -29,7 +30,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     // Generate unique filename with tenant prefix for better organization
     const tenantPrefix = req.tenantCode ? `${req.tenantCode}-` : ''; // D7: from the JWT claim, not a session
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = DateTime.now().toMillis() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     cb(null, `${tenantPrefix}profile-${uniqueSuffix}${ext}`);
   }

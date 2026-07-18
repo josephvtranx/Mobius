@@ -29,8 +29,7 @@ jobs:
       - name: Server tests (PGlite-backed, no external DB needed)
         run: npm --prefix server test
 
-      # Non-blocking while the 54 existing `new Date()` violations are cleared
-      # (MODERNIZATION D8); flips to blocking at Phase 4.5.
-      - name: Lint (non-blocking)
+      # Blocking since Phase 4.5 — live code is clean; legacy files queued
+      # for the UI redo are exempted in .eslintrc.json ignorePatterns.
+      - name: Lint
         run: npm run lint
-        continue-on-error: true

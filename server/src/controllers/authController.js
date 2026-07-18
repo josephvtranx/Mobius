@@ -6,6 +6,24 @@ import { getTenantPool } from '../db/tenantPool.js';
 import { directoryLookup, directoryRegister, directoryUpdatePassword, directoryRemove } from '../db/userDirectory.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
+import { withTransaction } from '../helpers/withTransaction.js';
+import { HttpError } from '../helpers/httpError.js';
+import { pgErrorToHttp } from '../helpers/pgErrors.js';
+
+// Signup's pinned constraint-violation response shapes (MODERNIZATION 4.2 —
+// the hand-rolled code blocks collapsed onto pgErrorToHttp overrides)
+const SIGNUP_PG_OVERRIDES = {
+    '23505': (e) => new HttpError(400, { message: 'Database constraint violation',
+        errors: [{ field: e.constraint || 'unknown', message: e.detail || 'A record with this value already exists' }] }),
+    '23503': (e) => new HttpError(400, { message: 'Database reference error',
+        errors: [{ field: e.constraint || 'unknown', message: e.detail || 'Referenced record does not exist' }] }),
+    '22P02': (e) => new HttpError(400, { message: 'Invalid data type',
+        errors: [{ field: e.column || 'unknown', message: e.detail || 'Invalid data type for field' }] }),
+    '23502': (e) => new HttpError(400, { message: 'Missing required field',
+        errors: [{ field: e.column || 'unknown', message: `${e.column} is required` }] }),
+    '23514': (e) => new HttpError(400, { message: 'Invalid value',
+        errors: [{ field: e.constraint || 'unknown', message: e.detail || 'Value violates check constraint' }] })
+};
 
 // Token verification endpoint handler
 // NB: previously checked out a pool client here that was never used (all queries
@@ -75,7 +93,6 @@ export const verifyTokenHandler = async (req, res) => {
 };
 
 export const signup = async (req, res) => {
-    const client = await req.db.connect();
     // Registry rows inserted during this signup — removed again if the tenant
     // transaction rolls back (cross-DB writes aren't atomic; a crash between
     // the two can orphan a row — accepted pre-launch). Function-scoped so the
@@ -110,7 +127,7 @@ export const signup = async (req, res) => {
         // not leave a dangling BEGIN on the pooled connection (MODERNIZATION 2.6)
 
         // Check if email already exists
-        const emailCheck = await client.query(
+        const emailCheck = await req.db.query(
             'SELECT * FROM users WHERE email = $1',
             [email]
         );
@@ -160,8 +177,8 @@ export const signup = async (req, res) => {
         // Hash password (12 rounds via shared helper — MODERNIZATION 2.1)
         const hashedPassword = await hashPassword(password);
 
-        // Start transaction (validation is done; every path from here commits or rolls back)
-        await client.query('BEGIN');
+        // Transaction (validation is done; every path inside commits or rolls back)
+        const user = await withTransaction(req.db, async (client) => {
 
         // Insert user
         const userResult = await client.query(
@@ -171,7 +188,7 @@ export const signup = async (req, res) => {
             [hashedPassword, name, email, phone, role]
         );
 
-        const user = userResult.rows[0];
+        const newUser = userResult.rows[0];
 
         // Create role-specific records
         if (role === 'student') {
@@ -207,7 +224,7 @@ export const signup = async (req, res) => {
             await client.query(
                 `INSERT INTO students (student_id, status, date_of_birth, grade, gender, school, pa_code_id, can_purchase)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-                [user.user_id, status || 'enrolled', date_of_birth ?? null, grade, gender, school, paCodeId, canPurchase]
+                [newUser.user_id, status || 'enrolled', date_of_birth ?? null, grade, gender, school, paCodeId, canPurchase]
             );
 
             let isFirstGuardian = true;
@@ -260,7 +277,7 @@ export const signup = async (req, res) => {
                 await client.query(
                     `INSERT INTO student_guardians (student_id, guardian_id, is_primary)
                      VALUES ($1, $2, $3)`,
-                    [user.user_id, gRow.guardian_id, isFirstGuardian]
+                    [newUser.user_id, gRow.guardian_id, isFirstGuardian]
                 );
                 isFirstGuardian = false;
             }
@@ -275,7 +292,7 @@ export const signup = async (req, res) => {
                         college_attended,
                         major
                     ) VALUES ($1, $2, $3, $4)`,
-                    [user.user_id, gender, college_attended, major]
+                    [newUser.user_id, gender, college_attended, major]
                 );
             } catch (instructorError) {
                 console.error('Instructor creation error:', instructorError);
@@ -302,7 +319,7 @@ export const signup = async (req, res) => {
                         gender
                     ) VALUES ($1, $2, $3, $4, $5, $6)`,
                     [
-                        user.user_id,
+                        newUser.user_id,
                         department,
                         employment_status || 'full_time',
                         salary,
@@ -323,13 +340,13 @@ export const signup = async (req, res) => {
             }
         }
 
-        // registry auth row for the new user (just before COMMIT to minimize
+        // registry auth row for the new user (just before commit to minimize
         // the cross-DB orphan window)
         await directoryRegister(email, hashedPassword, req.tenantCode);
         directoryEmails.push(email);
 
-        // Commit transaction
-        await client.query('COMMIT');
+        return newUser;
+        });
 
         // Generate tokens
         const { accessToken, refreshToken } = generateTokens(user, req.tenantCode);
@@ -348,7 +365,6 @@ export const signup = async (req, res) => {
         });
 
     } catch (error) {
-        await client.query('ROLLBACK');
         // undo any registry rows THIS request inserted (only successfully
         // registered emails are tracked, so a 23505 loser's pre-existing
         // owner row is never touched)
@@ -376,59 +392,10 @@ export const signup = async (req, res) => {
             });
         }
 
-        // Handle database constraint violations
-        if (error.code === '23505') { // unique_violation
-            return res.status(400).json({
-                message: 'Database constraint violation',
-                errors: [{
-                    field: error.constraint || 'unknown',
-                    message: error.detail || 'A record with this value already exists'
-                }]
-            });
-        }
-
-        // Handle database foreign key violations
-        if (error.code === '23503') { // foreign_key_violation
-            return res.status(400).json({
-                message: 'Database reference error',
-                errors: [{
-                    field: error.constraint || 'unknown',
-                    message: error.detail || 'Referenced record does not exist'
-                }]
-            });
-        }
-
-        // Handle data type violations
-        if (error.code === '22P02') { // invalid_text_representation
-            return res.status(400).json({
-                message: 'Invalid data type',
-                errors: [{
-                    field: error.column || 'unknown',
-                    message: error.detail || 'Invalid data type for field'
-                }]
-            });
-        }
-
-        // Handle not-null violations
-        if (error.code === '23502') { // not_null_violation
-            return res.status(400).json({
-                message: 'Missing required field',
-                errors: [{
-                    field: error.column || 'unknown',
-                    message: `${error.column} is required`
-                }]
-            });
-        }
-
-        // Handle check constraint violations
-        if (error.code === '23514') { // check_violation
-            return res.status(400).json({
-                message: 'Invalid value',
-                errors: [{
-                    field: error.constraint || 'unknown',
-                    message: error.detail || 'Value violates check constraint'
-                }]
-            });
+        // Constraint violations: pinned shapes via pgErrorToHttp overrides
+        const mapped = pgErrorToHttp(error, SIGNUP_PG_OVERRIDES);
+        if (mapped instanceof HttpError) {
+            return res.status(mapped.status).json(mapped.body);
         }
 
         // Handle other database errors
@@ -453,8 +420,6 @@ export const signup = async (req, res) => {
                 detail: error.detail || ''
             }]
         });
-    } finally {
-        client.release();
     }
 };
 
@@ -707,11 +672,7 @@ export const changePassword = async (req, res) => {
         // Hash new password (12 rounds via shared helper — MODERNIZATION 2.1)
         const hashedPassword = await hashPassword(newPassword);
 
-        // Start transaction
-        const client = await req.db.connect();
-        try {
-            await client.query('BEGIN');
-
+        await withTransaction(req.db, async (client) => {
             // Update password and increment token version
             await client.query(
                 `UPDATE users 
@@ -724,19 +685,12 @@ export const changePassword = async (req, res) => {
 
             // Add to password history (on the transaction client, so it rolls back together)
             await addToPasswordHistory(client, userId, hashedPassword);
+        });
 
-            await client.query('COMMIT');
+        // keep the registry auth hash in sync (0 rows = legacy user, fine)
+        await directoryUpdatePassword(req.user.email, hashedPassword);
 
-            // keep the registry auth hash in sync (0 rows = legacy user, fine)
-            await directoryUpdatePassword(req.user.email, hashedPassword);
-
-            res.json({ message: 'Password changed successfully' });
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
+        res.json({ message: 'Password changed successfully' });
     } catch (error) {
         console.error('Change password error:', error);
         res.status(500).json({
