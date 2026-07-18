@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import SideNav from './components/SideNav';
 import Header from './components/Header';
 import Home from './pages/Home';
+import Landing from './pages/auth/Landing';
 import Login from './pages/auth/login/Login';
 import InstitutionRegistration from './pages/auth/register/institution/InstitutionRegistration';
 import RoleSelect from './pages/auth/register/user/RoleSelect';
@@ -92,9 +93,10 @@ function AppContent() {
         {/* Routes */}
         <div className="content-area">
           <Routes>
-            {/* Entry: straight to login (the old Landing → Toggle → Fork
-                intro chain was removed — registration links live on Login) */}
-            <Route path="/" element={<Navigate to="/auth/login" replace />} />
+            {/* Entry: interact-to-continue landing → login (the old
+                Toggle/Fork intermediaries are gone — registration links
+                live on Login) */}
+            <Route path="/" element={<Landing />} />
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register/institution" element={<InstitutionRegistration />} />
             <Route path="/auth/register/user/role-select" element={<RoleSelect />} />
