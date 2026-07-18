@@ -14,7 +14,7 @@ import { insideWindow } from '../helpers/scheduleWindow.js';
 import { withTransaction } from '../helpers/withTransaction.js';
 import { HttpError } from '../helpers/httpError.js';
 import { isCalendarConflict } from '../helpers/pgErrors.js';
-import { assertUtcIso } from '../lib/time.js';
+import { assertUtcIso } from 'mobius-lms';
 import { DateTime } from 'luxon';
 
 const router = express.Router();

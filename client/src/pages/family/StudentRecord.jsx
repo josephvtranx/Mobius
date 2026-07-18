@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import studentViewService from '@/services/studentViewService';
-import { isoToLocal, isoToLocalDate } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
+import { isoToLocalDate } from '@/lib/timeDisplay';
 
 function StudentRecord() {
   const { studentId } = useParams();

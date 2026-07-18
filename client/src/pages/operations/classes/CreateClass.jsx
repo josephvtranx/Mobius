@@ -7,7 +7,7 @@ import classService from '@/services/classService';
 import subjectService from '@/services/subjectService';
 import instructorService from '@/services/instructorService';
 import BydayEditor from './BydayEditor';
-import { toUtcIso } from '@/lib/time';
+import { toUtcIso } from 'mobius-lms';
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 

@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import rescheduleService from '@/services/rescheduleService';
 import bookingService from '@/services/bookingService';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 function InstructorInbox() {
   const [requests, setRequests] = useState([]);

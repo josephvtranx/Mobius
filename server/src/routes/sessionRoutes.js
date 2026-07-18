@@ -16,7 +16,7 @@ import { withTransaction } from '../helpers/withTransaction.js';
 import { HttpError } from '../helpers/httpError.js';
 import { isCalendarConflict } from '../helpers/pgErrors.js';
 import { upsertNoteWithinTx } from '../helpers/sessionNotes.js';
-import { assertUtcIso } from '../lib/time.js';
+import { assertUtcIso } from 'mobius-lms';
 
 const router = express.Router();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

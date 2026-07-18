@@ -4,7 +4,7 @@
 // control (sessions already inside the Window forfeit unless waived).
 import { useEffect, useState } from 'react';
 import classService from '@/services/classService';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 function MembershipRequests() {
   const [requests, setRequests] = useState([]);

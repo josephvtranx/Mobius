@@ -1,1 +1,1 @@
-export * from '../lib/time.js'; 
+export * from 'mobius-lms'; 

@@ -2,7 +2,7 @@ import express from 'express';
 import { body } from 'express-validator';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
 import { startOfWeek, endOfWeek, format } from 'date-fns';
-import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { toUtcIso, assertUtcIso } from 'mobius-lms';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 const router = express.Router();
 

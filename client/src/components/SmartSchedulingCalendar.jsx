@@ -5,7 +5,8 @@ import { format, parse, startOfWeek, getDay, addDays, addMinutes, differenceInMi
 import { enUS } from 'date-fns/locale';
 import instructorService from '../services/instructorService';
 import classSessionService from '../services/classSessionService';
-import { toUtcIso, isoToLocal, convertSessionsToLocalTime } from '../lib/time.js';
+import { toUtcIso, isoToLocal } from 'mobius-lms';
+import { convertSessionsToLocalTime } from '@/lib/timeDisplay';
 
 // Import React Big Calendar default styles FIRST
 import 'react-big-calendar/lib/css/react-big-calendar.css';

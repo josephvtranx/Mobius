@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import walletService from '@/services/walletService';
 import studentService from '@/services/studentService';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 function WalletView() {
   const [students, setStudents] = useState([]);

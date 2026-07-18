@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import classService from '@/services/classService';
 import sessionServiceV2 from '@/services/sessionServiceV2';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 const STATUSES = [
   'present', 'absent_unexcused', 'absent_excused',

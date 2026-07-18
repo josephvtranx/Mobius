@@ -8,7 +8,7 @@ import bookingService from '@/services/bookingService';
 import instructorCalendarService from '@/services/instructorCalendarService';
 import instructorService from '@/services/instructorService';
 import subjectService from '@/services/subjectService';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 

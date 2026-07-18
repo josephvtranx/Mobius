@@ -151,18 +151,16 @@ Done during Phase 0 (2026-07-17): removed a never-used `req.db.connect()` checko
 
 ---
 
-## Phase 3 — Consolidate `mobius-lms` into a real shared package
+## Phase 3 — Consolidate `mobius-lms` into a real shared package ✅ COMPLETE (2026-07-18)
 
-Today `"mobius-lms": "file:.."` is declared in both apps but imported by neither; the time helpers are duplicated (`server/src/lib/time.js` ↔ `client/src/lib/time.js`). Make the root package the single source.
+| # | Task | Status |
+|---|---|---|
+| 3.1 | Root package is now a real ESM package: `"type": "module"`, `"main"`/`"exports"` → `index.js` exposing `toUtcIso`, `isoToLocal`, `assertUtcIso` (luxon at root). `setup-dev.js` renamed `setup-dev.cjs` (it's CommonJS; scripts updated). | ✅ |
+| 3.2 | Server imports `from 'mobius-lms'` everywhere (9 files incl. legacy routers still mounted); `server/src/lib/time.js` deleted. | ✅ |
+| 3.3 | Client imports `from 'mobius-lms'` (17 files); `client/src/lib/time.js` deleted. The client's **display-only** helpers (`isoToLocalDate`, `formatLocalTime`, `createSessionTimestamps`, `convertSession(s)ToLocalTime`) moved to `client/src/lib/timeDisplay.js` — they emit JS Dates/format strings for calendar UI, not API payloads, so they stay client-side atop the shared trio. Vite resolves the `file:..` link as source (`/@fs/…/index.js`) with no `optimizeDeps`/`fs.allow` config needed; dev server + prod build both verified. | ✅ |
+| 3.4 | JS-vs-TS: **plain ESM `.js`**, no build step. | ✅ |
 
-| # | Task | Risk | Effort |
-|---|---|---|---|
-| 3.1 | Give the root package real entry points: add `index.js` + `"exports"`/`"main"` in root `package.json`, exposing `toUtcIso`, `isoToLocal`, `assertUtcIso` as pure ESM (luxon dep already at root). Keep it framework-agnostic (no node/browser-only APIs). | medium | medium |
-| 3.2 | Point the server at it: replace `server/src/lib/time.*` imports with `from 'mobius-lms'`; delete the server copy. Re-run Phase 0 tests. | medium | small |
-| 3.3 | Point the client at it: replace `client/src/lib/time.js` imports with `from 'mobius-lms'`; ensure **Vite resolves/optimizes the linked package** (`optimizeDeps`/`server.fs.allow` as needed) and the prod build inlines it. Smoke both dev and `vite build`. | high | medium |
-| 3.4 | Decide the JS-vs-TS story for the shared package: recommend **plain ESM `.js`** to avoid adding a build step; if TS is wanted, add a `tsup`/`tsc` build and a `prepare` script. | medium | medium |
-
-**Exit criteria:** one implementation of the time helpers; both apps build and pass tests importing from `mobius-lms`.
+**Exit criteria met:** one implementation of the shared time helpers; server suite 142/142, client `vite build` + dev server green importing from `mobius-lms`.
 
 ---
 

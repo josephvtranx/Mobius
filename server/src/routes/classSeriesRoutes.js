@@ -6,7 +6,7 @@ import {
     validateSchedulingRequest,
     findSmartSchedulingMatches
 } from '../helpers/timeSlotHelpers.js';
-import { toUtcIso, assertUtcIso, isoToLocal } from '../lib/time.js';
+import { toUtcIso, assertUtcIso, isoToLocal } from 'mobius-lms';
 import { DateTime } from 'luxon';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 const router = express.Router();

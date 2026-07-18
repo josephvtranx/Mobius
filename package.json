@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Mobius Learning Management System",
   "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": { ".": "./index.js" },
   "dependencies": {
     "date-fns": "^4.1.0",
     "luxon": "^3.7.1"
@@ -15,8 +18,8 @@
     "dev:client": "cd client && npm run dev",
     "dev:server:windows": "cd server && npm run dev:windows",
     "dev:windows": "concurrently \"npm run dev:server:windows\" \"npm run dev:client\"",
-    "dev:setup": "npm run install:all && node setup-dev.js",
-    "env:setup": "node setup-dev.js",
+    "dev:setup": "npm run install:all && node setup-dev.cjs",
+    "env:setup": "node setup-dev.cjs",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
     "test": "npm --prefix server test",
     "lint": "eslint . --ext .js,.jsx"

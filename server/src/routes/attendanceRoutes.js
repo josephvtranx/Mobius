@@ -1,7 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
 import { authenticateToken } from '../middleware/auth.js';
-import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { toUtcIso, assertUtcIso } from 'mobius-lms';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 
 const router = express.Router();

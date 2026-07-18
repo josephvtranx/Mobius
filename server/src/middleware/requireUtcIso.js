@@ -1,4 +1,4 @@
-import { assertUtcIso } from "../lib/time.js";
+import { assertUtcIso } from "mobius-lms";
 
 export function requireUtcIso(fields) {
   return (req, _res, next) => {

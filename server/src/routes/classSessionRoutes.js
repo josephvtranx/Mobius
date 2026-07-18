@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { authenticateToken } from '../middleware/auth.js';
-import { toUtcIso, assertUtcIso, isoToLocal } from '../lib/time.js';
+import { toUtcIso, assertUtcIso, isoToLocal } from 'mobius-lms';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 import { DateTime } from 'luxon';
 

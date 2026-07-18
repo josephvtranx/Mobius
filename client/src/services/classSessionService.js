@@ -1,5 +1,5 @@
 import api from './api';
-import { toUtcIso, isoToLocal } from '../lib/time.js';
+import { toUtcIso, isoToLocal } from 'mobius-lms';
 
 const classSessionService = {
     // Get all class sessions

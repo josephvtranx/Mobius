@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import classSessionService from '../services/classSessionService';
-import { formatLocalTime, isoToLocal } from '../lib/time.js';
+import { isoToLocal } from 'mobius-lms';
+import { formatLocalTime } from '@/lib/timeDisplay';
 import '../css/Scheduling.css';
 
 const Events = ({ calendarRange }) => {

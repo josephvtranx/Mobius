@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import classSessionService from '../services/classSessionService';
-import { formatLocalTime } from '../lib/time.js';
+import { formatLocalTime } from '@/lib/timeDisplay';
 import '../css/Scheduling.css';
 
 const PendingBlocks = () => {

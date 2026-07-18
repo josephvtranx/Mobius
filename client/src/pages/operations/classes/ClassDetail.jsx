@@ -9,7 +9,7 @@ import classService from '@/services/classService';
 import sessionServiceV2 from '@/services/sessionServiceV2';
 import studentService from '@/services/studentService';
 import BydayEditor from './BydayEditor';
-import { isoToLocal, toUtcIso } from '@/lib/time';
+import { isoToLocal, toUtcIso } from 'mobius-lms';
 
 const CANCEL_STATUSES = ['instructor_cancelled', 'cancelled_in_window', 'cancelled_late'];
 

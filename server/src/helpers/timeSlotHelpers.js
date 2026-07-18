@@ -1,4 +1,4 @@
-import { toUtcIso, assertUtcIso } from '../lib/time.js';
+import { toUtcIso, assertUtcIso } from 'mobius-lms';
 
 // Convert day abbreviation to day number (sun=0, mon=1, tue=2, etc.)
 const dayToNumber = (dayAbbr) => {

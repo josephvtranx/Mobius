@@ -13,7 +13,7 @@ import { getSettings } from '../helpers/institutionSettings.js';
 import { canActForStudent } from '../helpers/authz.js';
 import { instructorFree, bestFitRoom, studentCollision } from '../helpers/slotFinder.js';
 import { logNotifications, notifyFamily } from '../helpers/notify.js';
-import { assertUtcIso } from '../lib/time.js';
+import { assertUtcIso } from 'mobius-lms';
 import { withTransaction } from '../helpers/withTransaction.js';
 import { HttpError } from '../helpers/httpError.js';
 import { isCalendarConflict } from '../helpers/pgErrors.js';

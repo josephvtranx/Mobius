@@ -6,7 +6,8 @@ import classSessionService from '../services/classSessionService';
 import authService from '../services/authService';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import '../css/schedule-view-calendar.scss';
-import { toUtcIso, isoToLocal, convertSessionsToLocalTime } from '../lib/time.js';
+import { toUtcIso, isoToLocal } from 'mobius-lms';
+import { convertSessionsToLocalTime } from '@/lib/timeDisplay';
 
 const locales = {
   'en-US': enUS

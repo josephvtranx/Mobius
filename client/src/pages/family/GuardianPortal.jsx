@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import guardianPortalService from '@/services/guardianPortalService';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 const PREF_MODES = ['all', 'billing_only', 'digest'];
 

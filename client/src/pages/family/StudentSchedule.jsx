@@ -7,7 +7,7 @@ import { DateTime } from 'luxon';
 import studentViewService from '@/services/studentViewService';
 import sessionServiceV2 from '@/services/sessionServiceV2';
 import instructorCalendarService from '@/services/instructorCalendarService';
-import { isoToLocal } from '@/lib/time';
+import { isoToLocal } from 'mobius-lms';
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 

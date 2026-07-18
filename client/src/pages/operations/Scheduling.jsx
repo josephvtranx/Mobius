@@ -11,7 +11,8 @@ import classSeriesService from '../../services/classSeriesService';
 import classSessionService from '../../services/classSessionService';
 import timePackageService from '../../services/timePackageService';
 import { startOfWeek, endOfWeek, format, addDays, subDays } from 'date-fns';
-import { createSessionTimestamps, toUtcIso, isoToLocal, convertSessionsToLocalTime, formatLocalTime } from '../../lib/time.js';
+import { toUtcIso, isoToLocal } from 'mobius-lms';
+import { createSessionTimestamps, convertSessionsToLocalTime, formatLocalTime } from '@/lib/timeDisplay';
 
 function Scheduling() {
   // Tab state

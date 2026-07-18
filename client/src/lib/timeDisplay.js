@@ -1,18 +1,9 @@
-import { DateTime } from "luxon";
-
-export function toUtcIso(input) {
-  // eslint-disable-next-line no-restricted-globals -- the sanctioned Date bridge: this helper IS the wrapper
-  return (input instanceof Date
-          ? DateTime.fromJSDate(input, { zone: "local" })
-          : DateTime.fromISO(input,    { zone: "local" }))
-        .toUTC()
-        .toISO();              // ends with 'Z'
-}
-
-export function isoToLocal(isoUtc) {
-  return DateTime.fromISO(isoUtc, { zone: "utc" })
-                 .setZone(DateTime.local().zoneName);   // Luxon DT
-}
+// Client-only display helpers on top of the shared mobius-lms time trio
+// (toUtcIso / isoToLocal / assertUtcIso live in the root package —
+// MODERNIZATION Phase 3). These stay client-side because they produce JS
+// Dates / formatted strings for calendar components, not API payloads.
+import { DateTime } from 'luxon';
+import { isoToLocal } from 'mobius-lms';
 
 // Convert UTC ISO string to local JavaScript Date object
 export function isoToLocalDate(isoUtc) {
@@ -44,7 +35,7 @@ export function convertSessionToLocalTime(session) {
   if (!session.session_start || !session.session_end) {
     return session;
   }
-  
+
   return {
     ...session,
     session_start: isoToLocalDate(session.session_start),
@@ -55,4 +46,4 @@ export function convertSessionToLocalTime(session) {
 // Convert multiple sessions to local time
 export function convertSessionsToLocalTime(sessions) {
   return sessions.map(session => convertSessionToLocalTime(session));
-} 
+}
