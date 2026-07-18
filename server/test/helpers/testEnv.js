@@ -81,6 +81,9 @@ export async function startTestEnv() {
   // dotenv.config() never overrides pre-set values, so server/.env stays inert here.
   process.env.REGISTRY_URL = registry.url;
   process.env.PGSSLMODE = 'disable';
+  // dotenv would otherwise load the real Resend key from server/.env — tests
+  // must NEVER send real email (emailJobs skips when the key is empty)
+  process.env.RESEND_API_KEY = '';
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
   process.env.NODE_ENV = 'test';
 

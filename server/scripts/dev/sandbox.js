@@ -7,6 +7,7 @@ import { DateTime } from 'luxon';
 
 process.env.CORS_ORIGIN = 'http://localhost:5173'; // Vite dev origin (set before app import)
 process.env.JOBS_DISABLED = '1'; // PGlite serves one connection; keep the scheduler off
+process.env.RESEND_API_KEY = ''; // never send real email from the sandbox
 process.env.PG_POOL_MAX = '1';   // serialize ALL queries through one connection —
                                  // concurrent browser requests queue instead of
                                  // hanging on a second PGlite socket

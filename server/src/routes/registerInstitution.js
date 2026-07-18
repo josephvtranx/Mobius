@@ -1,5 +1,5 @@
 import express from 'express';
-import { resend } from '../email/transport.js';
+import { sendEmail } from '../email/transport.js';
 
 const router = express.Router();
 
@@ -14,9 +14,8 @@ router.post('/api/register-institution', async (req, res) => {
   }
 
   try {
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: 'josephvtranx@gmail.com',
+    await sendEmail({
+      to: process.env.ADMIN_EMAIL || 'josephvtranx@gmail.com',
       subject: `New workspace request – ${data.institutionName}`,
       html: `
         <h2>New Institution Registration Request</h2>

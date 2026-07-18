@@ -4,13 +4,14 @@
 // group's jobs against each tenant pool; per-tenant/per-job failures are
 // logged and contained (never fatal, never cross-tenant). runGroup is exported
 // so tests can drive a tick directly without any timer.
+import { runEmailDelivery } from './emailJobs.js';
 import { runHoldExpiry, runRequestDeadlines, runBookingDeadlines, runSessionGenerator } from './scheduleJobs.js';
 import { runAutoComplete, runLowBalanceScan, runRecordLock, runPriceSync } from './billingJobs.js';
 import { runNotesReminder } from './academicJobs.js';
 
 export const JOB_GROUPS = {
   minute:     { intervalMs: 60_000,     jobs: { runHoldExpiry } },
-  fiveMinute: { intervalMs: 300_000,    jobs: { runRequestDeadlines, runBookingDeadlines } },
+  fiveMinute: { intervalMs: 300_000,    jobs: { runRequestDeadlines, runBookingDeadlines, runEmailDelivery } },
   hourly:     { intervalMs: 3_600_000,  jobs: { runAutoComplete, runNotesReminder } },
   daily:      { intervalMs: 86_400_000, jobs: { runLowBalanceScan, runRecordLock, runPriceSync, runSessionGenerator } }
 };

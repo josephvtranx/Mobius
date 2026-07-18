@@ -1,7 +1,8 @@
 // The notification service (spec 08, INV-7): one event-driven service off the
 // domain writes; every automated side-effect gets a read-back-able
-// notification_log row. Delivery today is in-app rows only — Email/Kakao are a
-// later integration slice; per-guardian prefs (GRD-5) already filter here.
+// notification_log row. Email delivery: opted-in guardians (prefs.email === true)
+// get queued channel='email' rows, drained by jobs/emailJobs.js; Kakao is a
+// later slice. Per-guardian prefs (GRD-5) filter here.
 // Callers inside a transaction pass the tx client so notices commit atomically
 // with the domain write.
 
@@ -81,4 +82,21 @@ export async function notifyFamily(db, {
   await logNotifications(db, {
     eventType, recipientUserIds: [...recipients], subjectType, subjectId, payload
   });
+
+  // GRD-5 channel opt-in: guardians with notification_prefs.email === true
+  // ALSO get a queued channel='email' row (drained by runEmailDelivery).
+  // 'digest' mode gets no per-event email (the digest job is a later slice);
+  // billing_only muting applies the same as in-app. Students and alsoNotify
+  // recipients stay in-app-only in v1.
+  for (const g of guardians) {
+    const prefs = g.notification_prefs ?? {};
+    if (prefs.email !== true) continue;
+    const mode = prefMode(prefs);
+    if (mode === 'digest') continue;
+    if (mode === 'billing_only' && !isBilling && !isUrgent) continue;
+    await db.query(
+      `INSERT INTO notification_log (event_type, recipient_user_id, channel, subject_type, subject_id, payload)
+       VALUES ($1, $2, 'email', $3, $4, $5)`,
+      [eventType, g.user_id, subjectType, String(subjectId), payload ?? null]);
+  }
 }
