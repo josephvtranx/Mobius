@@ -18,22 +18,23 @@ if (!fs.existsSync(clientEnvPath) && fs.existsSync(clientTemplatePath)) {
   console.log('⚠️  client/env.development.template not found');
 }
 
-// Create server .env.development if it doesn't exist
-const serverEnvPath = path.join(__dirname, 'server', '.env.development');
-const serverTemplatePath = path.join(__dirname, 'server', 'env.development.template');
+// Create server .env from the example if it doesn't exist (the old
+// env.development.template was removed — it documented the dead SMTP/DB_* era)
+const serverEnvPath = path.join(__dirname, 'server', '.env');
+const serverTemplatePath = path.join(__dirname, 'server', '.env.example');
 
 if (!fs.existsSync(serverEnvPath) && fs.existsSync(serverTemplatePath)) {
   fs.copyFileSync(serverTemplatePath, serverEnvPath);
-  console.log('✅ Created server/.env.development');
+  console.log('✅ Created server/.env from .env.example — fill in real values');
 } else if (fs.existsSync(serverEnvPath)) {
-  console.log('ℹ️  server/.env.development already exists');
+  console.log('ℹ️  server/.env already exists');
 } else {
-  console.log('⚠️  server/env.development.template not found');
+  console.log('⚠️  server/.env.example not found');
 }
 
 console.log('\n🎯 Development setup complete!');
 console.log('\nNext steps:');
-console.log('1. Update the database credentials in server/.env.development');
+console.log('1. Fill in REGISTRY_URL + JWT_SECRET in server/.env');
 console.log('2. Run: npm run dev');
 console.log('3. Open http://localhost:5173 in your browser');
 console.log('\nAvailable commands:');

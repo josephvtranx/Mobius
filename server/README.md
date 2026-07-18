@@ -1,35 +1,21 @@
 # mobius-backend
 
-# Server Configuration
-PORT=5001
-NODE_ENV=development
+Express + PostgreSQL API for Mobius LMS. Run `npm run dev` here (or `npm run dev:server` from the repo root). No build step; tests are `npm test` (PGlite-backed, no external database needed).
 
-# Database Configuration
-DB_USER=mobius_admin
-DB_PASSWORD=Thocon5405$
-DB_HOST=mobius-db-server.postgres.database.azure.com
-DB_PORT=5432
-DB_NAME=mobius
-DB_SSL=true
-DATABASE_URL="postgres://mobius_admin@mobius-db-server.postgres.database.azure.com:5432/mobius?sslmode=require"
+## Configuration
 
-# JWT Configuration
-JWT_SECRET=a065362286427234a72f2f5a1f48ddbbed5877bbc0c5f049999cf2a568e51ea01963036de8433dcf1b9c6bfd194dffaa7ddfbca2f7e76ce9682d118ae0edc862
+Copy `.env.example` to `.env` and fill in real values. **Never commit `.env` or paste real credentials into this file** — an earlier revision of this README leaked live secrets into git history, which forced a credential rotation.
 
-# CORS Configuration
-CORS_ORIGIN=http://localhost:3000
+| Variable | Purpose |
+|---|---|
+| `PORT` | API port (default 5001) |
+| `NODE_ENV` | `development` / `production` / `test` |
+| `REGISTRY_URL` | Postgres URL of the **registry DB** (institutions + user_directory). The only DB URL the server needs — each tenant's URL comes from the registry's `conn_string` column. |
+| `JWT_SECRET` | Signs access tokens (and refresh tokens unless `REFRESH_TOKEN_SECRET` is set). Generate: `openssl rand -hex 64` |
+| `CORS_ORIGIN` | Extra allowed origin (dev defaults already include the Vite ports) |
+| `RESEND_API_KEY` | Resend email key. **Leave empty in dev/test** — email sending is skipped without it. |
+| `RESEND_FROM` | From-address for outbound email (default `Mobius <onboarding@resend.dev>`) |
+| `ADMIN_EMAIL` | Recipient for institution-registration requests |
+| `PGSSLMODE` | Set `disable` only for local PGlite targets; otherwise SSL is on |
 
-REGISTRY_URL=postgres://mobius_admin:Thocon5405%24@mobius-db-server.postgres.database.azure.com:5432/mobius_registry?sslmode=require
-NODE_ENV=development
-
-# Resend Configuration (new vars)
-RESEND_API_KEY=re_jE3QcVat_MDaVSWxVrUneohpANoVy3goJ
-ADMIN_EMAIL=josephvtranx@gmail.com
-
-
-JWT_SECRET=a065362286427234a72f2f5a1f48ddbbed5877bbc0c5f049999cf2a568e51ea01963036de8433dcf1b9c6bfd194dffaa7ddfbca2f7e76ce9682d118ae0edc862
-NODE_ENV=development
-RESEND_API_KEY=re_jE3QcVat_MDaVSWxVrUneohpANoVy3goJ
-ADMIN_EMAIL=josephvtranx@gmail.com
-SESSION_SECRET=b7f$2kL!9zQw8@1Jk3lP9z8nQw8k2v1Jk3lP9z8nQw8k2v1Jk3lP9z8n
-DATABASE_URL=postgres://mobius_admin:Thocon5405%24@mobius-db-server.postgres.database.azure.com:5432/mobius?sslmode=require
+Migrations: `npm run migrate` applies `migrations/registry/` to the registry, then `migrations/tenant/` to every tenant (see `docs/adr/0002-migrations-node-pg-migrate.md`).
