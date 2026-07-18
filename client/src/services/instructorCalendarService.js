@@ -4,6 +4,17 @@
 import api from './api';
 
 const instructorCalendarService = {
+    // the caller's own upcoming teaching sessions (home dashboard)
+    getMySessions: async (days = 7) => {
+        try {
+            const response = await api.get('/instructors/me/sessions', { params: { days } });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching my sessions:', error);
+            throw error;
+        }
+    },
+
     getOpenSlots: async (instructorId, fromIso, toIso, tz) => {
         try {
             const response = await api.get(`/instructors/${instructorId}/open-slots`, {

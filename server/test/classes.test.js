@@ -435,3 +435,25 @@ describe('SCH-5 — series-level schedule change', () => {
     expect(ended.body.message).toContain('ended');
   });
 });
+
+describe('GET /api/instructors/me/sessions — the instructor home read', () => {
+  it('returns the caller\'s upcoming sessions in-window, ordered', async () => {
+    const res = await staff.agent.get('/api/instructors/me/sessions?days=31')
+      .set({ Authorization: `Bearer ${tokenFor(2)}` });
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeGreaterThan(0);
+    for (const s of res.body) {
+      expect(['scheduled', 'reschedule_requested']).toContain(s.status);
+      expect(s.subject).toBeTruthy();
+      expect(typeof s.enrolled).toBe('number');
+    }
+    const starts = res.body.map((s) => s.starts_at);
+    expect([...starts].sort()).toEqual(starts);
+  });
+
+  it('403s non-instructors', async () => {
+    const res = await staff.agent.get('/api/instructors/me/sessions')
+      .set({ Authorization: `Bearer ${tokenFor(3)}` });
+    expect(res.status).toBe(403);
+  });
+});

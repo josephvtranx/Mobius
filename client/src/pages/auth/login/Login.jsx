@@ -28,7 +28,9 @@ export default function Login() {
         email: formData.email,
         password: formData.password,
       });
-      navigate('/home');
+      // guardians' dashboard IS the portal — everyone else gets /home
+      const role = authService.getCurrentUser()?.role;
+      navigate(role === 'guardian' ? '/portal' : '/home');
     } catch (err) {
       setError(
         err.response?.data?.message ||

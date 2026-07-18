@@ -1,0 +1,232 @@
+/* Role-aware home dashboards — visual language shared with login.css:
+   #16303a ink, #2e9d8d teal, white cards on the app background. */
+
+.hm-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 40px 32px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hm-greeting h1 {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #16303a;
+}
+
+.hm-greeting p {
+  margin-top: 4px;
+  font-size: 14.5px;
+  color: #64827e;
+}
+
+.hm-loading, .hm-error, .hm-empty {
+  padding: 28px 8px;
+  font-size: 14.5px;
+  color: #64827e;
+}
+
+.hm-error {
+  color: #9c3a31;
+  background: #fdf1ef;
+  border: 1px solid #f3d4cf;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+/* KPI tiles */
+.hm-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.hm-kpi {
+  background: #ffffff;
+  border: 1px solid #e3eeec;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hm-kpi.alert { border-color: #f3d4cf; background: #fdf6f5; }
+
+.hm-kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  color: #16303a;
+}
+
+.hm-kpi-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #64827e;
+}
+
+/* Cards */
+.hm-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.hm-stack { display: flex; flex-direction: column; gap: 18px; }
+
+.hm-card {
+  background: #ffffff;
+  border: 1px solid #e3eeec;
+  border-radius: 16px;
+  padding: 20px 22px;
+}
+
+.hm-card.low { border-color: #f0dcb8; background: #fffcf4; }
+
+.hm-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.hm-card-head h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #16303a;
+}
+
+.hm-card-foot {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.hm-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #2e7d70;
+  text-decoration: none;
+}
+.hm-link:hover { color: #16303a; }
+
+/* Generic list rows */
+.hm-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.hm-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 2px;
+  font-size: 14px;
+  color: #2c4a45;
+  border-bottom: 1px solid #eef5f3;
+}
+.hm-list li:last-child { border-bottom: none; }
+
+.hm-list a {
+  color: #2c4a45;
+  text-decoration: none;
+}
+.hm-list a:hover { color: #2e7d70; text-decoration: underline; }
+
+.hm-age {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #9db4b0;
+}
+
+/* Session rows */
+.hm-sessions { list-style: none; display: flex; flex-direction: column; }
+
+.hm-session {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 10px;
+  border-bottom: 1px solid #eef5f3;
+  border-radius: 10px;
+}
+.hm-session:last-child { border-bottom: none; }
+.hm-session.today { background: #f0faf8; border-bottom-color: transparent; }
+
+.hm-session-when {
+  display: flex;
+  flex-direction: column;
+  min-width: 118px;
+}
+
+.hm-session-day { font-size: 13px; font-weight: 600; color: #16303a; }
+.hm-session.today .hm-session-day { color: #2e7d70; }
+.hm-session-time { font-size: 12.5px; color: #64827e; }
+
+.hm-session-what { display: flex; flex-direction: column; }
+.hm-session-subject { font-size: 14.5px; font-weight: 500; color: #16303a; }
+.hm-session-meta { font-size: 12.5px; color: #64827e; text-transform: capitalize; }
+
+.hm-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  text-transform: capitalize;
+}
+.hm-badge.warn { background: #fff4e0; color: #9c6a1d; }
+
+/* Wallet strip */
+.hm-wallet {
+  display: flex;
+  gap: 28px;
+}
+.hm-wallet > div { display: flex; flex-direction: column; gap: 2px; }
+
+.hm-warn-note {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #9c6a1d;
+  background: #fff4e0;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+/* Buttons */
+.hm-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.hm-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c4a45;
+  background: #ffffff;
+  border: 1px solid #d5e3e0;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.hm-btn:hover { border-color: #63b3a6; background: #f7fbfa; }
+
+.hm-btn.primary {
+  color: #ffffff;
+  background: #2e9d8d;
+  border-color: #2e9d8d;
+}
+.hm-btn.primary:hover { background: #268578; }
+
+@media (max-width: 900px) {
+  .hm-grid { grid-template-columns: 1fr; }
+  .hm-page { padding: 28px 18px 48px; }
+}

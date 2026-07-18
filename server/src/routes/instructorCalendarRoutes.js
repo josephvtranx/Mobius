@@ -12,6 +12,28 @@ import { openSlots } from '../helpers/slotFinder.js';
 const router = express.Router();
 const MAX_RANGE_DAYS = 60;
 
+// The caller's own upcoming teaching schedule (home-dashboard read; the
+// legacy /:id/schedule queries dropped v1 columns and predates schema v2).
+router.get('/me/sessions', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'instructor') return res.status(403).json({ message: 'Instructors only' });
+  const days = Math.min(Number(req.query.days) || 7, 31);
+  const { rows } = await req.db.query(
+    `SELECT cs.session_id, cs.class_id, cs.starts_at, cs.ends_at, cs.status, cs.room_id,
+            c.class_type, sub.name AS subject,
+            (SELECT count(*)::int FROM enrollments e
+              WHERE e.class_id = cs.class_id AND e.status = 'active') AS enrolled
+       FROM class_sessions cs
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+      WHERE cs.instructor_id = $1
+        AND cs.status IN ('scheduled','reschedule_requested')
+        AND cs.starts_at >= CURRENT_TIMESTAMP
+        AND cs.starts_at < CURRENT_TIMESTAMP + make_interval(days => $2)
+      ORDER BY cs.starts_at`,
+    [req.user.user_id, days]);
+  res.json(rows);
+});
+
 router.get('/:id/open-slots', authenticateToken, async (req, res) => {
   const instructorId = Number(req.params.id);
   if (!instructorId) return res.status(400).json({ message: 'invalid instructor id' });
