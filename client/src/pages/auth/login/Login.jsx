@@ -46,7 +46,8 @@ export default function Login() {
         {/* Left column */}
         <div className="login-saas-left">
           <form className="login-saas-form" onSubmit={handleSignIn} autoComplete="off">
-            <div className="login-saas-heading">Sign in to your institution’s workspace.</div>
+            <div className="login-saas-heading">Welcome back</div>
+            <p className="login-saas-subheading">Sign in to your institution’s workspace.</p>
             <div className="login-saas-input-group">
               <label htmlFor="email" className="login-saas-input-label">Email address</label>
               <input
@@ -80,8 +81,9 @@ export default function Login() {
               <button type="submit" disabled={isLoading} className="login-saas-signin-btn">
                 {isLoading
                   ? 'Signing in...'
-                  : (<><span>Sign in</span> <FaArrowRight style={{ fontSize: 20 }} /></>)}
+                  : (<><span>Sign in</span> <FaArrowRight style={{ fontSize: 16 }} /></>)}
               </button>
+              <div className="login-saas-divider"><span>or</span></div>
               <button
                 type="button"
                 className="login-saas-register-btn"
