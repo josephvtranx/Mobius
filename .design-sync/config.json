@@ -1,0 +1,29 @@
+{
+  "projectId": "e58882f7-3aa9-4204-9c0e-3536d0f0c77d",
+  "shape": "package",
+  "pkg": "mobius-client",
+  "globalName": "Mobius",
+  "cssEntry": "src/css/.ds-sync-entry.css",
+  "componentSrcMap": {
+    "Modal": "src/components/Modal.jsx",
+    "SummaryCard": "src/components/SummaryCard.jsx",
+    "SearchableDropdown": "src/components/SearchableDropdown.jsx",
+    "ActionButtons": "src/components/ActionButtons.jsx",
+    "CalendarWidget": "src/components/CalendarWidget.jsx"
+  },
+  "entry": "./client/src/ds-entry.js",
+  "buildCmd": "{ cat .design-sync/css-head.css client/src/css/ds-fonts.css client/src/css/ds-fa.css client/src/css/index.css client/src/css/home.css client/src/css/login.css client/src/css/FinancialDashboard.css; } > client/src/css/.ds-sync-entry.css",
+  "dtsPropsFor": {
+    "Modal": "isOpen: boolean; onClose?: () => void; children?: React.ReactNode;",
+    "SummaryCard": "title: string; value: number | string; year?: number | string; percentChange?: number; isPositive?: boolean; chartData?: Array<{ value: number }>; lineColor?: string;",
+    "SearchableDropdown": "options?: any[]; value?: string | number; onChange?: (value: any) => void; placeholder?: string; getOptionLabel?: (option: any) => string; getOptionValue?: (option: any) => string | number; className?: string; disabled?: boolean; isLoading?: boolean; error?: string | null; renderOption?: (option: any) => React.ReactNode; optionGroups?: Record<string, any[]> | null; 'aria-label'?: string;"
+  },
+  "overrides": {
+    "Modal": {
+      "cardMode": "single",
+      "primaryStory": "ConfirmCancel",
+      "viewport": "900x620"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

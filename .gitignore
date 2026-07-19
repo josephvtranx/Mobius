@@ -104,3 +104,11 @@ server/uploads/
 # Backup files
 *.bak
 *.backup
+
+# design-sync machine state
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+client/src/css/.ds-sync-entry.css

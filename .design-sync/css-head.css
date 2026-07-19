@@ -1,0 +1,14 @@
+/* design-sync aggregate: remote fonts/icons (same CDNs as index.html) +
+   the modal baseline. The design-language stylesheets (index/home/login.css)
+   ship via tokensGlob in .design-sync/config.json. */
+
+/* Modal chrome: the app defines .modal-overlay/.modal per legacy page css
+   (ClassRoster/Payments); this is the design-language baseline for it. */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(22, 48, 58, 0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal {
+  background: #ffffff; border-radius: 16px; padding: 24px 26px;
+  max-width: 560px; width: 90%; box-shadow: 0 24px 60px -12px rgba(16,42,38,0.25);
+}
