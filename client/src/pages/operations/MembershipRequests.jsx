@@ -5,6 +5,8 @@
 import { useEffect, useState } from 'react';
 import classService from '@/services/classService';
 import { isoToLocal } from 'mobius-lms';
+import '@/css/attendance.css';
+import '@/css/table.css';
 
 function MembershipRequests() {
   const [requests, setRequests] = useState([]);
@@ -35,39 +37,43 @@ function MembershipRequests() {
   };
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Membership requests</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {notice && <p style={{ color: 'green' }}>{notice}</p>}
-      <table border="1" cellPadding="6">
-        <thead>
-          <tr><th>Filed</th><th>Kind</th><th>Student</th><th>Class</th><th>Reason</th><th>Waitlist</th><th>Resolve</th></tr>
-        </thead>
-        <tbody>
-          {requests.map((r) => (
-            <tr key={r.request_id}>
-              <td>{isoToLocal(r.created_at)}</td>
-              <td>{r.kind}</td>
-              <td>{r.student_name}</td>
-              <td>{r.subject} ({r.class_type})</td>
-              <td>{r.reason || '—'}</td>
-              <td>{r.is_waitlist ? 'yes' : ''}</td>
-              <td>
-                {r.kind === 'leave' && (
-                  <label style={{ marginRight: 6 }}>
-                    <input type="checkbox" checked={!!waive[r.request_id]}
-                      onChange={(e) => setWaive((w) => ({ ...w, [r.request_id]: e.target.checked }))} />
-                    waive window
-                  </label>
-                )}
-                <button onClick={resolve(r, 'approve')}>Approve</button>
-                <button onClick={resolve(r, 'reject')} style={{ marginLeft: 4 }}>Reject</button>
-              </td>
-            </tr>
-          ))}
-          {requests.length === 0 && <tr><td colSpan="7">No pending requests.</td></tr>}
-        </tbody>
-      </table>
+    <div className="at-page" style={{ maxWidth: 960 }}>
+      <h1 className="at-title">Membership requests</h1>
+      {error && <div className="hm-error">{error}</div>}
+      {notice && <div className="hm-card" style={{ color: 'var(--status-success)' }}>{notice}</div>}
+      <div className="hm-table-wrap">
+        <table className="hm-table">
+          <thead>
+            <tr><th>Filed</th><th>Kind</th><th>Student</th><th>Class</th><th>Reason</th><th>Waitlist</th><th>Resolve</th></tr>
+          </thead>
+          <tbody>
+            {requests.map((r) => (
+              <tr key={r.request_id}>
+                <td>{isoToLocal(r.created_at).toFormat('LLL d · h:mm a')}</td>
+                <td><span className="status-pill status-pill--info">{r.kind}</span></td>
+                <td>{r.student_name}</td>
+                <td>{r.subject} ({r.class_type.replace('_', ' ')})</td>
+                <td>{r.reason || '—'}</td>
+                <td>{r.is_waitlist && <span className="status-pill status-pill--warning">waitlist</span>}</td>
+                <td>
+                  <div className="hm-actions" style={{ flexWrap: 'nowrap' }}>
+                    {r.kind === 'leave' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5 }}>
+                        <input type="checkbox" checked={!!waive[r.request_id]}
+                          onChange={(e) => setWaive((w) => ({ ...w, [r.request_id]: e.target.checked }))} />
+                        waive window
+                      </label>
+                    )}
+                    <button type="button" className="hm-btn primary" onClick={resolve(r, 'approve')}>Approve</button>
+                    <button type="button" className="hm-btn" onClick={resolve(r, 'reject')}>Reject</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {requests.length === 0 && <tr><td colSpan="7">No pending requests.</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
