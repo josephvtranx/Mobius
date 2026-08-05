@@ -98,13 +98,13 @@ function StaffHome({ user }) {
   const activeClasses = classes.filter((c) => c.status === 'active').length;
   const attention = [
     ...dash.delinquency_queue.map((d) => ({
-      key: `del-${d.student_id}`, to: '/operations/wallets',
-      text: `${d.name} is ${Math.abs(d.balance)} credits negative`,
+      key: `del-${d.task_id}`, to: '/operations/wallets',
+      text: `${d.student} is ${Math.abs(d.balance)} credits negative`,
       age: `${d.days_open}d`
     })),
     ...dash.pending_requests_aging.map((r) => ({
       key: `req-${r.kind}`, to: '/operations/requests',
-      text: `${r.open_count} open ${label(r.kind)} ${r.open_count === 1 ? 'task' : 'tasks'}`,
+      text: `${r.open} open ${label(r.kind)} ${r.open === 1 ? 'task' : 'tasks'}`,
       age: `${Math.round(r.oldest_days)}d`
     })),
     ...dash.auto_completed_pending.tasks.map((t) => ({
