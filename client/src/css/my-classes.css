@@ -1,0 +1,53 @@
+/* My classes / Feedback — small additions on top of home.css's hm-* cards */
+
+.mc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.mc-card .hm-list {
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.fb-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--shell-hairline, #eef5f3);
+}
+
+.fb-note-form textarea,
+.fb-note-form input {
+  padding: 8px 10px;
+  border: 1px solid var(--shell-border, #e3eeec);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  resize: vertical;
+}
+
+.fb-student-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--shell-hairline, #eef5f3);
+}
+.fb-student-row:last-child { border-bottom: none; }
+
+.fb-student-row .fb-note-form {
+  flex-basis: 100%;
+}
+
+.fb-sent-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--status-success, #2c8a5b);
+}

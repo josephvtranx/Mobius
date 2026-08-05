@@ -42,6 +42,18 @@ const sessionServiceV2 = {
         }
     },
 
+    // ACA-1/INV-5: write or touch-up a session note outside the one-pass
+    // attendance save (e.g. adding feedback after the fact)
+    putNote: async (sessionId, studentId, fields) => {
+        try {
+            const response = await api.put(`/sessions/${sessionId}/notes/${studentId}`, fields);
+            return response.data;
+        } catch (error) {
+            console.error('Error saving session note:', error);
+            throw error;
+        }
+    },
+
     // RSC-5: staff cancel — unbound by the Window; status defaults to the
     // never-deduct instructor_cancelled equivalent server-side
     staffCancel: async (sessionId, { status, reason } = {}) => {

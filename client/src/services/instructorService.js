@@ -1,6 +1,23 @@
 import api from './api';
+import classService from './classService';
 
 const instructorService = {
+    // Derived "my classes" list: there's no dedicated endpoint for this, so
+    // it's built from GET /instructors/:id's `upcoming_sessions` (despite
+    // the name, this is every session ever scheduled for them, unfiltered
+    // by time) to discover distinct class_ids, then one getClass per class
+    // for the real subject/roster/session details. N+1 by class count, but
+    // instructors teach a small number of classes.
+    getMyClasses: async (id) => {
+        const instructor = await instructorService.getInstructorById(id);
+        const classIds = [...new Set(
+            (instructor.upcoming_sessions || [])
+                .filter((s) => s && s.class_id)
+                .map((s) => s.class_id)
+        )];
+        return Promise.all(classIds.map((cid) => classService.getClass(cid)));
+    },
+
     // Get all instructors
     getAllInstructors: async () => {
         try {
