@@ -27,6 +27,7 @@ import Testing from './pages/academics/academic-hub/Testing';
 
 // Operations pages
 import Scheduling from './pages/operations/Scheduling';
+import Attendance from './pages/operations/Attendance';
 import ClassesList from './pages/operations/classes/ClassesList';
 import WalletView from './pages/operations/wallets/WalletView';
 import ReportsDashboard from './pages/operations/ReportsDashboard';
@@ -163,6 +164,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Scheduling />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/attendance"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <Attendance />
                 </ProtectedRoute>
               }
             />
