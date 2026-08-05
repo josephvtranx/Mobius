@@ -6,6 +6,7 @@ import { useParams } from 'react-router-dom';
 import studentViewService from '@/services/studentViewService';
 import { isoToLocal } from 'mobius-lms';
 import { isoToLocalDate } from '@/lib/timeDisplay';
+import { attendanceRate } from '@/lib/derive';
 
 function StudentRecord() {
   const { studentId } = useParams();
@@ -20,9 +21,16 @@ function StudentRecord() {
   if (error) return <div style={{ padding: 24, color: 'red' }}>{error}</div>;
   if (!record) return <div style={{ padding: 24 }}>Loading…</div>;
 
+  const { rate, marked } = attendanceRate(record.entries);
+
   return (
     <div style={{ padding: 24, maxWidth: 720 }}>
       <h1>Session record</h1>
+      {rate != null && (
+        <p style={{ color: '#555', marginTop: -8, marginBottom: 16 }}>
+          Attendance: {rate}% ({marked} marked session{marked === 1 ? '' : 's'}, excused not counted)
+        </p>
+      )}
       {record.entries.map((e) => (
         <div key={e.session_id} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
           <b>{isoToLocal(e.starts_at)}</b> · {e.subject} · attendance: {e.attendance.status}

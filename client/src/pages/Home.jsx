@@ -14,6 +14,7 @@ import rescheduleService from '@/services/rescheduleService';
 import bookingService from '@/services/bookingService';
 import studentViewService from '@/services/studentViewService';
 import walletService from '@/services/walletService';
+import { walletStatus } from '@/lib/derive';
 import '@/css/home.css';
 
 const label = (s) => String(s ?? '').replace(/_/g, ' ');
@@ -243,7 +244,8 @@ function StudentHome({ user }) {
   const { wallet } = data;
   const sessions = data.schedule.sessions ?? [];
   const notes = (data.record.entries ?? []).filter((e) => e.note).slice(0, 2);
-  const low = Number(wallet.available ?? wallet.balance) <= 0;
+  const status = walletStatus(wallet);
+  const low = status !== 'healthy';
 
   return (
     <div className="hm-page">
@@ -268,7 +270,12 @@ function StudentHome({ user }) {
               <div><span className="hm-kpi-value">{wallet.committed}</span><span className="hm-kpi-label">Committed</span></div>
               <div><span className="hm-kpi-value">{wallet.available}</span><span className="hm-kpi-label">Available</span></div>
             </div>
-            {low && <div className="hm-warn-note">Your available credits are used up — top up to keep booking.</div>}
+            {status === 'negative' && (
+              <div className="hm-warn-note">Your balance is negative — top up to keep booking.</div>
+            )}
+            {status === 'low' && (
+              <div className="hm-warn-note">Your available credits are running low — top up to keep booking.</div>
+            )}
           </Card>
 
           <Card
