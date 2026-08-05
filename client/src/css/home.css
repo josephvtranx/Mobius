@@ -230,7 +230,12 @@
 }
 .hm-btn.primary:hover { background: var(--shell-primary-hover, #268578); }
 
-@media (max-width: 900px) {
+/* Design handoff README > "Responsive behavior": hero/lower grids collapse
+   to one column at <=1120px (student and instructor home layouts). */
+@media (max-width: 1120px) {
   .hm-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
   .hm-page { padding: 28px 18px 48px; }
 }

@@ -120,8 +120,8 @@ function SessionAttendance() {
               const mark = marks[r.student_id];
               return (
                 <li key={r.student_id} className="at-row">
-                  <span className="at-name">{r.name}</span>
-                  <div className="at-states">
+                  <span className="at-name" id={`at-name-${r.student_id}`}>{r.name}</span>
+                  <div className="at-states" role="radiogroup" aria-labelledby={`at-name-${r.student_id}`}>
                     {allowedStatuses.map((status) => {
                       const meta = STATUS_META[status];
                       const active = mark.status === status;
@@ -129,8 +129,10 @@ function SessionAttendance() {
                         <button
                           key={status}
                           type="button"
+                          role="radio"
+                          aria-checked={active}
+                          aria-label={meta.label}
                           className={`at-state-btn at-state-btn--${meta.tone} ${active ? 'active' : ''}`}
-                          aria-pressed={active}
                           title={meta.label}
                           onClick={() => setStatus(r.student_id, status)}
                         >
@@ -172,7 +174,7 @@ function SessionAttendance() {
       )}
 
       {results && (
-        <div className="at-results">
+        <div className="at-results" role="status" aria-live="polite">
           <h2>Saved — session {results.session_status}</h2>
           <ul className="at-results-list">
             {results.results.map((r) => {
