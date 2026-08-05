@@ -5,7 +5,6 @@ import { getActiveSectionLabel } from '../config/shellNav';
 
 const ROUTE_TITLES = {
   '/home': 'Home',
-  '/academics/InstructorHome': 'Today',
   '/academics/assignments': 'Assignments',
   '/academics/red-pen-review': 'Red Pen Review',
   '/academics/testing': 'Testing',

@@ -184,10 +184,16 @@ function InstructorHome({ user }) {
   if (!data) return <Loading />;
 
   const pending = data.reschedules.length + data.bookings.length;
+  const studentsThisWeek = data.sessions.reduce((sum, s) => sum + (s.enrolled ?? 0), 0);
 
   return (
     <div className="hm-page">
       <Greeting user={user} sub={`${data.sessions.length} session${data.sessions.length === 1 ? '' : 's'} in the next 7 days`} />
+      <div className="hm-kpis">
+        <div className="hm-kpi"><span className="hm-kpi-value">{data.sessions.length}</span><span className="hm-kpi-label">Sessions this week</span></div>
+        <div className="hm-kpi"><span className="hm-kpi-value">{studentsThisWeek}</span><span className="hm-kpi-label">Student seats booked</span></div>
+        <div className={`hm-kpi ${pending ? 'alert' : ''}`}><span className="hm-kpi-value">{pending}</span><span className="hm-kpi-label">Pending requests</span></div>
+      </div>
       <div className="hm-grid">
         <Card title="Your week">
           <SessionList

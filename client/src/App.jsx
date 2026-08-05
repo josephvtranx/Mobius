@@ -19,7 +19,6 @@ import authService from './services/authService';
 import { ROLE_THEME } from './config/shellNav';
 
 // Academic pages
-import InstructorHome from './pages/academics/InstructorHome';
 import Performance from './pages/academics/Performance';
 import Assignments from './pages/academics/academic-hub/Assignments';
 import RedPenReview from './pages/academics/academic-hub/Red-Pen-Review';
@@ -119,14 +118,6 @@ function AppContent() {
             />
             
             {/* Academic routes */}
-            <Route
-              path="/academics/InstructorHome"
-              element={
-                <ProtectedRoute>
-                  <InstructorHome />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/academics/performance"
               element={

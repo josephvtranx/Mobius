@@ -70,7 +70,7 @@ export function getShellNav(role, user) {
           label: 'Overview',
           icon: 'fa-solid fa-gauge',
           items: [
-            { label: 'Today', icon: 'fa-solid fa-house', path: '/academics/InstructorHome' },
+            { label: 'Today', icon: 'fa-solid fa-house', path: '/home' },
           ],
         },
         {
