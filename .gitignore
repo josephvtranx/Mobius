@@ -112,3 +112,8 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 client/src/css/.ds-sync-entry.css
+
+# design handoff reference bundle (extracted from "UI workflows.zip")
+.design-handoff/
+UI workflows.zip
+Student UI/

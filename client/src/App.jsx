@@ -2,7 +2,6 @@ import React from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
 import SideNav from './components/SideNav';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -13,10 +12,11 @@ import RoleSelect from './pages/auth/register/user/RoleSelect';
 import StudentRegistration from './pages/auth/register/user/StudentRegistration';
 import InstructorRegistration from './pages/auth/register/user/InstructorRegistration';
 import StaffRegistration from './pages/auth/register/user/StaffRegistration';
-import ProfileCard from './components/ProfileCard';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
 import Unauthorized from './pages/auth/Unauthorized';
+import authService from './services/authService';
+import { ROLE_THEME } from './config/shellNav';
 
 // Academic pages
 import InstructorHome from './pages/academics/InstructorHome';
@@ -54,6 +54,7 @@ import Payments from './pages/operations/Financial-Dashboard/Payments';
 
 import './css/index.css';
 import './css/login.css';
+import './css/shell.css';
 
 function App() {
   return (
@@ -71,27 +72,23 @@ function AppContent() {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
   const isLandingPage = location.pathname === '/';
-  const variant = isAuthRoute ? 'auth' : (location.pathname === '/home' || location.pathname.startsWith('/operations') ? 'orange' : 'teal');
+  const role = authService.getCurrentUser()?.role;
+  const variant = isAuthRoute ? 'auth' : (ROLE_THEME[role] || 'teal');
 
   return (
-    <div className="app">
-      {/* Header - Show on all pages except home and landing */}
-      {location.pathname !== '/home' && !isLandingPage && <Header variant={variant} />}
-      
-      {/* Main content area */}
+    <div className={`app app-shell--${variant}`}>
+      {/* Main content area: sidebar (full page height) beside a column that
+          holds the topbar + routed page content. The topbar only spans the
+          column next to the sidebar, never the sidebar itself. */}
       <div className={`main-content ${isAuthRoute ? 'auth-layout' : 'app-layout'}`}>
-        {/* Navigation and Profile - Only show on non-auth routes and not landing */}
-        {!isAuthRoute && !isLandingPage && (
-          <>
-            <nav className="side-nav-container">
-              <SideNav />
-              <ProfileCard />
-            </nav>
-          </>
-        )}
+        {/* Shared shell sidebar - only on authenticated, non-landing routes */}
+        {!isAuthRoute && !isLandingPage && <SideNav />}
 
-        {/* Routes */}
-        <div className="content-area">
+        <div className="app-main-column">
+          {!isLandingPage && <Header variant={variant} />}
+
+          {/* Routes */}
+          <div className="content-area">
           <Routes>
             {/* Entry: interact-to-continue landing → login (the old
                 Toggle/Fork intermediaries are gone — registration links
@@ -330,7 +327,12 @@ function AppContent() {
 
             {/* Unauthorized route */}
             <Route path="/unauthorized" element={<Unauthorized />} />
+
+            {/* Catch-all: nav items pointing at routes the design integration
+                hasn't built yet land here instead of a blank page. */}
+            <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
+          </div>
         </div>
       </div>
     </div>

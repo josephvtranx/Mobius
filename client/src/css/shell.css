@@ -1,0 +1,448 @@
+/* Shared shell chrome — sidebar (wordmark + icon rail + menu panel + profile
+   card) and topbar. Parameterized per role via .app-shell--{teal,indigo,orange}
+   on the app root. Values from the design handoff README's "Shared shell" +
+   "Design tokens > Palette" sections. */
+
+.app-shell--teal {
+  --shell-ink: #16303a;
+  --shell-primary: #2e9d8d;
+  --shell-primary-hover: #268578;
+  --shell-accent: #63b3a6;
+  --shell-muted: #64827e;
+  --shell-border: #e3eeec;
+  --shell-hairline: #eef5f3;
+  --shell-wash: #f4f9f8;
+  --shell-card: #fbfdfc;
+  --shell-tint: #e6f3f0;
+  --shell-rail-gradient: linear-gradient(185deg, #2e9d8d, #1f8074 65%, #1a6b62);
+}
+
+.app-shell--indigo {
+  --shell-ink: #1c2233;
+  --shell-primary: #5b6bc0;
+  --shell-primary-hover: #4a5aad;
+  --shell-accent: #5b6bc0;
+  --shell-muted: #6b7488;
+  --shell-border: #e6e8f2;
+  --shell-hairline: #eef0f7;
+  --shell-wash: #f7f8fd;
+  --shell-card: #fbfcfe;
+  --shell-tint: #eef1fb;
+  --shell-rail-gradient: linear-gradient(185deg, #5b6bc0, #4453a4 65%, #39468d);
+}
+
+.app-shell--orange {
+  --shell-ink: #33231a;
+  --shell-primary: #d9772e;
+  --shell-primary-hover: #c26a24;
+  --shell-accent: #d9772e;
+  --shell-muted: #7d6a5c;
+  --shell-border: #f0e3d8;
+  --shell-hairline: #f5ebe1;
+  --shell-wash: #fffaf5;
+  --shell-card: #fdfaf6;
+  --shell-tint: #fdeedd;
+  --shell-rail-gradient: linear-gradient(185deg, #d9772e, #c26a24 65%, #a3672a);
+}
+
+/* ---------- Sidebar ---------- */
+
+.shell-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--shell-card, #fff);
+  border-right: 1px solid var(--shell-border, #e3eeec);
+}
+
+.shell-wordmark {
+  text-align: center;
+  padding: 22px 20px 8px;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #333;
+  font-family: 'Poppins', sans-serif;
+}
+
+.shell-wordmark-icon {
+  font-size: 17px;
+  color: var(--shell-primary);
+  transform: translateY(-1px);
+  margin: 0 2px;
+}
+
+.shell-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.shell-rail {
+  width: 76px;
+  flex-shrink: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 0 28px 28px 0;
+  padding: 22px 0;
+  background: var(--shell-rail-gradient);
+  box-shadow: 0 24px 50px -30px rgba(22, 48, 58, 0.55);
+}
+
+.shell-rail-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  padding: 10px 6px;
+}
+
+.shell-rail-tile {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 17px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.shell-rail-tile.active {
+  background: #fff;
+  color: var(--shell-primary);
+}
+
+.shell-rail-tile:hover:not(.active) {
+  color: #fff;
+}
+
+.shell-menu {
+  flex: 1;
+  padding: 30px 16px 16px 18px;
+  overflow-y: auto;
+  font-family: 'Poppins', sans-serif;
+}
+
+.shell-menu-header {
+  color: var(--shell-primary);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 10px;
+  text-transform: none;
+}
+
+.shell-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.shell-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--shell-ink, #333);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.shell-menu-item:hover:not(.active) {
+  background: var(--shell-wash);
+}
+
+.shell-menu-item.active {
+  background: var(--shell-tint);
+  color: var(--shell-primary);
+  font-weight: 600;
+}
+
+.shell-menu-item i {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.shell-menu-chevron {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.shell-menu-badge {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--shell-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  margin-left: auto;
+}
+
+.shell-menu-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 14px;
+  padding-left: 12px;
+  border-left: 1px solid var(--shell-border);
+}
+
+.shell-menu-item--child {
+  font-size: 13px;
+  padding: 9px 12px;
+}
+
+/* ---------- Profile card (structure lives in ProfileCard.jsx) ---------- */
+
+/* Reset the legacy fixed-position card (index.css) — the shell version
+   flows as the last child of .shell-sidebar's column layout instead. */
+.shell-sidebar .profile-card {
+  position: static;
+  bottom: auto;
+  left: auto;
+  z-index: auto;
+  flex-shrink: 0;
+  margin: 0 16px 20px;
+  width: auto;
+  padding: 14px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid var(--shell-border, #e3eeec);
+  box-shadow: 0 16px 34px -24px rgba(22, 48, 58, 0.45);
+  font-family: 'Poppins', sans-serif;
+}
+
+.shell-sidebar .profile-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.shell-sidebar .profile-pic {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: none;
+  box-shadow: none;
+  background: var(--shell-rail-gradient);
+}
+
+.shell-sidebar .profile-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 0;
+}
+
+.shell-sidebar .profile-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--shell-ink, #333);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shell-sidebar .profile-role {
+  font-size: 12px;
+  color: var(--shell-muted, #64827e);
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shell-sidebar .online-indicator {
+  position: absolute;
+  left: 32px;
+  top: 32px;
+  bottom: auto;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #39c07a;
+  border: 2px solid #fff;
+}
+
+.shell-sidebar .profile-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-buttons .btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 0;
+  border-radius: 10px;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.profile-buttons .setting-btn {
+  background: #f1f4f3;
+  color: var(--shell-ink, #333);
+}
+
+.profile-buttons .logout-btn {
+  background: #fbe6e6;
+  color: #d0483b;
+}
+
+/* ---------- Topbar ---------- */
+
+.shell-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 30px;
+  backdrop-filter: blur(10px);
+  background: rgba(244, 249, 248, 0.82);
+  border-bottom: 1px solid var(--shell-hairline, #eef5f3);
+  font-family: 'Poppins', sans-serif;
+}
+
+.shell-topbar--auth {
+  background: #eaf9fc;
+  border-bottom: none;
+  justify-content: flex-start;
+  padding: 24px 40px 16px;
+}
+
+.shell-topbar-left {
+  min-width: 0;
+}
+
+.shell-breadcrumb {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--shell-primary);
+  margin-bottom: 2px;
+}
+
+.shell-title {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--shell-ink, #16303a);
+  margin: 0;
+}
+
+.shell-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.shell-search {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 11px;
+  border: 1px solid var(--shell-border, #e3eeec);
+  background: #fff;
+  color: var(--shell-muted);
+}
+
+.shell-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13.5px;
+  font-family: 'Poppins', sans-serif;
+  width: 160px;
+}
+
+.shell-bell {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  border: 1px solid var(--shell-border, #e3eeec);
+  background: #fff;
+  color: var(--shell-ink, #333);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shell-bell-badge {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #9c3a31;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 1.5px solid #fff;
+}
+
+/* ---------- Layout wiring ----------
+   .app-layout is a row: [sidebar][app-main-column]. The sidebar owns the
+   full page height; app-main-column stacks the topbar above the routed
+   content so the topbar never spans over the sidebar. */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-layout .app-main-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-layout .content-area {
+  flex: 1;
+  min-width: 0;
+  background: var(--shell-wash, #f4f9f8);
+}
