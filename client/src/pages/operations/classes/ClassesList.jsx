@@ -3,25 +3,32 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import classService from '@/services/classService';
+import EnrollmentWizard from './EnrollmentWizard';
 import '@/css/attendance.css';
 import '@/css/table.css';
 
 function ClassesList() {
   const [classes, setClasses] = useState([]);
   const [error, setError] = useState('');
+  const [wizardOpen, setWizardOpen] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
     classService.getAllClasses()
       .then(setClasses)
       .catch((err) => setError(err.response?.data?.message || 'Failed to load classes'));
-  }, []);
+  };
+  useEffect(load, []);
 
   return (
     <div className="at-page" style={{ maxWidth: 960 }}>
       <div className="hm-card-head" style={{ marginBottom: 12 }}>
         <h1 className="at-title" style={{ margin: 0 }}>Classes</h1>
-        <Link className="hm-btn primary" to="/operations/classes/new">+ New class</Link>
+        <div className="hm-actions">
+          <button type="button" className="hm-btn" onClick={() => setWizardOpen(true)}>+ Enroll student</button>
+          <Link className="hm-btn primary" to="/operations/classes/new">+ New class</Link>
+        </div>
       </div>
+      <EnrollmentWizard isOpen={wizardOpen} onClose={() => setWizardOpen(false)} onDone={load} />
       {error && <div className="hm-error">{error}</div>}
       <div className="hm-table-wrap">
         <table className="hm-table">
