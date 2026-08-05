@@ -92,6 +92,47 @@ const instructorService = {
             console.error(`Error fetching instructor ${id} availability:`, error);
             throw error;
         }
+    },
+
+    // Add a weekly availability window: { day_of_week, start_time, end_time, type?, status?, start_date?, end_date?, notes? }
+    addAvailability: async (id, window) => {
+        try {
+            const response = await api.post(`/instructors/${id}/availability`, window);
+            return response.data;
+        } catch (error) {
+            console.error(`Error adding availability for instructor ${id}:`, error);
+            throw error;
+        }
+    },
+
+    updateAvailability: async (id, availabilityId, window) => {
+        try {
+            const response = await api.put(`/instructors/${id}/availability/${availabilityId}`, window);
+            return response.data;
+        } catch (error) {
+            console.error(`Error updating availability ${availabilityId}:`, error);
+            throw error;
+        }
+    },
+
+    deleteAvailability: async (id, availabilityId) => {
+        try {
+            await api.delete(`/instructors/${id}/availability/${availabilityId}`);
+            return true;
+        } catch (error) {
+            console.error(`Error deleting availability ${availabilityId}:`, error);
+            throw error;
+        }
+    },
+
+    getUnavailability: async (id) => {
+        try {
+            const response = await api.get(`/instructors/${id}/unavailability`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching unavailability for instructor ${id}:`, error);
+            throw error;
+        }
     }
 };
 

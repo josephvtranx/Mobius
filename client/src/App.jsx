@@ -36,6 +36,7 @@ import StudentRecord from './pages/family/StudentRecord';
 import Catalog from './pages/family/Catalog';
 import BookSession from './pages/family/BookSession';
 import InstructorInbox from './pages/instructor/InstructorInbox';
+import InstructorAvailability from './pages/instructor/Availability';
 import CreateClass from './pages/operations/classes/CreateClass';
 import ClassDetail from './pages/operations/classes/ClassDetail';
 import SessionAttendance from './pages/operations/classes/SessionAttendance';
@@ -211,6 +212,9 @@ function AppContent() {
             } />
             <Route path="/inbox" element={
               <ProtectedRoute allowedRoles={['instructor', 'staff']}><InstructorInbox /></ProtectedRoute>
+            } />
+            <Route path="/instructor/availability" element={
+              <ProtectedRoute allowedRoles={['instructor']}><InstructorAvailability /></ProtectedRoute>
             } />
             <Route path="/operations/requests" element={
               <ProtectedRoute allowedRoles={['staff']}><MembershipRequests /></ProtectedRoute>
