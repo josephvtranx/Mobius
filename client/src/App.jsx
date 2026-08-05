@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'r
 import SideNav from './components/SideNav';
 import Header from './components/Header';
 import Home from './pages/Home';
+import Messages from './pages/Messages';
 import Landing from './pages/auth/Landing';
 import Login from './pages/auth/login/Login';
 import InstitutionRegistration from './pages/auth/register/institution/InstitutionRegistration';
@@ -35,6 +36,7 @@ import StudentSchedule from './pages/family/StudentSchedule';
 import StudentRecord from './pages/family/StudentRecord';
 import Catalog from './pages/family/Catalog';
 import BookSession from './pages/family/BookSession';
+import StudentClasses from './pages/family/StudentClasses';
 import InstructorInbox from './pages/instructor/InstructorInbox';
 import InstructorAvailability from './pages/instructor/Availability';
 import MyClasses from './pages/instructor/MyClasses';
@@ -212,6 +214,12 @@ function AppContent() {
             } />
             <Route path="/family/students/:studentId/book" element={
               <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><BookSession /></ProtectedRoute>
+            } />
+            <Route path="/family/students/:studentId/classes" element={
+              <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><StudentClasses /></ProtectedRoute>
+            } />
+            <Route path="/messages" element={
+              <ProtectedRoute><Messages /></ProtectedRoute>
             } />
             <Route path="/inbox" element={
               <ProtectedRoute allowedRoles={['instructor', 'staff']}><InstructorInbox /></ProtectedRoute>

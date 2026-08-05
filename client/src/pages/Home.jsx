@@ -14,7 +14,7 @@ import rescheduleService from '@/services/rescheduleService';
 import bookingService from '@/services/bookingService';
 import studentViewService from '@/services/studentViewService';
 import walletService from '@/services/walletService';
-import { walletStatus } from '@/lib/derive';
+import { walletStatus, attendanceRate } from '@/lib/derive';
 import '@/css/home.css';
 
 const label = (s) => String(s ?? '').replace(/_/g, ' ');
@@ -252,10 +252,19 @@ function StudentHome({ user }) {
   const notes = (data.record.entries ?? []).filter((e) => e.note).slice(0, 2);
   const status = walletStatus(wallet);
   const low = status !== 'healthy';
+  const { rate: attendancePct, marked: markedSessions } = attendanceRate(data.record.entries);
 
   return (
     <div className="hm-page">
       <Greeting user={user} />
+      {attendancePct != null && (
+        <div className="hm-kpis">
+          <div className="hm-kpi">
+            <span className="hm-kpi-value">{attendancePct}%</span>
+            <span className="hm-kpi-label">Attendance ({markedSessions} sessions)</span>
+          </div>
+        </div>
+      )}
       <div className="hm-grid">
         <Card title="Upcoming sessions">
           <SessionList

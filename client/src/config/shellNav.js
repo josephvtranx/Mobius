@@ -33,7 +33,10 @@ export function getShellNav(role, user) {
           icon: 'fa-regular fa-comments',
           items: [
             { label: 'Messages', icon: 'fa-regular fa-message', path: '/messages' },
-            { label: 'Feedback', icon: 'fa-regular fa-star', path: `/family/students/${uid}/feedback` },
+            // No separate feedback data source exists — StudentRecord already
+            // shows instructor notes inline with the record timeline, so
+            // "Feedback" points at the same real page rather than a dead link.
+            { label: 'Feedback', icon: 'fa-regular fa-star', path: `/family/students/${uid}/record` },
           ],
         },
         {
