@@ -54,6 +54,7 @@ import Payments from './pages/operations/Financial-Dashboard/Payments';
 
 import './css/index.css';
 import './css/login.css';
+import './css/tokens.css';
 import './css/shell.css';
 
 function App() {

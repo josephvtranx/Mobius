@@ -1,0 +1,111 @@
+/* Shared design tokens — role-independent. Per-role palette tokens
+   (--shell-ink, --shell-primary, etc.) live in shell.css on
+   .app-shell--{teal,indigo,orange}. Source: design handoff README's
+   "Design tokens" section (Palette / Typography / Spacing / Motion). */
+
+:root {
+  /* Status colors (shared across all roles) */
+  --status-success: #2c8a5b;
+  --status-success-bg: #e9f5ee;
+  --status-warning: #9c6a1d;
+  --status-warning-bg: #fff4e0;
+  --status-error: #9c3a31;
+  --status-error-bg: #fdf1ef;
+  --status-info: #5b6bc0;
+  --status-info-bg: #eef1fb;
+  --status-star: #e0a83e;
+  --status-presence: #39c07a;
+
+  /* Subject tints (consistent for the same subject across every app) */
+  --subject-math-bg: #fdeedd;
+  --subject-math-fg: #c26a24;
+  --subject-science-bg: #eef1fb;
+  --subject-science-fg: #5b6bc0;
+  --subject-english-bg: #fbeef1;
+  --subject-english-fg: #b95a76;
+  --subject-chemistry-bg: #e6f3f0;
+  --subject-chemistry-fg: #2e9d8d;
+  --subject-testprep-bg: #fff4e0;
+  --subject-testprep-fg: #9c6a1d;
+
+  /* Type */
+  --font-sans: 'Poppins', sans-serif;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 9px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-9: 20px;
+  --space-10: 22px;
+  --space-11: 26px;
+  --space-12: 30px;
+  --space-13: 44px;
+
+  /* Radius scale */
+  --radius-chip: 8px;
+  --radius-control-sm: 10px;
+  --radius-control: 12px;
+  --radius-list-card: 14px;
+  --radius-card: 16px;
+  --radius-card-lg: 18px;
+  --radius-panel: 20px;
+  --radius-rail-pill: 28px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(22, 48, 58, 0.05);
+  --shadow-hover: 0 14px 34px -20px rgba(22, 48, 58, 0.4);
+  --shadow-profile: 0 16px 34px -24px rgba(22, 48, 58, 0.45);
+  --shadow-rail: 0 24px 50px -30px rgba(22, 48, 58, 0.55);
+
+  /* Motion */
+  --motion-fast: 0.15s ease;
+  --motion-shadow: 0.18s ease;
+  --motion-fade: 0.2s ease;
+  --motion-pop: 0.22s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0s;
+    --motion-shadow: 0s;
+    --motion-fade: 0s;
+    --motion-pop: 0s;
+  }
+}
+
+/* ---------- Small reusable utilities that read the tokens above ---------- */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  text-transform: capitalize;
+}
+.status-pill--success { background: var(--status-success-bg); color: var(--status-success); }
+.status-pill--warning { background: var(--status-warning-bg); color: var(--status-warning); }
+.status-pill--error { background: var(--status-error-bg); color: var(--status-error); }
+.status-pill--info { background: var(--status-info-bg); color: var(--status-info); }
+
+.subject-tint {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: var(--radius-chip);
+}
+.subject-tint--math { background: var(--subject-math-bg); color: var(--subject-math-fg); }
+.subject-tint--science { background: var(--subject-science-bg); color: var(--subject-science-fg); }
+.subject-tint--english { background: var(--subject-english-bg); color: var(--subject-english-fg); }
+.subject-tint--chemistry { background: var(--subject-chemistry-bg); color: var(--subject-chemistry-fg); }
+.subject-tint--testprep { background: var(--subject-testprep-bg); color: var(--subject-testprep-fg); }

@@ -1,5 +1,6 @@
-/* Role-aware home dashboards — visual language shared with login.css:
-   #16303a ink, #2e9d8d teal, white cards on the app background. */
+/* Role-aware home dashboards — reads the current role's --shell-* tokens
+   (shell.css, set on .app-shell--{teal,indigo,orange}) so the same classes
+   render correctly under every role instead of being hardcoded teal. */
 
 .hm-page {
   max-width: 1080px;
@@ -14,24 +15,24 @@
   font-size: 30px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #16303a;
+  color: var(--shell-ink, #16303a);
 }
 
 .hm-greeting p {
   margin-top: 4px;
   font-size: 14.5px;
-  color: #64827e;
+  color: var(--shell-muted, #64827e);
 }
 
 .hm-loading, .hm-error, .hm-empty {
   padding: 28px 8px;
   font-size: 14.5px;
-  color: #64827e;
+  color: var(--shell-muted, #64827e);
 }
 
 .hm-error {
-  color: #9c3a31;
-  background: #fdf1ef;
+  color: var(--status-error, #9c3a31);
+  background: var(--status-error-bg, #fdf1ef);
   border: 1px solid #f3d4cf;
   border-radius: 12px;
   padding: 14px 16px;
@@ -45,8 +46,8 @@
 }
 
 .hm-kpi {
-  background: #ffffff;
-  border: 1px solid #e3eeec;
+  background: var(--shell-card, #ffffff);
+  border: 1px solid var(--shell-border, #e3eeec);
   border-radius: 14px;
   padding: 18px 20px;
   display: flex;
@@ -59,13 +60,13 @@
 .hm-kpi-value {
   font-size: 26px;
   font-weight: 600;
-  color: #16303a;
+  color: var(--shell-ink, #16303a);
 }
 
 .hm-kpi-label {
   font-size: 12.5px;
   font-weight: 500;
-  color: #64827e;
+  color: var(--shell-muted, #64827e);
 }
 
 /* Cards */
@@ -79,8 +80,8 @@
 .hm-stack { display: flex; flex-direction: column; gap: 18px; }
 
 .hm-card {
-  background: #ffffff;
-  border: 1px solid #e3eeec;
+  background: var(--shell-card, #ffffff);
+  border: 1px solid var(--shell-border, #e3eeec);
   border-radius: 16px;
   padding: 20px 22px;
 }
@@ -97,7 +98,7 @@
 .hm-card-head h2 {
   font-size: 16px;
   font-weight: 600;
-  color: #16303a;
+  color: var(--shell-ink, #16303a);
 }
 
 .hm-card-foot {
@@ -109,10 +110,10 @@
 .hm-link {
   font-size: 13px;
   font-weight: 500;
-  color: #2e7d70;
+  color: var(--shell-primary, #2e7d70);
   text-decoration: none;
 }
-.hm-link:hover { color: #16303a; }
+.hm-link:hover { color: var(--shell-ink, #16303a); }
 
 /* Generic list rows */
 .hm-list {
@@ -128,21 +129,21 @@
   gap: 12px;
   padding: 11px 2px;
   font-size: 14px;
-  color: #2c4a45;
-  border-bottom: 1px solid #eef5f3;
+  color: var(--shell-secondary, #2c4a45);
+  border-bottom: 1px solid var(--shell-hairline, #eef5f3);
 }
 .hm-list li:last-child { border-bottom: none; }
 
 .hm-list a {
-  color: #2c4a45;
+  color: var(--shell-secondary, #2c4a45);
   text-decoration: none;
 }
-.hm-list a:hover { color: #2e7d70; text-decoration: underline; }
+.hm-list a:hover { color: var(--shell-primary, #2e7d70); text-decoration: underline; }
 
 .hm-age {
   flex-shrink: 0;
   font-size: 12px;
-  color: #9db4b0;
+  color: var(--shell-faint, #9db4b0);
 }
 
 /* Session rows */
@@ -153,11 +154,11 @@
   align-items: center;
   gap: 16px;
   padding: 12px 10px;
-  border-bottom: 1px solid #eef5f3;
+  border-bottom: 1px solid var(--shell-hairline, #eef5f3);
   border-radius: 10px;
 }
 .hm-session:last-child { border-bottom: none; }
-.hm-session.today { background: #f0faf8; border-bottom-color: transparent; }
+.hm-session.today { background: var(--shell-tint, #f0faf8); border-bottom-color: transparent; }
 
 .hm-session-when {
   display: flex;
@@ -165,13 +166,13 @@
   min-width: 118px;
 }
 
-.hm-session-day { font-size: 13px; font-weight: 600; color: #16303a; }
-.hm-session.today .hm-session-day { color: #2e7d70; }
-.hm-session-time { font-size: 12.5px; color: #64827e; }
+.hm-session-day { font-size: 13px; font-weight: 600; color: var(--shell-ink, #16303a); }
+.hm-session.today .hm-session-day { color: var(--shell-primary, #2e7d70); }
+.hm-session-time { font-size: 12.5px; color: var(--shell-muted, #64827e); }
 
 .hm-session-what { display: flex; flex-direction: column; }
-.hm-session-subject { font-size: 14.5px; font-weight: 500; color: #16303a; }
-.hm-session-meta { font-size: 12.5px; color: #64827e; text-transform: capitalize; }
+.hm-session-subject { font-size: 14.5px; font-weight: 500; color: var(--shell-ink, #16303a); }
+.hm-session-meta { font-size: 12.5px; color: var(--shell-muted, #64827e); text-transform: capitalize; }
 
 .hm-badge {
   margin-left: auto;
@@ -182,7 +183,10 @@
   border-radius: 999px;
   text-transform: capitalize;
 }
-.hm-badge.warn { background: #fff4e0; color: #9c6a1d; }
+.hm-badge.warn { background: var(--status-warning-bg, #fff4e0); color: var(--status-warning, #9c6a1d); }
+.hm-badge.success { background: var(--status-success-bg, #e9f5ee); color: var(--status-success, #2c8a5b); }
+.hm-badge.error { background: var(--status-error-bg, #fdf1ef); color: var(--status-error, #9c3a31); }
+.hm-badge.info { background: var(--status-info-bg, #eef1fb); color: var(--status-info, #5b6bc0); }
 
 /* Wallet strip */
 .hm-wallet {
@@ -194,8 +198,8 @@
 .hm-warn-note {
   margin-top: 12px;
   font-size: 13px;
-  color: #9c6a1d;
-  background: #fff4e0;
+  color: var(--status-warning, #9c6a1d);
+  background: var(--status-warning-bg, #fff4e0);
   border-radius: 10px;
   padding: 10px 12px;
 }
@@ -210,21 +214,21 @@
   padding: 0 18px;
   font-size: 14px;
   font-weight: 500;
-  color: #2c4a45;
-  background: #ffffff;
-  border: 1px solid #d5e3e0;
+  color: var(--shell-secondary, #2c4a45);
+  background: var(--shell-card, #ffffff);
+  border: 1px solid var(--shell-border, #d5e3e0);
   border-radius: 10px;
   text-decoration: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.hm-btn:hover { border-color: #63b3a6; background: #f7fbfa; }
+.hm-btn:hover { border-color: var(--shell-accent, #63b3a6); background: var(--shell-wash, #f7fbfa); }
 
 .hm-btn.primary {
   color: #ffffff;
-  background: #2e9d8d;
-  border-color: #2e9d8d;
+  background: var(--shell-primary, #2e9d8d);
+  border-color: var(--shell-primary, #2e9d8d);
 }
-.hm-btn.primary:hover { background: #268578; }
+.hm-btn.primary:hover { background: var(--shell-primary-hover, #268578); }
 
 @media (max-width: 900px) {
   .hm-grid { grid-template-columns: 1fr; }

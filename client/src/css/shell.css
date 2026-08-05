@@ -9,12 +9,16 @@
   --shell-primary-hover: #268578;
   --shell-accent: #63b3a6;
   --shell-muted: #64827e;
+  --shell-secondary: #4a635f;
+  --shell-faint: #9fb4b0;
   --shell-border: #e3eeec;
   --shell-hairline: #eef5f3;
   --shell-wash: #f4f9f8;
   --shell-card: #fbfdfc;
   --shell-tint: #e6f3f0;
   --shell-rail-gradient: linear-gradient(185deg, #2e9d8d, #1f8074 65%, #1a6b62);
+  --shell-hero-gradient: linear-gradient(150deg, #16303a, #234a52 55%, #2e9d8d 150%);
+  --shell-page-bg: radial-gradient(1200px 640px at 82% -12%, #eaf6f3 0, #f4f9f8 55%);
 }
 
 .app-shell--indigo {
@@ -23,12 +27,16 @@
   --shell-primary-hover: #4a5aad;
   --shell-accent: #5b6bc0;
   --shell-muted: #6b7488;
+  --shell-secondary: #4a5270;
+  --shell-faint: #9aa2bd;
   --shell-border: #e6e8f2;
   --shell-hairline: #eef0f7;
   --shell-wash: #f7f8fd;
   --shell-card: #fbfcfe;
   --shell-tint: #eef1fb;
   --shell-rail-gradient: linear-gradient(185deg, #5b6bc0, #4453a4 65%, #39468d);
+  --shell-hero-gradient: linear-gradient(150deg, #1c2233, #2f3a63 55%, #5b6bc0 155%);
+  --shell-page-bg: radial-gradient(1200px 620px at 82% -12%, #eef0fb 0, #f8f9fd 55%);
 }
 
 .app-shell--orange {
@@ -37,12 +45,18 @@
   --shell-primary-hover: #c26a24;
   --shell-accent: #d9772e;
   --shell-muted: #7d6a5c;
+  --shell-secondary: #5c4632;
+  --shell-faint: #c4a98e;
   --shell-border: #f0e3d8;
   --shell-hairline: #f5ebe1;
   --shell-wash: #fffaf5;
   --shell-card: #fdfaf6;
   --shell-tint: #fdeedd;
   --shell-rail-gradient: linear-gradient(185deg, #d9772e, #c26a24 65%, #a3672a);
+  /* README doesn't spec a staff hero/page-bg gradient (page bg is plain
+     white there) — derived to match the other two roles' pattern. */
+  --shell-hero-gradient: linear-gradient(150deg, #33231a, #6b4a2e 55%, #d9772e 150%);
+  --shell-page-bg: #ffffff;
 }
 
 /* ---------- Sidebar ---------- */
