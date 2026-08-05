@@ -8,6 +8,7 @@ import Home from './pages/Home';
 import Messages from './pages/Messages';
 import Landing from './pages/auth/Landing';
 import Login from './pages/auth/login/Login';
+import PasswordReset from './pages/auth/PasswordReset';
 import InstitutionRegistration from './pages/auth/register/institution/InstitutionRegistration';
 import RoleSelect from './pages/auth/register/user/RoleSelect';
 import StudentRegistration from './pages/auth/register/user/StudentRegistration';
@@ -103,6 +104,7 @@ function AppContent() {
                 live on Login) */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/reset" element={<PasswordReset />} />
             <Route path="/auth/register/institution" element={<InstitutionRegistration />} />
             <Route path="/auth/register/user/role-select" element={<RoleSelect />} />
             <Route path="/auth/register/user/student" element={<StudentRegistration />} />

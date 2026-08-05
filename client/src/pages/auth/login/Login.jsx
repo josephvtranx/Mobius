@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import authService from '@/services/authService';
 import '@/css/login.css';
 
@@ -77,6 +77,9 @@ export default function Login() {
                 autoComplete="current-password"
                 required
               />
+              <Link to="/auth/reset" className="login-saas-input-label" style={{ display: 'inline-block', marginTop: 6 }}>
+                Forgot password?
+              </Link>
             </div>
             {error && <div className="login-saas-error">{error}</div>}
             <div className="login-saas-btn-group">
