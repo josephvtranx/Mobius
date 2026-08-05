@@ -1,23 +1,39 @@
-// v2 one-pass attendance + notes template (spec 04/06 ACA-1): one batch save
-// writes attendance and per-student note templates together. Server results
+// v2 one-pass attendance + notes (spec 04/06 ACA-1): one batch save writes
+// attendance and per-student note templates together. Server results
 // (deltas, balances, ATTENDANCE_BLOCKED / RECORD_LOCKED) render verbatim.
+// Design: handoff README "Take attendance" — four-state marking grid,
+// mark-all shortcuts, progress readout, live consequence line, and a
+// Write-feedback follow-up. The real backend only supports three marks an
+// instructor/staff can choose here (present / absent_unexcused /
+// absent_excused) — there's no "late" status in the schema, so that state
+// from the prototype isn't offered. Instructors may only set present/absent
+// (INSTRUCTOR_SETTABLE, sessionRoutes.js); excused is staff-only.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import classService from '@/services/classService';
 import sessionServiceV2 from '@/services/sessionServiceV2';
+import authService from '@/services/authService';
 import { isoToLocal } from 'mobius-lms';
+import '@/css/attendance.css';
 
-const STATUSES = [
-  'present', 'absent_unexcused', 'absent_excused',
-  'cancelled_in_window', 'cancelled_late', 'instructor_cancelled'
-];
+const STATUS_META = {
+  present: { label: 'Present', icon: 'fa-solid fa-check', tone: 'success' },
+  absent_unexcused: { label: 'Absent', icon: 'fa-solid fa-xmark', tone: 'error' },
+  absent_excused: { label: 'Excused', icon: 'fa-solid fa-notes-medical', tone: 'info' },
+};
 const NOTE_FIELDS = ['performance', 'improvements', 'free_notes'];
 
 function SessionAttendance() {
   const { classId, sessionId } = useParams();
+  const role = authService.getCurrentUser()?.role;
+  const allowedStatuses = role === 'staff'
+    ? ['present', 'absent_unexcused', 'absent_excused']
+    : ['present', 'absent_unexcused'];
+
   const [cls, setCls] = useState(null);
-  const [marks, setMarks] = useState({});   // student_id -> { status, note }
+  const [marks, setMarks] = useState({});   // student_id -> { status, note, noteOpen }
   const [results, setResults] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -26,7 +42,7 @@ function SessionAttendance() {
         setCls(c);
         const initial = {};
         for (const r of c.roster) {
-          if (r.status === 'active') initial[r.student_id] = { status: 'present', note: {} };
+          if (r.status === 'active') initial[r.student_id] = { status: null, note: {}, noteOpen: false };
         }
         setMarks(initial);
       })
@@ -34,15 +50,32 @@ function SessionAttendance() {
   }, [classId]);
 
   const session = cls?.sessions.find((s) => s.session_id === sessionId);
+  const roster = cls?.roster.filter((r) => marks[r.student_id]) ?? [];
+  const total = roster.length;
+  const markedCount = roster.filter((r) => marks[r.student_id]?.status).length;
+  const allMarked = total > 0 && markedCount === total;
 
   const setStatus = (sid, status) =>
     setMarks((m) => ({ ...m, [sid]: { ...m[sid], status } }));
   const setNote = (sid, field, value) =>
     setMarks((m) => ({ ...m, [sid]: { ...m[sid], note: { ...m[sid].note, [field]: value } } }));
+  const toggleNote = (sid) =>
+    setMarks((m) => ({ ...m, [sid]: { ...m[sid], noteOpen: !m[sid].noteOpen } }));
+  const markAll = (status) =>
+    setMarks((m) => {
+      const next = { ...m };
+      for (const r of roster) next[r.student_id] = { ...next[r.student_id], status };
+      return next;
+    });
+
+  const absentCount = roster.filter((r) => marks[r.student_id]?.status === 'absent_unexcused').length;
+  const excusedCount = roster.filter((r) => marks[r.student_id]?.status === 'absent_excused').length;
+  const cost = cls?.session_credit_cost ?? 0;
 
   const save = async () => {
     setError('');
     setResults(null);
+    setSaving(true);
     const payload = Object.entries(marks).map(([student_id, m]) => {
       const mark = { student_id: Number(student_id), status: m.status };
       if (NOTE_FIELDS.some((f) => m.note[f])) mark.note = m.note;
@@ -52,64 +85,109 @@ function SessionAttendance() {
       const res = await sessionServiceV2.markAttendance(sessionId, payload);
       setResults(res);
     } catch (err) {
-      setError(`${err.response?.data?.code ?? ''} ${err.response?.data?.message ?? 'Save failed'}`);
+      setError(`${err.response?.data?.code ?? ''} ${err.response?.data?.message ?? 'Save failed'}`.trim());
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (!cls) return <div style={{ padding: 24 }}>{error || 'Loading…'}</div>;
+  if (!cls) return <div className="at-page">{error ? <div className="hm-error">{error}</div> : 'Loading…'}</div>;
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Attendance + notes</h1>
-      <p><Link to={`/operations/classes/${classId}`}>← back to class</Link></p>
-      {session && <p>Session: {isoToLocal(session.starts_at)} — {isoToLocal(session.ends_at)} ({session.status})</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div className="at-page">
+      <p><Link to={`/operations/classes/${classId}`} className="hm-link">← Back to class</Link></p>
+      <h1 className="at-title">Take attendance</h1>
+      {session && (
+        <p className="at-subtitle">
+          {isoToLocal(session.starts_at).toFormat('ccc, LLL d · h:mm a')} – {isoToLocal(session.ends_at).toFormat('h:mm a')}
+        </p>
+      )}
+      {error && <div className="hm-error">{error}</div>}
 
-      <table border="1" cellPadding="6">
-        <thead>
-          <tr><th>Student</th><th>Status</th><th>Performance</th><th>Improvements</th><th>Free notes</th></tr>
-        </thead>
-        <tbody>
-          {cls.roster.filter((r) => marks[r.student_id]).map((r) => (
-            <tr key={r.student_id}>
-              <td>{r.name}</td>
-              <td>
-                <select value={marks[r.student_id].status}
-                  onChange={(e) => setStatus(r.student_id, e.target.value)}>
-                  {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </td>
-              {NOTE_FIELDS.map((f) => (
-                <td key={f}>
-                  <input type="text" value={marks[r.student_id].note[f] || ''}
-                    onChange={(e) => setNote(r.student_id, f, e.target.value)} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p><button onClick={save}>Save all</button></p>
+      {!results && (
+        <>
+          <div className="at-toolbar">
+            <div className="at-mark-all">
+              <span>Mark all:</span>
+              <button type="button" className="hm-btn" onClick={() => markAll('present')}>Present</button>
+              <button type="button" className="hm-btn" onClick={() => markAll('absent_unexcused')}>Absent</button>
+            </div>
+            <div className="at-progress">{markedCount} of {total} marked</div>
+          </div>
+
+          <ul className="at-roster">
+            {roster.map((r) => {
+              const mark = marks[r.student_id];
+              return (
+                <li key={r.student_id} className="at-row">
+                  <span className="at-name">{r.name}</span>
+                  <div className="at-states">
+                    {allowedStatuses.map((status) => {
+                      const meta = STATUS_META[status];
+                      const active = mark.status === status;
+                      return (
+                        <button
+                          key={status}
+                          type="button"
+                          className={`at-state-btn at-state-btn--${meta.tone} ${active ? 'active' : ''}`}
+                          aria-pressed={active}
+                          title={meta.label}
+                          onClick={() => setStatus(r.student_id, status)}
+                        >
+                          <i className={meta.icon} aria-hidden="true"></i>
+                        </button>
+                      );
+                    })}
+                    <button type="button" className="hm-link at-note-toggle" onClick={() => toggleNote(r.student_id)}>
+                      {mark.noteOpen ? 'Hide note' : 'Add note'}
+                    </button>
+                  </div>
+                  {mark.noteOpen && (
+                    <div className="at-note">
+                      <input placeholder="Performance" value={mark.note.performance || ''}
+                        onChange={(e) => setNote(r.student_id, 'performance', e.target.value)} />
+                      <input placeholder="Improvements" value={mark.note.improvements || ''}
+                        onChange={(e) => setNote(r.student_id, 'improvements', e.target.value)} />
+                      <input placeholder="Notes" value={mark.note.free_notes || ''}
+                        onChange={(e) => setNote(r.student_id, 'free_notes', e.target.value)} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          {(absentCount > 0 || excusedCount > 0) && (
+            <p className="at-consequence">
+              {absentCount > 0 && <>{absentCount} absence{absentCount === 1 ? '' : 's'} — billed {cost * absentCount} credits, deducted from the student's balance</>}
+              {absentCount > 0 && excusedCount > 0 && ' · '}
+              {excusedCount > 0 && <>{excusedCount} excused — no charge, credit returned</>}
+            </p>
+          )}
+
+          <button type="button" className="hm-btn primary at-save" disabled={!allMarked || saving} onClick={save}>
+            {saving ? 'Saving…' : 'Save all'}
+          </button>
+        </>
+      )}
 
       {results && (
-        <div>
-          <h2>Result — session {results.session_status}</h2>
-          <table border="1" cellPadding="6">
-            <thead><tr><th>Student</th><th>OK</th><th>Detail</th></tr></thead>
-            <tbody>
-              {results.results.map((r) => (
-                <tr key={r.student_id}>
-                  <td>{r.student_id}</td>
-                  <td>{r.ok ? '✓' : '✗'}</td>
-                  <td>
-                    {r.ok
-                      ? `${r.status} (Δ${r.delta} → balance ${r.balance})${r.note_saved ? ' · note saved' : ''}${r.note_error ? ` · note: ${r.note_error}` : ''}`
-                      : `${r.code ?? ''} ${r.message ?? ''}`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="at-results">
+          <h2>Saved — session {results.session_status}</h2>
+          <ul className="at-results-list">
+            {results.results.map((r) => {
+              const student = roster.find((x) => x.student_id === r.student_id);
+              return (
+                <li key={r.student_id}>
+                  <strong>{student?.name ?? r.student_id}</strong>{' — '}
+                  {r.ok
+                    ? `${STATUS_META[r.status]?.label ?? r.status} (Δ${r.delta} → balance ${r.balance})${r.note_saved ? ' · note saved' : ''}${r.note_error ? ` · note: ${r.note_error}` : ''}`
+                    : `${r.code ?? ''} ${r.message ?? ''}`}
+                </li>
+              );
+            })}
+          </ul>
+          <Link to={`/operations/classes/${classId}`} className="hm-btn primary">Back to class</Link>
         </div>
       )}
     </div>
