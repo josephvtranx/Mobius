@@ -3,6 +3,29 @@
    on the app root. Values from the design handoff README's "Shared shell" +
    "Design tokens > Palette" sections. */
 
+/* Modal baseline (components/Modal.jsx portals into #modal-root) — the app
+   had no app-wide .modal-overlay/.modal rules (only a few page-specific
+   copies), so screens using the shared Modal rendered completely
+   unstyled. Matches the design-sync bundle's canonical modal chrome. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 48, 58, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 26px;
+  max-width: 560px;
+  width: 90%;
+  box-shadow: 0 24px 60px -12px rgba(16, 42, 38, 0.25);
+  font-family: var(--font-sans);
+}
+
 .app-shell--teal {
   --shell-ink: #16303a;
   --shell-primary: #2e9d8d;

@@ -87,12 +87,15 @@ router.get('/subject-groups', async (req, res) => {
 // Get all subjects
 router.get('/', async (req, res) => {
     try {
+        // v2 schema: subject_id lives on classes, not class_sessions — join
+        // through classes to reach sessions (subjectRoutes predates schema v2).
         const result = await req.db.query(`
-            SELECT 
+            SELECT
                 s.*,
                 COUNT(DISTINCT cs.session_id) as active_sessions
             FROM subjects s
-            LEFT JOIN class_sessions cs ON s.subject_id = cs.subject_id 
+            LEFT JOIN classes c ON c.subject_id = s.subject_id AND c.status = 'active'
+            LEFT JOIN class_sessions cs ON cs.class_id = c.class_id
                 AND cs.status = 'scheduled'
             GROUP BY s.subject_id
             ORDER BY s.name
