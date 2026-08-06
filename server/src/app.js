@@ -30,6 +30,8 @@ import studentGuardianV2Routes from './routes/studentGuardianV2Routes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import payrollRoutes from './routes/payrollRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import invoiceRoutes from './routes/invoiceRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { HttpError } from './helpers/httpError.js';
 import { DateTime } from 'luxon';
@@ -170,6 +172,8 @@ app.use('/api/bookings', bookingRoutes);                 // schema-v2 domain (sp
 app.use('/api/reports', reportRoutes);                   // staff reports (spec 06 ACA-3 / 08 signals) — Phase 7.5
 app.use('/api/rooms', roomRoutes);                       // room directory — the rooms table predates this API
 app.use('/api/payroll', payrollRoutes);                  // payroll/time_logs predate this API too
+app.use('/api/payments', paymentRoutes);                 // payments/payment_methods predate this API too
+app.use('/api/invoices', invoiceRoutes);                 // invoices/invoice_payments predate this API too
 app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07)
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);

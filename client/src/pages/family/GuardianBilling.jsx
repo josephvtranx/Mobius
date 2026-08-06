@@ -1,37 +1,53 @@
 // Guardian Billing (Mobius Guardian.dc.html Billing view). Balance/committed/
 // available + the real credit ledger come straight from the same
 // GET /wallets/:studentId a guardian is already authorized to read
-// (canActForStudent) — no separate guardian-billing endpoint needed. There is
-// no dollar-invoice table or payment-collection endpoint anywhere in the
-// server, so the "Payments"/"Payment method"/Top-up sections of the design
-// are honest stubs (same pattern as instructor Pay.jsx / staff Payroll.jsx),
+// (canActForStudent) — no separate guardian-billing endpoint needed.
+// Payments/invoices are now real too (payments/invoices tables, previously
+// unused) — read-only here. There's still no card collection or payment
+// links anywhere in the server, so "Payment method"/online top-up stay
+// honest stubs (same pattern as instructor Pay.jsx / staff Payroll.jsx),
 // not a fabricated checkout flow.
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { DateTime } from 'luxon';
 import walletService from '@/services/walletService';
 import guardianPortalService from '@/services/guardianPortalService';
+import paymentService from '@/services/paymentService';
+import invoiceService from '@/services/invoiceService';
 import { walletStatus } from '@/lib/derive';
 import { isoToLocal } from 'mobius-lms';
 import '@/css/home.css';
 import '@/css/table.css';
 
 const STATUS_TONE = { negative: 'error', low: 'warning', healthy: 'success' };
+const INVOICE_TONE = { paid: 'success', pending: 'info', overdue: 'error', canceled: 'warning' };
+const money = (n) => `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// payment_date/issued_at/due_date are plain DATE columns, not instants.
+const dateFmt = (d) => (d ? DateTime.fromISO(d).toFormat('LLL d, yyyy') : '—');
 
 function GuardianBilling() {
   const { studentId } = useParams();
   const [wallet, setWallet] = useState(null);
   const [childName, setChildName] = useState('');
+  const [payments, setPayments] = useState(null);
+  const [invoices, setInvoices] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     setWallet(null);
+    setPayments(null);
+    setInvoices(null);
     setError('');
     Promise.all([
       walletService.getWallet(studentId),
       guardianPortalService.getPortal(),
-    ]).then(([w, portal]) => {
+      paymentService.getStudentPayments(studentId),
+      invoiceService.getStudentInvoices(studentId),
+    ]).then(([w, portal, p, i]) => {
       setWallet(w);
       setChildName(portal.children.find((c) => String(c.student_id) === String(studentId))?.name ?? '');
+      setPayments(p);
+      setInvoices(i);
     }).catch((err) => setError(err.response?.data?.message || 'Failed to load billing'));
   }, [studentId]);
 
@@ -105,8 +121,45 @@ function GuardianBilling() {
       </section>
 
       <section className="hm-card">
+        <div className="hm-card-head"><h2>Invoices</h2></div>
+        <div className="hm-table-wrap">
+          <table className="hm-table">
+            <thead><tr><th>Amount</th><th>Due</th><th>Status</th><th>Description</th></tr></thead>
+            <tbody>
+              {invoices.map((inv) => (
+                <tr key={inv.invoice_id}>
+                  <td>{money(inv.total_amount)}</td>
+                  <td>{dateFmt(inv.due_date)}</td>
+                  <td><span className={`status-pill status-pill--${INVOICE_TONE[inv.status]}`}>{inv.status}</span></td>
+                  <td>{inv.description || ''}</td>
+                </tr>
+              ))}
+              {invoices.length === 0 && <tr><td colSpan="4">No invoices</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="hm-card">
         <div className="hm-card-head"><h2>Payments</h2></div>
-        <p>Invoice history and buying additional credits from here aren't available yet — the ledger above is the real, live record of every credit movement. Contact the academy to top up or request a statement.</p>
+        <div className="hm-table-wrap">
+          <table className="hm-table">
+            <thead><tr><th>Date</th><th>Amount</th><th>Method</th></tr></thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr key={p.payment_id}>
+                  <td>{dateFmt(p.payment_date)}</td>
+                  <td>{money(p.amount)}</td>
+                  <td>{p.method_name || '—'}</td>
+                </tr>
+              ))}
+              {payments.length === 0 && <tr><td colSpan="3">No payments recorded</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <p className="at-subtitle" style={{ marginTop: 10 }}>
+          Paying online isn't available yet — the academy records payments as they're received. Contact the academy to pay or top up.
+        </p>
       </section>
     </div>
   );

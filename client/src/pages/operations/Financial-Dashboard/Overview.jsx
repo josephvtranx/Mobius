@@ -1,29 +1,35 @@
 // Financial dashboard overview (design handoff: Mobius Staff.dc.html
-// "## Financial dashboard & Payroll"). The design's revenue/expense/profit
-// charts assume a payments ledger that doesn't exist in the real schema —
-// server/src/app.js flags paymentRoutes.js itself as querying dropped v1
-// tables (payments/invoices), and there is no /reports endpoint for
-// revenue. Real, honest KPIs (active students/classes, delinquent wallets,
-// pending requests — the same data staff Home.jsx already shows) fill the
-// header; the rest is a plain "not available yet" note, same pattern as
-// Pay.jsx/Payroll.jsx, instead of fabricated charts.
+// "## Financial dashboard & Payroll"). Revenue is now real — the
+// payments table (previously unused, see Payments.jsx) tracks money
+// actually received. Profit/margin still isn't shown: operating_expenses
+// exists in the schema but has no API yet (see Cost-Breakdown.jsx), and
+// showing "profit" against payroll cost alone would overstate what's
+// tracked. Active students/classes, delinquent wallets and pending
+// requests are the same real signals staff Home.jsx already shows.
 import { useEffect, useState } from 'react';
+import { DateTime } from 'luxon';
 import reportService from '@/services/reportService';
 import classService from '@/services/classService';
 import studentService from '@/services/studentService';
+import paymentService from '@/services/paymentService';
 import '@/css/home.css';
+
+const money = (n) => `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function Overview() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const monthStart = DateTime.now().startOf('month').toISODate();
+    const monthEnd = DateTime.now().endOf('month').toISODate();
     Promise.all([
       reportService.getDashboard(),
       classService.getAllClasses(),
       studentService.getAllStudents(),
+      paymentService.getPayments({ start: monthStart, end: monthEnd }),
     ])
-      .then(([dash, classes, students]) => setData({ dash, classes, students }))
+      .then(([dash, classes, students, monthPayments]) => setData({ dash, classes, students, monthPayments }))
       .catch((err) => setError(err.response?.data?.message || 'Could not load the dashboard'));
   }, []);
 
@@ -31,6 +37,7 @@ function Overview() {
   if (!data) return <div className="hm-page"><div className="hm-loading">Loading…</div></div>;
 
   const activeClasses = data.classes.filter((c) => c.status === 'active').length;
+  const revenueThisMonth = data.monthPayments.reduce((s, p) => s + Number(p.amount), 0);
 
   return (
     <div className="hm-page">
@@ -40,6 +47,7 @@ function Overview() {
       </header>
 
       <div className="hm-kpis">
+        <div className="hm-kpi"><span className="hm-kpi-value">{money(revenueThisMonth)}</span><span className="hm-kpi-label">Revenue this month</span></div>
         <div className="hm-kpi"><span className="hm-kpi-value">{data.students.length}</span><span className="hm-kpi-label">Active students</span></div>
         <div className="hm-kpi"><span className="hm-kpi-value">{activeClasses}</span><span className="hm-kpi-label">Active classes</span></div>
         <div className={`hm-kpi ${data.dash.delinquency_queue.length ? 'alert' : ''}`}>
@@ -49,7 +57,7 @@ function Overview() {
       </div>
 
       <div className="hm-card">
-        <p>Revenue, expense and profitability reporting isn't available yet — there's no payments ledger wired up on the backend (the wallet/credit system tracks session credits, not dollars). The KPIs above are real and update live; a proper financial report replaces this note once that backend exists.</p>
+        <p>Revenue comes straight from <a className="hm-link" href="/operations/finance/payments">recorded payments</a>. Full profit/margin reporting isn't available yet — operating expenses (rent, marketing, etc.) have a schema but no entry screen; see Cost breakdown for the payroll side of costs.</p>
       </div>
     </div>
   );
