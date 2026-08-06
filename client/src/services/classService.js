@@ -1,6 +1,7 @@
-// v2 classes domain (server: /api/classes — spec 03/04). Template-first
-// migration slice 1: these are the canonical class calls; the legacy
-// classSeriesService/classSessionService remain only for the old pages.
+// v2 classes domain (server: /api/classes — spec 03/04). The canonical
+// class calls; classSeriesService/classSessionService (legacy v1) were
+// deleted once Scheduling.jsx/Schedule.jsx, their only callers, moved to
+// this service and studentViewService/instructorCalendarService.
 import api from './api';
 
 const classService = {

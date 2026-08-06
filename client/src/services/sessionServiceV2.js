@@ -16,11 +16,16 @@ const sessionServiceV2 = {
         }
     },
 
-    // RSC-2: student/guardian cancel (the Window decides the money effect)
-    cancelSession: async (sessionId, studentId) => {
+    // RSC-2: student/guardian cancel (the Window decides the money effect).
+    // reason/note are optional — reason ∈ illness|transportation|
+    // schedule_conflict|family_emergency|other (session_attendance.cancel_reason).
+    cancelSession: async (sessionId, studentId, { reason, note } = {}) => {
         try {
-            const response = await api.post(`/sessions/${sessionId}/cancel`,
-                studentId ? { student_id: studentId } : {});
+            const response = await api.post(`/sessions/${sessionId}/cancel`, {
+                ...(studentId ? { student_id: studentId } : {}),
+                ...(reason ? { reason } : {}),
+                ...(note ? { note } : {}),
+            });
             return response.data;
         } catch (error) {
             console.error('Error cancelling session:', error);

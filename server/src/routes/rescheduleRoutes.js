@@ -41,6 +41,42 @@ router.get('/', authenticateToken, async (req, res) => {
   res.json(rows);
 });
 
+// The family-facing read: a student's own requests, or a guardian's linked
+// children's requests. Separate from the inbox above (staff/instructor,
+// scoped to sessions they teach/manage) — this is scoped to who the
+// request was held FOR, using the same acting-for-a-student linkage
+// canActForStudent uses elsewhere (student_guardians), just for a set of
+// students instead of a single one.
+router.get('/mine', authenticateToken, async (req, res) => {
+  let studentIds;
+  if (req.user.role === 'student') {
+    studentIds = [req.user.user_id];
+  } else if (req.user.role === 'guardian') {
+    const { rows } = await req.db.query(
+      `SELECT sg.student_id FROM student_guardians sg
+         JOIN guardians g ON g.guardian_id = sg.guardian_id
+        WHERE g.user_id = $1`, [req.user.user_id]);
+    studentIds = rows.map((r) => r.student_id);
+  } else {
+    return res.status(403).json({ message: 'Students or guardians only' });
+  }
+  if (studentIds.length === 0) return res.json([]);
+
+  const { rows } = await req.db.query(
+    `SELECT r.request_id, r.status, r.proposed_starts_at, r.proposed_ends_at, r.created_at,
+            r.responded_at, cs.session_id, cs.starts_at AS original_starts_at,
+            sub.name AS subject, h.held_for_student_id
+       FROM reschedule_requests r
+       JOIN class_sessions cs ON cs.session_id = r.session_id
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       LEFT JOIN slot_holds h ON h.hold_id = r.hold_id
+      WHERE h.held_for_student_id = ANY($1::int[])
+      ORDER BY r.created_at DESC LIMIT 50`,
+    [studentIds]);
+  res.json(rows);
+});
+
 router.post('/:id/respond', authenticateToken, async (req, res) => {
   const { action, reason } = req.body;
   if (!['accept', 'reject'].includes(action)) {

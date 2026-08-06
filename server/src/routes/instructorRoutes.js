@@ -1,7 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
-import { startOfWeek, endOfWeek, format } from 'date-fns';
 import { toUtcIso, assertUtcIso } from 'mobius-lms';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 const router = express.Router();
@@ -349,74 +348,14 @@ router.delete('/:id/unavailability/:unavailabilityId', async (req, res) => {
     }
 });
 
-// Get instructor's weekly schedule (class sessions + student/subject info)
-router.get('/:id/schedule', async (req, res) => {
-    try {
-        const { id } = req.params;
-        let { start_date, end_date } = req.query;
+// Note: a legacy '/:id/schedule' handler used to live here — it queried
+// class_sessions.session_start/session_end/student_id/subject_id and a
+// class_series table, none of which exist in the real v2 schema (v2 uses
+// starts_at/ends_at, and instructor↔class↔session relationships flow
+// through classes + enrollments). It predated schema v2, had zero real
+// callers, and would 500 if ever hit. Real instructor schedule reads live
+// on GET /instructors/me/sessions (instructorCalendarRoutes.js) and, for
+// staff looking up any instructor's week, GET /instructors/:id's own
+// upcoming_sessions field.
 
-        // Default to current week (Sun-Sat)
-        const now = new Date();
-        if (!start_date) start_date = format(startOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-        if (!end_date) end_date = format(endOfWeek(now, { weekStartsOn: 0 }), 'yyyy-MM-dd');
-
-        // Get individual sessions using new TIMESTAMPTZ fields
-        const sessionsResult = await req.db.query(`
-            SELECT 
-                cs.session_id,
-                cs.session_start,
-                cs.session_end,
-                cs.status,
-                u_s.name as student_name,
-                sub.name as subject_name,
-                'session' as type
-            FROM class_sessions cs
-            JOIN students s ON cs.student_id = s.student_id
-            JOIN users u_s ON s.student_id = u_s.user_id
-            JOIN subjects sub ON cs.subject_id = sub.subject_id
-            WHERE cs.instructor_id = $1
-              AND cs.session_start >= $2::timestamptz
-              AND cs.session_end <= $3::timestamptz
-              AND cs.status IN ('scheduled', 'completed', 'in_progress')
-        `, [id, start_date, end_date]);
-
-        // Get class series (keeping old format for now since class_series table might not be updated yet)
-        const seriesResult = await req.db.query(`
-            SELECT 
-                cs.series_id as session_id,
-                cs.start_date as session_date,
-                cs.session_start,
-                cs.session_end,
-                cs.status,
-                u_s.name as student_name,
-                sub.name as subject_name,
-                'series' as type
-            FROM class_series cs
-            JOIN students s ON cs.student_id = s.student_id
-            JOIN users u_s ON s.student_id = u_s.user_id
-            JOIN subjects sub ON cs.subject_id = sub.subject_id
-            WHERE cs.instructor_id = $1
-              AND cs.start_date <= $3
-              AND (cs.end_date IS NULL OR cs.end_date >= $2)
-              AND cs.status IN ('confirmed', 'in_progress', 'pending')
-        `, [id, start_date, end_date]);
-
-        // Combine and sort results
-        const allClasses = [...sessionsResult.rows, ...seriesResult.rows];
-        const result = {
-            rows: allClasses.sort((a, b) => {
-                // Handle both old and new format
-                const aDate = a.session_start ? new Date(a.session_start) : new Date(a.session_date);
-                const bDate = b.session_start ? new Date(b.session_start) : new Date(b.session_date);
-                return aDate - bDate;
-            })
-        };
-
-        res.json(result.rows);
-    } catch (error) {
-        console.error('Error fetching instructor schedule:', error);
-        res.status(500).json({ error: 'Failed to fetch instructor schedule' });
-    }
-});
-
-export default router; 
+export default router;

@@ -15,6 +15,17 @@ const rescheduleService = {
         }
     },
 
+    // student: their own requests; guardian: their linked children's requests
+    getMine: async () => {
+        try {
+            const response = await api.get('/reschedule-requests/mine');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching my reschedule requests:', error);
+            throw error;
+        }
+    },
+
     respond: async (requestId, { action, reason }) => {
         try {
             const response = await api.post(`/reschedule-requests/${requestId}/respond`, { action, reason });

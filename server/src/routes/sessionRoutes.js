@@ -25,6 +25,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // excusals and the cancellation trio are staff-side calls.
 const INSTRUCTOR_SETTABLE = new Set(['present', 'absent_unexcused']);
 
+// RSC-2 cancel reason chips (design handoff: Guardian "Report Absence"
+// modal) — matches session_attendance.cancel_reason's CHECK constraint.
+const CANCEL_REASONS = ['illness', 'transportation', 'schedule_conflict', 'family_emergency', 'other'];
+
 async function loadSession(db, sessionId) {
   if (!UUID_RE.test(sessionId)) return null;
   const { rows } = await db.query(
@@ -184,6 +188,10 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
   if (!await canActForStudent(req.db, req.user, studentId)) {
     return res.status(403).json({ message: 'Not authorized to act for this student' });
   }
+  const { reason, note } = req.body;
+  if (reason != null && !CANCEL_REASONS.includes(reason)) {
+    return res.status(400).json({ message: `reason must be one of: ${CANCEL_REASONS.join(', ')}` });
+  }
   const { rows: enrolled } = await req.db.query(
     `SELECT 1 FROM enrollments WHERE class_id = $1 AND student_id = $2 AND status = 'active'`,
     [session.class_id, studentId]);
@@ -196,7 +204,8 @@ router.post('/:id/cancel', authenticateToken, async (req, res) => {
   try {
     const view = await withTransaction(req.db, async (client) => {
     const r = await applyAttendanceWithinTx(client, {
-      session, studentId, status, actorUserId: req.user.user_id, settings
+      session, studentId, status, actorUserId: req.user.user_id, settings,
+      cancelReason: reason ?? null, cancelNote: note ?? null
     });
     // e.g. ATTENDANCE_BLOCKED on a late cancel at the grace floor
     if (!r.ok) throw new HttpError(r.status, r.body);

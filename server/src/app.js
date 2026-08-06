@@ -14,15 +14,9 @@ import userRoutes from './routes/userRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import instructorRoutes from './routes/instructorRoutes.js';
 import guardianRoutes from './routes/guardianRoutes.js';
-import studentGuardianRoutes from './routes/studentGuardianRoutes.js';
-import classSessionRoutes from './routes/classSessionRoutes.js';
-import classSeriesRoutes from './routes/classSeriesRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import subjectGroupsRouter from './routes/subjectGroups.js';
 import staffRoutes from './routes/staffRoutes.js';
-import attendanceRoutes from './routes/attendanceRoutes.js';
-import timePackageRoutes from './routes/timePackageRoutes.js';
-import paymentRoutes from './routes/paymentRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import registerInstitutionRouter from './routes/registerInstitution.js';
 import classRoutes from './routes/classRoutes.js';
@@ -34,6 +28,8 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import guardianPortalRoutes from './routes/guardianPortalRoutes.js';
 import studentGuardianV2Routes from './routes/studentGuardianV2Routes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';
+import payrollRoutes from './routes/payrollRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { HttpError } from './helpers/httpError.js';
 import { DateTime } from 'luxon';
@@ -166,22 +162,18 @@ app.use('/api/students', studentRoutes);
 app.use('/api/instructors', instructorRoutes);
 app.use('/api/guardians', guardianPortalRoutes);   // schema-v2 guardian portal (spec 05) — Phase 7.4
 app.use('/api/guardians', guardianRoutes);         // legacy v1 model (guardian contact-blob columns) — superseded by Phase 7.4
-app.use('/api/student-guardians', studentGuardianRoutes); // legacy v1 model (singular table, NO auth middleware) — superseded by /api/students/:id/guardians
 app.use('/api/classes', classRoutes);           // schema-v2 domain (spec 03) — Phase 7.1
 app.use('/api/sessions', sessionRoutes);        // schema-v2 domain (spec 04/06/07) — Phase 7.2/7.3
 app.use('/api/wallets', walletRoutes);          // schema-v2 domain (spec 04) — Phase 7.2
 app.use('/api/reschedule-requests', rescheduleRoutes);   // schema-v2 domain (spec 07) — Phase 7.3
 app.use('/api/bookings', bookingRoutes);                 // schema-v2 domain (spec 03 SCH-4) — self-serve 1:1 booking
 app.use('/api/reports', reportRoutes);                   // staff reports (spec 06 ACA-3 / 08 signals) — Phase 7.5
-app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07) — coexists with the legacy router below
-app.use('/api/class-sessions', classSessionRoutes);  // legacy v1 model — replaced by Phase 7.x slices
-app.use('/api/class-series', classSeriesRoutes);     // legacy v1 model — replaced by Phase 7.x slices
+app.use('/api/rooms', roomRoutes);                       // room directory — the rooms table predates this API
+app.use('/api/payroll', payrollRoutes);                  // payroll/time_logs predate this API too
+app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07)
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);
 app.use('/api/staff', staffRoutes);
-app.use('/api/attendance', attendanceRoutes);     // legacy v1 model (dropped tables) — superseded by /api/sessions (Phase 7.2)
-app.use('/api/time-packages', timePackageRoutes); // legacy v1 model (dropped tables) — superseded by wallets/credit_ledger (Phase 7.2)
-app.use('/api/payments', paymentRoutes);          // partially legacy: credits/packages halves hit dropped v1 tables (→ /api/wallets)
 app.use('/api/upload', uploadRoutes);
 app.use('/api/register-institution', registerInstitutionRouter);
 

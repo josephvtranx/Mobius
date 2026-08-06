@@ -43,7 +43,8 @@ export async function priceAtSessionStart(client, classId, startsAt) {
 // exactly, even across price changes — history is never edited, only appended.
 export async function applyAttendanceWithinTx(client, {
   session, studentId, status, actorUserId,
-  autoCompleted = false, settings, now = DateTime.utc().toISO()
+  autoCompleted = false, settings, now = DateTime.utc().toISO(),
+  cancelReason = null, cancelNote = null
 }) {
   const cost = await priceAtSessionStart(client, session.class_id, session.starts_at);
 
@@ -112,15 +113,16 @@ export async function applyAttendanceWithinTx(client, {
     ({ rows: [attendance] } = await client.query(
       `UPDATE session_attendance
           SET status = $1, adjusted_from = $2, marked_by = $3,
-              marked_at = CURRENT_TIMESTAMP, auto_completed = false
+              marked_at = CURRENT_TIMESTAMP, auto_completed = false,
+              cancel_reason = COALESCE($5, cancel_reason), cancel_note = COALESCE($6, cancel_note)
         WHERE attendance_id = $4 RETURNING *`,
-      [status, existing.status, actorUserId, existing.attendance_id]
+      [status, existing.status, actorUserId, existing.attendance_id, cancelReason, cancelNote]
     ));
   } else {
     ({ rows: [attendance] } = await client.query(
-      `INSERT INTO session_attendance (session_id, student_id, status, marked_by, auto_completed)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [session.session_id, studentId, status, actorUserId, autoCompleted]
+      `INSERT INTO session_attendance (session_id, student_id, status, marked_by, auto_completed, cancel_reason, cancel_note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [session.session_id, studentId, status, actorUserId, autoCompleted, cancelReason, cancelNote]
     ));
   }
 
