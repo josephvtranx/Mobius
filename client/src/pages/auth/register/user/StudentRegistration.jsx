@@ -440,7 +440,7 @@ function StudentRegistration() {
             Welcome to Möbius
           </div>
           <div style={{ color: '#6b7280', fontSize: 16, lineHeight: 1.7, maxWidth: 440 }}>
-            <p>Möbius is a radically new type of educational resource. Built on an entirely new type of data architecture to increase operational efficiency, you’ll have scheduling systems, studen profiles and records of every performance metric within your  institution workspace in minutes, always live updated in real-time.</p>
+            <p>Möbius is a radically new type of educational resource. Built on an entirely new type of data architecture to increase operational efficiency, you’ll have scheduling systems, student profiles and records of every performance metric within your  institution workspace in minutes, always live updated in real-time.</p>
             <p>You’ll be able to hyperoptimize your student management
             exactly as you want it.</p>
             <p style={{ marginTop: 18, fontWeight: 500 }}>Let’s begin.</p>

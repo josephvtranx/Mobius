@@ -1,5 +1,5 @@
 // SideNav.jsx — shared shell sidebar (wordmark + icon rail + menu panel + profile card)
-// Parameterized by role: teal (student/guardian), indigo (instructor), orange (staff).
+// Parameterized by role: teal (student), mauve (guardian), indigo (instructor), orange (staff).
 import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';

@@ -142,3 +142,13 @@ Render (Application Hosting)
 Möbius aims to become the operational backbone for private academies, enabling data-driven decision-making across education businesses.
 It provides actionable insights into student engagement, instructor efficiency, and institutional profitability while offering a foundation for multi-location and global scalability.
 
+ Role | Email | Notes |
+|---|---|---|
+| Staff | `staff@test.com` | Full operations access (Roster, Scheduling, Wallets, Financial dashboard, etc.) |
+| Instructor | `instructor@demo.com` | Kim Soyeon — teaches Algebra |
+| Student | `alice@demo.com` | Alice Park — healthy wallet balance |
+| Student | `ben@demo.com` | Ben Lee — low/negative wallet balance (for testing delinquency states) |
+| Student | `charlie@demo.com` | Charlie Adult — no linked guardian |
+| Guardian | `grace@demo.com` | Grace Park — Alice's parent/guardian |
+
+**Sandbox setup**: `node server/scripts/dev/sandbox.js` boots the real server against an in-memory PGlite database seeded with the accounts above. Client dev server runs on `:5173`, API on `:5001`.

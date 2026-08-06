@@ -20,12 +20,6 @@ import Unauthorized from './pages/auth/Unauthorized';
 import authService from './services/authService';
 import { ROLE_THEME } from './config/shellNav';
 
-// Academic pages
-import Performance from './pages/academics/Performance';
-import Assignments from './pages/academics/academic-hub/Assignments';
-import RedPenReview from './pages/academics/academic-hub/Red-Pen-Review';
-import Testing from './pages/academics/academic-hub/Testing';
-
 // Operations pages
 import Scheduling from './pages/operations/Scheduling';
 import Attendance from './pages/operations/Attendance';
@@ -35,6 +29,8 @@ import WalletView from './pages/operations/wallets/WalletView';
 import ReportsDashboard from './pages/operations/ReportsDashboard';
 import MembershipRequests from './pages/operations/MembershipRequests';
 import GuardianPortal from './pages/family/GuardianPortal';
+import GuardianBilling from './pages/family/GuardianBilling';
+import GuardianRequests from './pages/family/GuardianRequests';
 import StudentSchedule from './pages/family/StudentSchedule';
 import StudentRecord from './pages/family/StudentRecord';
 import Catalog from './pages/family/Catalog';
@@ -69,7 +65,6 @@ function App() {
   return (
     <DndProvider backend={HTML5Backend}>
       <Router>
-        <div id="modal-root"></div>
         <AppContent />
       </Router>
     </DndProvider>
@@ -86,6 +81,11 @@ function AppContent() {
 
   return (
     <div className={`app app-shell--${variant}`}>
+      {/* Portal target for the shared Modal component. Lives inside the
+          themed shell div (not a sibling of it) so modal content actually
+          inherits the role's --shell-* custom properties instead of
+          resolving them as unset. */}
+      <div id="modal-root"></div>
       {/* Main content area: sidebar (full page height) beside a column that
           holds the topbar + routed page content. The topbar only spans the
           column next to the sidebar, never the sidebar itself. */}
@@ -123,40 +123,6 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Home />
-                </ProtectedRoute>
-              }
-            />
-            
-            {/* Academic routes */}
-            <Route
-              path="/academics/performance"
-              element={
-                <ProtectedRoute>
-                  <Performance />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/academics/assignments"
-              element={
-                <ProtectedRoute>
-                  <Assignments />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/academics/red-pen-review"
-              element={
-                <ProtectedRoute>
-                  <RedPenReview />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/academics/testing"
-              element={
-                <ProtectedRoute>
-                  <Testing />
                 </ProtectedRoute>
               }
             />
@@ -237,6 +203,12 @@ function AppContent() {
             } />
             <Route path="/family/students/:studentId/classes" element={
               <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><StudentClasses /></ProtectedRoute>
+            } />
+            <Route path="/family/students/:studentId/billing" element={
+              <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><GuardianBilling /></ProtectedRoute>
+            } />
+            <Route path="/family/students/:studentId/requests" element={
+              <ProtectedRoute allowedRoles={['guardian', 'student', 'staff']}><GuardianRequests /></ProtectedRoute>
             } />
             <Route path="/messages" element={
               <ProtectedRoute><Messages /></ProtectedRoute>

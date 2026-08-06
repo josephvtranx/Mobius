@@ -206,37 +206,38 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
       </div>
 
       {/* Error and Success Messages */}
-      {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">{success}</div>}
+      {error && <div className="hm-error">{error}</div>}
+      {success && <p style={{ color: 'var(--status-success)', fontSize: 13 }}>{success}</p>}
 
       {/* Action Buttons */}
-      <div className="action-buttons">
+      <div className="hm-actions">
         {selectedFile && (
           <>
             <button
               onClick={handleUpload}
               disabled={isUploading}
-              className="btn btn-primary"
+              className="hm-btn primary"
             >
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
             <button
               onClick={handleCancel}
               disabled={isUploading}
-              className="btn btn-secondary"
+              className="hm-btn"
             >
               Cancel
             </button>
           </>
         )}
-        
+
         {currentProfilePic && !selectedFile && (
           <button
             onClick={handleDelete}
             disabled={isUploading}
-            className="btn btn-danger"
+            className="hm-btn"
+            style={{ color: 'var(--status-error)', borderColor: 'var(--status-error)' }}
           >
-            {isUploading ? 'Deleting...' : 'Delete Current Picture'}
+            {isUploading ? 'Deleting...' : 'Delete current picture'}
           </button>
         )}
       </div>

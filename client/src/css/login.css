@@ -129,6 +129,32 @@
 .login-saas-signin-btn:active { transform: translateY(1px); }
 .login-saas-signin-btn:disabled { background: #9fcdc5; cursor: default; }
 
+/* Role picker (register/role-select) */
+.login-saas-roles { display: flex; gap: 10px; margin-bottom: 22px; }
+.login-saas-role {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #64827e;
+  background: #fbfdfd;
+  border: 1.5px solid #d5e3e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.login-saas-role svg { font-size: 20px; color: #9db4b0; }
+.login-saas-role.active {
+  border-color: #2e9d8d;
+  background: #e6f3f0;
+  color: #16303a;
+}
+.login-saas-role.active svg { color: #2e9d8d; }
+
 .login-saas-divider {
   display: flex;
   align-items: center;

@@ -5,14 +5,11 @@ import { getActiveSectionLabel } from '../config/shellNav';
 
 const ROUTE_TITLES = {
   '/home': 'Home',
-  '/academics/assignments': 'Assignments',
-  '/academics/red-pen-review': 'Red Pen Review',
-  '/academics/testing': 'Testing',
-  '/academics/performance': 'Performance',
   '/operations/scheduling': 'Scheduling',
   '/operations/schedule': 'Schedule',
   '/operations/attendance': 'Attendance',
   '/operations/classes': 'Classes',
+  '/operations/classes/new': 'New class',
   '/operations/requests': 'Requests',
   '/operations/wallets': 'Wallets',
   '/operations/payroll': 'Payroll',
@@ -44,6 +41,10 @@ function getPageTitle(pathname) {
   if (pathname.startsWith('/family/') && pathname.endsWith('/record')) return 'My record';
   if (pathname.startsWith('/family/') && pathname.endsWith('/feedback')) return 'Feedback';
   if (pathname.startsWith('/family/') && pathname.endsWith('/book')) return 'Book a session';
+  if (pathname.startsWith('/family/') && pathname.endsWith('/billing')) return 'Billing';
+  if (pathname.startsWith('/family/') && pathname.endsWith('/requests')) return 'Requests';
+  if (/^\/operations\/classes\/[^/]+$/.test(pathname)) return 'Class detail';
+  if (/\/sessions\/[^/]+\/attendance$/.test(pathname)) return 'Take attendance';
   return 'Møbius Academy';
 }
 

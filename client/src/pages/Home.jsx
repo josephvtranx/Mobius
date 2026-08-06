@@ -9,13 +9,30 @@ import { isoToLocal } from 'mobius-lms';
 import authService from '@/services/authService';
 import reportService from '@/services/reportService';
 import classService from '@/services/classService';
+import studentService from '@/services/studentService';
 import instructorCalendarService from '@/services/instructorCalendarService';
+import instructorService from '@/services/instructorService';
+import roomService from '@/services/roomService';
 import rescheduleService from '@/services/rescheduleService';
 import bookingService from '@/services/bookingService';
 import studentViewService from '@/services/studentViewService';
 import walletService from '@/services/walletService';
-import { walletStatus, attendanceRate } from '@/lib/derive';
+import { walletStatus, attendanceRate, findRoomClashes } from '@/lib/derive';
+import { tintFor } from '@/lib/rosterColors';
 import '@/css/home.css';
+
+// Presentational-only: pick a subject icon from the real subject name.
+// No data implication — just which glyph a subject card shows.
+function subjectIcon(subject) {
+  const s = String(subject ?? '').toLowerCase();
+  if (/(math|algebra|calc|geometry)/.test(s)) return 'fa-solid fa-square-root-variable';
+  if (/physic/.test(s)) return 'fa-solid fa-atom';
+  if (/chem/.test(s)) return 'fa-solid fa-flask';
+  if (/(bio|science)/.test(s)) return 'fa-solid fa-dna';
+  if (/(english|essay|writ|lit)/.test(s)) return 'fa-solid fa-pen-nib';
+  if (/(sat|test|exam|prep)/.test(s)) return 'fa-solid fa-graduation-cap';
+  return 'fa-solid fa-book-open';
+}
 
 const label = (s) => String(s ?? '').replace(/_/g, ' ');
 const day = (iso) => isoToLocal(iso).toFormat('ccc, LLL d');
@@ -80,76 +97,148 @@ function SessionList({ sessions, emptyText, renderMeta }) {
 function StaffHome({ user }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [busyRequest, setBusyRequest] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
     Promise.all([
       reportService.getDashboard(),
       classService.getAllClasses(),
-      classService.getMembershipRequests('pending')
+      classService.getMembershipRequests('pending'),
+      studentService.getAllStudents(),
+      roomService.getAllRooms(),
     ])
-      .then(([dash, classes, requests]) => setData({ dash, classes, requests }))
+      .then(async ([dash, classes, requests, students, rooms]) => {
+        const active = classes.filter((c) => c.status === 'active');
+        // Per-class sessions aren't on the list endpoint — same N+1 pattern
+        // Attendance.jsx already uses to get real session instances.
+        const details = await Promise.all(active.map((c) => classService.getClass(c.class_id)));
+        const allSessions = details.flatMap((d, i) =>
+          (d.sessions || []).map((s) => ({ ...s, class_id: active[i].class_id, subject: active[i].subject, instructor: active[i].instructor, enrolled: active[i].enrolled, student_limit: active[i].student_limit }))
+        );
+        setData({ dash, classes: active, requests, students, allSessions, rooms });
+      })
       .catch((err) => setError(err.response?.data?.message || 'Could not load the dashboard'));
-  }, []);
+  };
+  useEffect(load, []);
+
+  const respond = async (requestId, action) => {
+    setBusyRequest(requestId);
+    try {
+      await classService.resolveMembershipRequest(requestId, { action });
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not resolve the request');
+    } finally {
+      setBusyRequest(null);
+    }
+  };
 
   if (error) return <div className="hm-error">{error}</div>;
   if (!data) return <Loading />;
 
-  const { dash, classes, requests } = data;
-  const activeClasses = classes.filter((c) => c.status === 'active').length;
-  const attention = [
-    ...dash.delinquency_queue.map((d) => ({
-      key: `del-${d.task_id}`, to: '/operations/wallets',
-      text: `${d.student} is ${Math.abs(d.balance)} credits negative`,
-      age: `${d.days_open}d`
-    })),
-    ...dash.pending_requests_aging.map((r) => ({
-      key: `req-${r.kind}`, to: '/operations/requests',
-      text: `${r.open} open ${label(r.kind)} ${r.open === 1 ? 'task' : 'tasks'}`,
-      age: `${Math.round(r.oldest_days)}d`
-    })),
-    ...dash.auto_completed_pending.tasks.map((t) => ({
-      key: `auto-${t.task_id}`, to: '/operations/classes',
-      text: 'Auto-completed session to verify',
-      age: null
-    }))
+  const { dash, classes, requests, students, allSessions, rooms } = data;
+  const roomName = new Map(rooms.map((r) => [r.room_id, r.name]));
+  const now = DateTime.now();
+  const todayIso = now.toISODate();
+  const todaySessions = allSessions
+    .filter((s) => isoToLocal(s.starts_at).toISODate() === todayIso)
+    .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  const roomsToday = new Set(todaySessions.map((s) => s.room_id).filter((r) => r != null));
+  const sessionsThisWeek = allSessions.filter((s) => {
+    const d = isoToLocal(s.starts_at);
+    return d >= now.startOf('day') && d < now.plus({ days: 7 });
+  }).length;
+  const seatCapacity = classes.reduce((sum, c) => sum + (c.student_limit || 0), 0);
+  const seatEnrolled = classes.reduce((sum, c) => sum + (c.enrolled || 0), 0);
+  const seatFillRate = seatCapacity ? Math.round((seatEnrolled / seatCapacity) * 100) : null;
+  const clashes = findRoomClashes(allSessions);
+  const clashDay = clashes[0] ? isoToLocal(clashes[0][0].starts_at).toFormat('cccc') : null;
+
+  const heroParts = [
+    `${todaySessions.length} session${todaySessions.length === 1 ? '' : 's'} run today${roomsToday.size ? ` across ${roomsToday.size} room${roomsToday.size === 1 ? '' : 's'}` : ''}.`,
   ];
+  if (requests.length) heroParts.push(`${requests.length} student${requests.length === 1 ? '' : 's'} ${requests.length === 1 ? 'is' : 'are'} waiting on class requests.`);
+  if (clashDay) heroParts.push(`${clashDay} has a room clash to resolve.`);
+  if (requests.length === 0 && !clashDay) heroParts.push('No room clashes this week.');
 
   return (
     <div className="hm-page">
-      <Greeting user={user} />
+      <div className="hm-hero">
+        <div className="hm-hero-copy">
+          <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
+          <h1>Good {now.hour < 12 ? 'morning' : now.hour < 18 ? 'afternoon' : 'evening'}, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+          <p>{heroParts.join(' ')}</p>
+        </div>
+        <div className="hm-needs">
+          <div>
+            <span className="hm-eyebrow">Needs attention</span>
+            <h2>{requests.length} open request{requests.length === 1 ? '' : 's'}{clashes.length ? ` · ${clashes.length} room clash${clashes.length === 1 ? '' : 'es'}` : ''}</h2>
+            <div className="hm-needs-meta">
+              <span><i className="fa-regular fa-clock"></i>{todaySessions.length} sessions today</span>
+              <span><i className="fa-solid fa-users"></i>{new Set(todaySessions.map((s) => s.instructor)).size} tutors on site</span>
+            </div>
+          </div>
+          <div className="hm-needs-actions">
+            <Link className="hm-needs-btn solid" to="/operations/requests"><i className="fa-solid fa-user-check"></i>Review requests</Link>
+            <Link className="hm-needs-btn ghost" to="/operations/scheduling"><i className="fa-regular fa-calendar"></i>Open schedule</Link>
+          </div>
+        </div>
+      </div>
+
       <div className="hm-kpis">
-        <div className="hm-kpi"><span className="hm-kpi-value">{activeClasses}</span><span className="hm-kpi-label">Active classes</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{requests.length}</span><span className="hm-kpi-label">Pending requests</span></div>
+        <div className="hm-kpi"><span className="hm-kpi-value">{students.length}</span><span className="hm-kpi-label">Active students</span></div>
+        <div className="hm-kpi"><span className="hm-kpi-value">{sessionsThisWeek}</span><span className="hm-kpi-label">Sessions this week</span></div>
+        <div className="hm-kpi"><span className="hm-kpi-value">{seatFillRate != null ? `${seatFillRate}%` : '—'}</span><span className="hm-kpi-label">Seat fill rate</span></div>
         <div className={`hm-kpi ${dash.delinquency_queue.length ? 'alert' : ''}`}><span className="hm-kpi-value">{dash.delinquency_queue.length}</span><span className="hm-kpi-label">Delinquent wallets</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{dash.auto_completed_pending.count}</span><span className="hm-kpi-label">Auto-marks to verify</span></div>
       </div>
 
       <div className="hm-grid">
-        <Card title="Needs attention">
-          {attention.length ? (
-            <ul className="hm-list">
-              {attention.slice(0, 6).map((a) => (
-                <li key={a.key}>
-                  <Link to={a.to}>{a.text}</Link>
-                  {a.age && <span className="hm-age">{a.age}</span>}
-                </li>
-              ))}
-            </ul>
-          ) : <Empty>Nothing needs attention.</Empty>}
+        <Card title="Today's sessions" action={<Link className="hm-link" to="/operations/scheduling">Full schedule</Link>}>
+          {todaySessions.length ? (
+            <div>
+              {todaySessions.map((s) => {
+                const tint = tintFor(s.subject);
+                const clashed = clashes.some(([a, b]) => a.session_id === s.session_id || b.session_id === s.session_id);
+                return (
+                  <Link key={s.session_id} to={`/operations/classes/${s.class_id}`} className="hm-session-row" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <span className="hm-icon-tint" style={{ background: tint.bg, color: tint.fg }}><i className={subjectIcon(s.subject)}></i></span>
+                    <div className="hm-session-when">
+                      <span className="hm-session-day">{isoToLocal(s.starts_at).toFormat('h:mm a')}</span>
+                      {s.room_id != null && <span className="hm-session-time">{roomName.get(s.room_id) ?? `Room ${s.room_id}`}</span>}
+                    </div>
+                    <div className="hm-session-what">
+                      <span className="hm-session-subject">{s.subject}</span>
+                      <span className="hm-session-meta">{s.instructor} · {s.enrolled} of {s.student_limit} students</span>
+                    </div>
+                    {clashed && <span className="hm-badge error">Room clash</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ) : <Empty>No sessions today.</Empty>}
         </Card>
 
-        <Card
-          title="Membership requests"
-          action={<Link className="hm-link" to="/operations/requests">View all</Link>}
-        >
+        <Card title="Join requests" action={<Link className="hm-link" to="/operations/requests">Roster</Link>}>
           {requests.length ? (
-            <ul className="hm-list">
-              {requests.slice(0, 3).map((r) => (
-                <li key={r.request_id}>
-                  <span>{r.student_name} → {r.subject} ({label(r.class_type)})</span>
-                </li>
-              ))}
-            </ul>
+            <div>
+              {requests.slice(0, 4).map((r) => {
+                const initials = (r.student_name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+                const tint = tintFor(r.student_name);
+                return (
+                  <div key={r.request_id} className="hm-request-row">
+                    <div className="hm-request-top">
+                      <span className="hm-avatar-sm" style={{ background: tint.bg, color: tint.fg }}>{initials}</span>
+                      <span className="hm-request-text"><strong>{r.student_name}</strong> wants to join {r.subject}</span>
+                      <span className="hm-request-age">{isoToLocal(r.created_at).toRelative()}</span>
+                    </div>
+                    <div className="hm-request-actions">
+                      <button type="button" className="approve" disabled={busyRequest === r.request_id} onClick={() => respond(r.request_id, 'approve')}>Approve</button>
+                      <button type="button" className="decline" disabled={busyRequest === r.request_id} onClick={() => respond(r.request_id, 'reject')}>Decline</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : <Empty>No pending membership requests.</Empty>}
         </Card>
       </div>
@@ -169,59 +258,132 @@ function StaffHome({ user }) {
 function InstructorHome({ user }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const me = user.user_id;
 
   useEffect(() => {
     Promise.all([
       instructorCalendarService.getMySessions(7),
       rescheduleService.getRequests(),
-      bookingService.getPending()
+      bookingService.getPending(),
+      instructorService.getMyClasses(me),
     ])
-      .then(([sessions, reschedules, bookings]) => setData({ sessions, reschedules, bookings }))
+      .then(([sessions, reschedules, bookings, classes]) => setData({ sessions, reschedules, bookings, classes }))
       .catch((err) => setError(err.response?.data?.message || 'Could not load the dashboard'));
-  }, []);
+  }, [me]);
 
   if (error) return <div className="hm-error">{error}</div>;
   if (!data) return <Loading />;
 
+  const now = DateTime.now();
+  const todayIso = now.toISODate();
   const pending = data.reschedules.length + data.bookings.length;
-  const studentsThisWeek = data.sessions.reduce((sum, s) => sum + (s.enrolled ?? 0), 0);
+  const todaySessions = data.sessions.filter((s) => isoToLocal(s.starts_at).toISODate() === todayIso);
+  const needAttendanceNow = todaySessions.filter((s) => isoToLocal(s.starts_at) < now).length;
+  const rosterStudentIds = new Set(data.classes.flatMap((c) => c.roster.filter((r) => r.status === 'active').map((r) => r.student_id)));
+  // Classes with a past session and an active roster — the same real filter
+  // Feedback.jsx uses, so this count matches what that page actually shows.
+  const feedbackReady = data.classes.filter((c) => {
+    const past = c.sessions.filter((s) => isoToLocal(s.starts_at) < now);
+    return past.length > 0 && c.roster.some((r) => r.status === 'active');
+  }).length;
+  const nextSession = [...data.sessions].sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0];
+
+  const heroParts = [`${todaySessions.length} session${todaySessions.length === 1 ? '' : 's'} today`];
+  if (needAttendanceNow) heroParts.push(`${needAttendanceNow} still need${needAttendanceNow === 1 ? 's' : ''} attendance`);
+  const heroLine = heroParts.join(' · ') + (feedbackReady ? `. ${feedbackReady} class${feedbackReady === 1 ? '' : 'es'} ${feedbackReady === 1 ? 'has' : 'have'} recent sessions ready for feedback.` : '.');
 
   return (
     <div className="hm-page">
-      <Greeting user={user} sub={`${data.sessions.length} session${data.sessions.length === 1 ? '' : 's'} in the next 7 days`} />
+      <div className="hm-hero">
+        <div className="hm-hero-copy">
+          <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
+          <h1>Good {now.hour < 12 ? 'morning' : now.hour < 18 ? 'afternoon' : 'evening'}, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+          <p>{heroLine}</p>
+        </div>
+        {nextSession ? (
+          <div className="hm-needs">
+            <div>
+              <span className="hm-eyebrow">Up next</span>
+              <h2>{nextSession.subject} · {isoToLocal(nextSession.starts_at).toFormat('ccc h:mm a')}</h2>
+              <div className="hm-needs-meta">
+                <span><i className="fa-solid fa-users"></i>{nextSession.enrolled} enrolled</span>
+                <span><i className="fa-regular fa-clock"></i>{isoToLocal(nextSession.starts_at).toRelative()}</span>
+              </div>
+            </div>
+            <div className="hm-needs-actions">
+              <Link className="hm-needs-btn solid" to={`/operations/classes/${nextSession.class_id}/sessions/${nextSession.session_id}/attendance`}><i className="fa-solid fa-clipboard-check"></i>Take attendance</Link>
+              <Link className="hm-needs-btn ghost" to="/instructor/classes"><i className="fa-solid fa-users"></i>Roster</Link>
+            </div>
+          </div>
+        ) : (
+          <div className="hm-needs">
+            <div>
+              <span className="hm-eyebrow">Up next</span>
+              <h2>Nothing scheduled</h2>
+              <p style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>No sessions in the next 7 days.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="hm-kpis">
+        <div className="hm-kpi"><span className="hm-kpi-value">{todaySessions.length}</span><span className="hm-kpi-label">Sessions today</span></div>
         <div className="hm-kpi"><span className="hm-kpi-value">{data.sessions.length}</span><span className="hm-kpi-label">Sessions this week</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{studentsThisWeek}</span><span className="hm-kpi-label">Student seats booked</span></div>
+        <div className="hm-kpi"><span className="hm-kpi-value">{rosterStudentIds.size}</span><span className="hm-kpi-label">Students (all classes)</span></div>
         <div className={`hm-kpi ${pending ? 'alert' : ''}`}><span className="hm-kpi-value">{pending}</span><span className="hm-kpi-label">Pending requests</span></div>
       </div>
+
       <div className="hm-grid">
-        <Card title="Your week">
-          <SessionList
-            sessions={data.sessions}
-            emptyText="No sessions in the next 7 days."
-            renderMeta={(s) => `${label(s.class_type)} · ${s.enrolled} enrolled`}
-          />
+        <Card title="Today's sessions" action={<Link className="hm-link" to="/operations/schedule">Full schedule</Link>}>
+          {todaySessions.length ? (
+            <div>
+              {todaySessions.map((s) => {
+                const tint = tintFor(s.subject);
+                return (
+                  <div key={s.session_id} className="hm-session-row">
+                    <span className="hm-icon-tint" style={{ background: tint.bg, color: tint.fg }}><i className={subjectIcon(s.subject)}></i></span>
+                    <div className="hm-session-when">
+                      <span className="hm-session-day">{isoToLocal(s.starts_at).toFormat('h:mm a')}</span>
+                    </div>
+                    <div className="hm-session-what">
+                      <span className="hm-session-subject">{s.subject}</span>
+                      <span className="hm-session-meta">{label(s.class_type)} · {s.enrolled} enrolled</span>
+                    </div>
+                    <Link className="hm-link" to={`/operations/classes/${s.class_id}/sessions/${s.session_id}/attendance`}>Take attendance</Link>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <Empty>No sessions today.</Empty>}
         </Card>
 
-        <Card
-          title={`Inbox${pending ? ` (${pending})` : ''}`}
-          action={<Link className="hm-link" to="/inbox">Open inbox</Link>}
-        >
-          {pending ? (
-            <ul className="hm-list">
-              {data.reschedules.slice(0, 3).map((r) => (
-                <li key={r.request_id}>
-                  <span>{r.student_name ?? 'A student'} asks to move {r.subject} to {day(r.proposed_starts_at)} {time(r.proposed_starts_at)}</span>
-                </li>
-              ))}
-              {data.bookings.slice(0, 3).map((b) => (
-                <li key={b.class_id}>
-                  <span>{b.student_name ?? 'A student'} requests {b.subject} on {day(b.starts_at)} {time(b.starts_at)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <Empty>No pending requests — you're all caught up.</Empty>}
-        </Card>
+        <div className="hm-stack">
+          <Card
+            title={`Inbox${pending ? ` (${pending})` : ''}`}
+            action={<Link className="hm-link" to="/inbox">Open inbox</Link>}
+          >
+            {pending ? (
+              <ul className="hm-list">
+                {data.reschedules.slice(0, 3).map((r) => (
+                  <li key={r.request_id}>
+                    <span>{r.student_name ?? 'A student'} asks to move {r.subject} to {day(r.proposed_starts_at)} {time(r.proposed_starts_at)}</span>
+                  </li>
+                ))}
+                {data.bookings.slice(0, 3).map((b) => (
+                  <li key={b.class_id}>
+                    <span>{b.student_name ?? 'A student'} requests {b.subject} on {day(b.starts_at)} {time(b.starts_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <Empty>No pending requests — you're all caught up.</Empty>}
+          </Card>
+
+          <Card title="Feedback" action={<Link className="hm-link" to="/instructor/feedback">Write feedback</Link>}>
+            {feedbackReady ? (
+              <p className="hm-kpi-label">{feedbackReady} class{feedbackReady === 1 ? '' : 'es'} {feedbackReady === 1 ? 'has' : 'have'} a recent session ready for feedback.</p>
+            ) : <Empty>Nothing to write up right now.</Empty>}
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -249,24 +411,65 @@ function StudentHome({ user }) {
 
   const { wallet } = data;
   const sessions = data.schedule.sessions ?? [];
-  const notes = (data.record.entries ?? []).filter((e) => e.note).slice(0, 2);
+  const entries = data.record.entries ?? [];
+  const notes = entries.filter((e) => e.note).slice(0, 2);
   const status = walletStatus(wallet);
   const low = status !== 'healthy';
-  const { rate: attendancePct, marked: markedSessions } = attendanceRate(data.record.entries);
+  const { rate: attendancePct } = attendanceRate(entries);
+
+  const now = DateTime.now();
+  const thisMonthEntries = entries.filter((e) => isoToLocal(e.starts_at).hasSame(now, 'month'));
+  const attendedThisMonth = thisMonthEntries.filter((e) => e.attendance?.status === 'present');
+  const hoursThisMonth = attendedThisMonth.reduce((sum, e) => sum + DateTime.fromISO(e.ends_at).diff(DateTime.fromISO(e.starts_at), 'hours').hours, 0);
+  const nextSession = sessions[0];
 
   return (
     <div className="hm-page">
-      <Greeting user={user} />
-      {attendancePct != null && (
-        <div className="hm-kpis">
-          <div className="hm-kpi">
-            <span className="hm-kpi-value">{attendancePct}%</span>
-            <span className="hm-kpi-label">Attendance ({markedSessions} sessions)</span>
-          </div>
+      <div className="hm-hero">
+        <div className="hm-hero-copy">
+          <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
+          <h1>Welcome back, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+          {nextSession ? (
+            <p>Your next session is {label(nextSession.class_type)} <strong>{nextSession.subject}</strong> {isoToLocal(nextSession.starts_at).toRelative()}.</p>
+          ) : <p>No upcoming sessions booked yet.</p>}
         </div>
-      )}
+        {nextSession ? (
+          <div className="hm-needs">
+            <div>
+              <span className="hm-eyebrow">Up next</span>
+              <h2>{nextSession.subject}</h2>
+              <div className="hm-needs-meta">
+                <span><i className="fa-regular fa-clock"></i>{isoToLocal(nextSession.starts_at).toFormat('ccc, LLL d · h:mm a')}</span>
+              </div>
+            </div>
+            <div className="hm-needs-actions">
+              <Link className="hm-needs-btn solid" to={`/family/students/${me}/schedule`}><i className="fa-regular fa-eye"></i>Details</Link>
+              <Link className="hm-needs-btn ghost" to={`/family/students/${me}/schedule`}><i className="fa-regular fa-calendar"></i>Reschedule</Link>
+            </div>
+          </div>
+        ) : (
+          <div className="hm-needs">
+            <div>
+              <span className="hm-eyebrow">Up next</span>
+              <h2>Nothing scheduled</h2>
+            </div>
+            <div className="hm-needs-actions">
+              <Link className="hm-needs-btn solid" to={`/family/students/${me}/book`}><i className="fa-solid fa-plus"></i>Book a session</Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hm-kpis">
+        <div className="hm-kpi"><span className="hm-kpi-value">{attendedThisMonth.length}</span><span className="hm-kpi-label">Sessions attended (this month)</span></div>
+        <div className="hm-kpi"><span className="hm-kpi-value">{hoursThisMonth.toFixed(1)}</span><span className="hm-kpi-label">Hours this month</span></div>
+        {attendancePct != null && (
+          <div className="hm-kpi"><span className="hm-kpi-value">{attendancePct}%</span><span className="hm-kpi-label">Attendance rate</span></div>
+        )}
+      </div>
+
       <div className="hm-grid">
-        <Card title="Upcoming sessions">
+        <Card title="This week">
           <SessionList
             sessions={sessions.slice(0, 6)}
             emptyText="No upcoming sessions."

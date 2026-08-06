@@ -39,7 +39,7 @@ const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const fmt = (iso) => isoToLocal(iso).toFormat('ccc, LLL d · h:mm a');
 const STEPS = ['Student & subject', 'Smart match', 'Confirm'];
 
-function EnrollmentWizard({ isOpen, onClose, onDone }) {
+function EnrollmentWizard({ isOpen, onClose, onDone, initialStudentId }) {
   const [step, setStep] = useState(0);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -58,7 +58,7 @@ function EnrollmentWizard({ isOpen, onClose, onDone }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    setStep(0); setStudentId(''); setSubjectId(''); setCandidates(null);
+    setStep(0); setStudentId(initialStudentId ? String(initialStudentId) : ''); setSubjectId(''); setCandidates(null);
     setChosenInstructor(null); setChosenSlot(null); setError(''); setNotice('');
     studentService.getAllStudents().then(setStudents).catch(() => {});
     subjectService.getAllSubjects().then(setSubjects).catch(() => {});
@@ -122,7 +122,7 @@ function EnrollmentWizard({ isOpen, onClose, onDone }) {
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="sc-modal" style={{ height: 560, maxHeight: '80vh', width: 640, maxWidth: '90%', display: 'flex', flexDirection: 'column' }}>
         <div className="hm-card-head">
-          <h2>Enroll a student</h2>
+          <h2>{initialStudentId ? `Add a subject — ${students.find((s) => String(s.student_id ?? s.user_id) === String(studentId))?.name ?? ''}` : 'Enroll a student'}</h2>
           <span className="at-subtitle">Step {step + 1} of {STEPS.length} — {STEPS[step]}</span>
         </div>
         {error && <div className="hm-error">{error}</div>}

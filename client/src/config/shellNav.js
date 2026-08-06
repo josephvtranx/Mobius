@@ -7,7 +7,7 @@
 
 export const ROLE_THEME = {
   student: 'teal',
-  guardian: 'teal',
+  guardian: 'mauve',
   instructor: 'indigo',
   staff: 'orange',
 };
@@ -49,13 +49,24 @@ export function getShellNav(role, user) {
       ];
 
     case 'guardian':
+      // Schedule/Progress/Billing/Requests are per-child, and shellNav has no
+      // notion of "currently selected child" — those live as links on each
+      // child's card on the Home page (portal.children[i]) rather than as
+      // sidebar items, same pattern GuardianPortal.jsx already used pre-redesign.
       return [
         {
-          label: 'Learn',
-          icon: 'fa-solid fa-book-open',
+          label: 'Overview',
+          icon: 'fa-solid fa-compass',
           items: [
             { label: 'My children', icon: 'fa-solid fa-house', path: '/portal' },
             { label: 'Class catalog', icon: 'fa-solid fa-store', path: '/catalog' },
+          ],
+        },
+        {
+          label: 'Inbox',
+          icon: 'fa-regular fa-comments',
+          items: [
+            { label: 'Messages', icon: 'fa-regular fa-message', path: '/messages' },
           ],
         },
         {

@@ -1,317 +1,145 @@
-import React, { useState, useEffect } from 'react';
+// Student roster (design handoff: Mobius Staff.dc.html "## Roster" — student
+// tab). Real data from /students/roster, unchanged; table chrome rebuilt
+// onto roster.css's grid pattern with status/class-chip/day-dot styling
+// matching the design. Status filter chips are derived from whatever status
+// values the real data actually contains, not hardcoded to the design's
+// four-value demo set.
+import { useEffect, useState } from 'react';
 import api from '@/services/api';
-import '../../../css/StudentRoster.css';
-import ProfileCard from '../../../components/ProfileCard';
+import { tintFor, toneFor } from '@/lib/rosterColors';
+import '@/css/roster.css';
+
+const DAY_MAP = { mon: 'M', tue: 'T', wed: 'W', thu: 'Th', fri: 'F', sat: 'Sa', sun: 'Su' };
+const WEEK = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function scheduledDays(schedule) {
+  const set = new Set();
+  for (const s of schedule || []) {
+    if (!s.days) continue;
+    const days = typeof s.days === 'string' ? s.days.split(',').map((d) => d.trim()) : s.days;
+    for (const d of days) {
+      const letter = DAY_MAP[d.toLowerCase()];
+      if (letter) set.add(letter);
+    }
+  }
+  return set;
+}
 
 function StudentRoster() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState({});
-  const [sortConfig, setSortConfig] = useState({
-    key: 'name',
-    direction: 'ascending'
-  });
+  const [filter, setFilter] = useState('All');
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await api.get('/students/roster');
-
-        if (!response.data) {
-          throw new Error('No data received from server');
-        }
-
-        const processedData = response.data.map(student => {
-          console.log('Processing student:', student);
-          return {
-            id: student.id || '',
-            name: student.name || '',
-            studentEmail: student.studentEmail || '',
-            studentPhone: student.studentPhone || '',
-            parentNames: student.parentNames || [],
-            parentEmails: student.parentEmails || [],
-            parentPhones: student.parentPhones || [],
-            instructors: student.instructors || [],
-            status: student.status || '',
-            enrolledClasses: student.enrolledClasses || [],
-            schedule: student.schedule || []
-          };
-        });
-
-        console.log('Processed data sample:', processedData[0]);
-        setStudents(processedData);
-      } catch (err) {
-        console.error('Error fetching students:', err);
-        
-        if (err.response) {
-          switch (err.response.status) {
-            case 401:
-              setError('Please log in to view the student roster');
-              break;
-            case 403:
-              setError('You do not have permission to view the student roster');
-              break;
-            case 404:
-              setError('Student roster not found');
-              break;
-            case 409:
-              setError('There was a conflict with the data');
-              break;
-            case 500:
-              setError('Server error. Please try again later');
-              break;
-            default:
-              setError('Failed to fetch student data. Please try again later');
-          }
-        } else if (err.request) {
-          setError('No response from server. Please check your connection');
-        } else {
-          setError('Failed to fetch student data. Please try again later');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudents();
+    api.get('/students/roster')
+      .then((res) => {
+        setStudents((res.data || []).map((s) => ({
+          id: s.id || '',
+          name: s.name || '',
+          studentEmail: s.studentEmail || '',
+          studentPhone: s.studentPhone || '',
+          parentNames: s.parentNames || [],
+          parentEmails: s.parentEmails || [],
+          parentPhones: s.parentPhones || [],
+          instructors: s.instructors || [],
+          status: s.status || '',
+          enrolledClasses: s.enrolledClasses || [],
+          schedule: s.schedule || [],
+        })));
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Failed to fetch student roster'))
+      .finally(() => setLoading(false));
   }, []);
 
   const requestSort = (key) => {
-    let direction = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
+    setSortConfig((c) => ({ key, direction: c.key === key && c.direction === 'ascending' ? 'descending' : 'ascending' }));
   };
+  const toggleRow = (id) => setExpandedRows((p) => ({ ...p, [id]: !p[id] }));
 
-  const getSortedData = () => {
-    if (!sortConfig.key) return students;
+  const statuses = ['All', ...new Set(students.map((s) => s.status).filter(Boolean))];
+  const filtered = filter === 'All' ? students : students.filter((s) => s.status === filter);
+  const sorted = [...filtered].sort((a, b) => {
+    const av = a[sortConfig.key] ?? '';
+    const bv = b[sortConfig.key] ?? '';
+    if (av < bv) return sortConfig.direction === 'ascending' ? -1 : 1;
+    if (av > bv) return sortConfig.direction === 'ascending' ? 1 : -1;
+    return 0;
+  });
+  const sortIcon = (key) => sortConfig.key !== key ? '' : (sortConfig.direction === 'ascending' ? ' ↑' : ' ↓');
 
-    return [...students].sort((a, b) => {
-      const aValue = a[sortConfig.key] || '';
-      const bValue = b[sortConfig.key] || '';
-      
-      if (aValue < bValue) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
-      return 0;
-    });
-  };
+  if (loading) return <div className="rt-page"><div className="hm-loading">Loading student roster…</div></div>;
+  if (error) return <div className="rt-page"><div className="hm-error">{error}</div></div>;
 
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return '↕';
-    return sortConfig.direction === 'ascending' ? '↑' : '↓';
-  };
+  return (
+    <div className="rt-page">
+      <header className="hm-greeting">
+        <h1>Student roster</h1>
+        <p>Every enrolled student, contacts, classes and weekly schedule.</p>
+      </header>
 
-  const toggleRow = (id) => {
-    setExpandedRows(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
+      {statuses.length > 1 && (
+        <div className="rt-filters">
+          {statuses.map((s) => (
+            <button key={s} type="button" className={`rt-filter ${filter === s ? 'active' : ''}`} onClick={() => setFilter(s)}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
 
-  const formatSchedule = (schedule) => {
-    if (!schedule || schedule.length === 0) return 'No schedule';
-    return schedule.map(s => `${s.days} ${s.start_time}-${s.end_time}`).join(', ');
-  };
+      <section className="rt-section">
+        <div className="rt-grid rt-grid--student rt-head">
+          <span onClick={() => requestSort('name')} style={{ cursor: 'pointer' }}>Name{sortIcon('name')}</span>
+          <span className="rt-hide">Contacts</span>
+          <span>Instructor</span>
+          <span style={{ textAlign: 'center' }}>Status</span>
+          <span>Classes</span>
+          <span>Schedule</span>
+        </div>
 
-  const getScheduledDays = (schedule) => {
-    if (!schedule || schedule.length === 0) return new Set();
-    
-    const scheduledDays = new Set();
-    schedule.forEach(s => {
-      if (s.days) {
-        // Handle both string format (comma-separated) and array format
-        const days = typeof s.days === 'string' ? s.days.split(',').map(d => d.trim()) : s.days;
-        days.forEach(day => {
-          // Map day abbreviations to our button format
-          const dayMap = {
-            'mon': 'M',
-            'tue': 'T', 
-            'wed': 'W',
-            'thu': 'Th',
-            'fri': 'F',
-            'sat': 'Sa',
-            'sun': 'Su'
-          };
-          if (dayMap[day.toLowerCase()]) {
-            scheduledDays.add(dayMap[day.toLowerCase()]);
-          }
-        });
-      }
-    });
-    return scheduledDays;
-  };
-
-  const DayButtons = ({ schedule }) => {
-    const scheduledDays = getScheduledDays(schedule);
-    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    
-    return (
-      <div className="day-buttons-container" style={{
-        display: 'flex',
-        gap: '4px',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%'
-      }}>
-        {days.map((day, index) => {
-          const isScheduled = scheduledDays.has(day);
+        {sorted.map((s) => {
+          const days = scheduledDays(s.schedule);
+          const tone = toneFor(s.status);
           return (
-            <div
-              key={index}
-              style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: isScheduled ? '#374151' : '#e5e7eb',
-                color: isScheduled ? 'white' : '#6b7280',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '11px',
-                fontWeight: isScheduled ? '600' : '400',
-                border: '1px solid',
-                borderColor: isScheduled ? '#374151' : '#d1d5db'
-              }}
-              title={isScheduled ? `Has classes on ${day}` : `No classes on ${day}`}
-            >
-              {day}
+            <div key={s.id}>
+              <div className="rt-grid rt-grid--student rt-row rt-row--clickable" onClick={() => toggleRow(s.id)}>
+                <span className="rt-name">{s.name}</span>
+                <div className="rt-contact rt-hide">
+                  <span className="rt-cell">{s.studentEmail}</span>
+                  {s.parentNames[0] && <span className="rt-sub">P: {s.parentNames[0]}</span>}
+                </div>
+                <span className="rt-cell">{s.instructors.join(', ') || '—'}</span>
+                <span className="rt-pill" style={{ background: tone.bg, color: tone.fg, justifySelf: 'center' }}>{s.status || '—'}</span>
+                <div className="rt-chips">
+                  {s.enrolledClasses.map((c, i) => (
+                    <span key={i} className="rt-chip" style={{ background: tintFor(c).bg, color: tintFor(c).fg }}>{c}</span>
+                  ))}
+                  {s.enrolledClasses.length === 0 && <span className="rt-cell">—</span>}
+                </div>
+                <div className="rt-days">
+                  {WEEK.map((l, i) => (
+                    <span key={i} className={`rt-day ${days.has(l) ? 'rt-day--on' : 'rt-day--off'}`} title={l}>{l}</span>
+                  ))}
+                </div>
+              </div>
+              {expandedRows[s.id] && (
+                <div className="rt-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', padding: '10px 16px' }}>
+                  {s.studentPhone && <span className="rt-cell">Student: {s.studentPhone}</span>}
+                  {s.parentNames.map((name, i) => (
+                    <span key={i} className="rt-cell">
+                      {name}{s.parentEmails[i] ? ` · ${s.parentEmails[i]}` : ''}{s.parentPhones[i] ? ` · ${s.parentPhones[i]}` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
-      </div>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="main">
-        <div className="main-student-roster">
-          <div className="loading">Loading student data...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="main">
-        <div className="main-student-roster">
-          <div className="error">{error}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const sortedStudents = getSortedData();
-
-  return (
-    <div className="main">
-      <div className="main-student-roster">
-        <table className="roster-table">
-          <thead>
-            <tr>
-              <th onClick={() => requestSort('name')} className="sortable">
-                Name {getSortIcon('name')}
-              </th>
-              <th>Student Contact</th>
-              <th>Parents</th>
-              <th>Instructors</th>
-              <th>Status</th>
-              <th>Enrolled Classes</th>
-              <th style={{ textAlign: 'center' }}>Schedule</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedStudents.map((student) => (
-              <React.Fragment key={student.id}>
-                <tr 
-                  className={`roster-row ${expandedRows[student.id] ? 'expanded' : ''}`}
-                  onClick={() => toggleRow(student.id)}
-                >
-                  <td>{student.name}</td>
-                  <td>
-                    {student.studentEmail && (
-                      <span className="email">{student.studentEmail}</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="parent-pills">
-                      {student.parentNames.map((name, index) => (
-                        <span key={index} className="parent-pill" data-parent-index={index}>
-                          {name}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td>{student.instructors.join(', ')}</td>
-                  <td>{student.status}</td>
-                  <td>{student.enrolledClasses.join(', ')}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <DayButtons schedule={student.schedule} />
-                  </td>
-                </tr>
-                {expandedRows[student.id] && (
-                  <>
-                    {/* First row: Student contact + First parent contact */}
-                    {(student.studentPhone || (student.parentNames.length > 0 && (student.parentEmails[0] || student.parentPhones[0]))) && (
-                      <tr className="roster-subrow">
-                        <td></td>
-                        <td>
-                          {student.studentPhone && (
-                            <span className="contact-pill student-contact">{student.studentPhone}</span>
-                          )}
-                        </td>
-                        <td>
-                          {student.parentNames.length > 0 && (student.parentEmails[0] || student.parentPhones[0]) && (
-                            <>
-                              {student.parentEmails[0] && (
-                                <span className="contact-pill" data-parent-index="0">{student.parentEmails[0]}</span>
-                              )}
-                              {student.parentPhones[0] && (
-                                <span className="contact-pill" data-parent-index="0">{student.parentPhones[0]}</span>
-                              )}
-                            </>
-                          )}
-                        </td>
-                        <td colSpan="4"></td>
-                      </tr>
-                    )}
-                    {/* Additional parent contacts on separate rows */}
-                    {student.parentNames.slice(1).map((parentName, index) => {
-                      const actualIndex = index + 1;
-                      return (
-                        <tr key={`parent-${actualIndex}`} className="roster-subrow">
-                          <td></td>
-                          <td></td>
-                          <td>
-                            {student.parentEmails[actualIndex] && (
-                              <span className="contact-pill" data-parent-index={actualIndex}>{student.parentEmails[actualIndex]}</span>
-                            )}
-                            {student.parentPhones[actualIndex] && (
-                              <span className="contact-pill" data-parent-index={actualIndex}>{student.parentPhones[actualIndex]}</span>
-                            )}
-                          </td>
-                          <td colSpan="4"></td>
-                        </tr>
-                      );
-                    })}
-                  </>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
+        {sorted.length === 0 && <div className="hm-empty">No students match this filter.</div>}
+      </section>
     </div>
   );
 }

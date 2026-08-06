@@ -1,7 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
-import ProfilePictureUpload from '../components/ProfilePictureUpload';
-import authService from '../services/authService';
+// Settings (design handoff: every app's "## Settings" section — a page
+// header, a "Personal" hm-card with a divided icon-row list, an Edit
+// button that swaps to a form). Guardian's "Linked children" section
+// (real data: guardianPortalService) uses the same divided-row pattern.
+import { useEffect, useState } from 'react';
+import api from '@/services/api';
+import ProfilePictureUpload from '@/components/ProfilePictureUpload';
+import authService from '@/services/authService';
+import guardianPortalService from '@/services/guardianPortalService';
+import '@/css/home.css';
+
+const PREF_MODES = ['all', 'billing_only', 'digest'];
+const inputStyle = { width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--shell-border)', marginBottom: 10 };
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -9,229 +18,158 @@ function Profile() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [currentUser, setCurrentUser] = useState(null);
+  const [children, setChildren] = useState(null);
+  const [prefNotice, setPrefNotice] = useState('');
 
   useEffect(() => {
-    fetchUserProfile();
-    // Get current user from auth service
-    const user = authService.getCurrentUser();
-    setCurrentUser(user);
+    api.get('/users/profile')
+      .then((res) => {
+        setUser(res.data);
+        setFormData({ name: res.data.name, email: res.data.email, phone: res.data.phone || '' });
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Failed to fetch profile data'))
+      .finally(() => setIsLoading(false));
+
+    const u = authService.getCurrentUser();
+    setCurrentUser(u);
+    if (u?.role === 'guardian') {
+      guardianPortalService.getPortal().then((p) => setChildren(p.children)).catch(() => {});
+    }
   }, []);
 
-  const fetchUserProfile = async () => {
+  const setNotificationMode = async (studentId, mode) => {
+    setPrefNotice('');
     try {
-      const response = await api.get('/users/profile');
-      setUser(response.data);
-      setFormData({
-        name: response.data.name,
-        email: response.data.email,
-        phone: response.data.phone || ''
-      });
+      await guardianPortalService.setPrefs(studentId, { mode });
+      setPrefNotice(`Notifications for that child set to "${mode.replace('_', ' ')}".`);
+      setTimeout(() => setPrefNotice(''), 3000);
     } catch (err) {
-      setError('Failed to fetch profile data');
-      console.error('Error fetching profile:', err);
-    } finally {
-      setIsLoading(false);
+      setError(err.response?.data?.message || 'Failed to save notification preference');
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const handleChange = (e) => setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
-
     try {
-      const response = await api.patch('/users/profile', formData);
-      setUser(response.data.user || response.data);
+      const res = await api.patch('/users/profile', formData);
+      setUser(res.data.user || res.data);
       setIsEditing(false);
-      setSuccess('Profile updated successfully!');
-      
-      // Clear success message after 3 seconds
+      setSuccess('Profile updated.');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError('Failed to update profile');
-      console.error('Error updating profile:', err);
+      setError(err.response?.data?.message || 'Failed to update profile');
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-red-600">Failed to load profile</div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="hm-page"><div className="hm-loading">Loading…</div></div>;
+  if (!user) return <div className="hm-page"><div className="hm-error">{error || 'Failed to load profile'}</div></div>;
 
   return (
-    <div className="body body--home">
-      <div className="page-container">
-        {/* Main dashboard content */}
-        <main className="main main--home">
-          <div className="dashboard-container">
-            <div className="dashboard-main">
-              {/* Dashboard content */}
-              <div className="dashboard-content">
-                {error && (
-                  <div className="error-message">
-                    {error}
-                  </div>
-                )}
+    <div className="hm-page" style={{ maxWidth: 860 }}>
+      <header className="hm-greeting">
+        <h1>Settings</h1>
+        <p>Your personal account.</p>
+      </header>
 
-                {success && (
-                  <div className="success-message">
-                    {success}
-                  </div>
-                )}
+      {error && <div className="hm-error">{error}</div>}
+      {success && <div className="hm-card" style={{ color: 'var(--status-success)' }}>{success}</div>}
 
-                {/* Profile Picture Upload Section */}
-                <div className="profile-section">
-                  <h2 className="section-title">Profile Picture</h2>
-                  <div className="card">
-                    <ProfilePictureUpload 
-                      currentUser={currentUser}
-                      onUploadSuccess={(imageUrl) => {
-                        setCurrentUser(prev => ({ ...prev, profile_pic_url: imageUrl }));
-                      }}
-                    />
-                  </div>
-                </div>
+      <section className="hm-card">
+        <div className="hm-card-head"><h2>Profile picture</h2></div>
+        <ProfilePictureUpload
+          currentUser={currentUser}
+          onUploadSuccess={(imageUrl) => setCurrentUser((prev) => ({ ...prev, profile_pic_url: imageUrl }))}
+        />
+      </section>
 
-                {/* Profile Information Section */}
-                <div className="profile-section">
-                  <div className="section-header">
-                    <h2 className="section-title">Profile Information</h2>
-            {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                        className="btn-edit"
-              >
-                Edit Profile
-              </button>
-            )}
-          </div>
-
-          {isEditing ? (
-                    <div className="card">
-                      <form onSubmit={handleSubmit} className="profile-form">
-                        <div className="form-group">
-                          <label htmlFor="name" className="form-label">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                            className="form-input"
-                />
-              </div>
-
-                        <div className="form-group">
-                          <label htmlFor="email" className="form-label">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                            className="form-input"
-                />
-              </div>
-
-                        <div className="form-group">
-                          <label htmlFor="phone" className="form-label">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                            className="form-input"
-                />
-              </div>
-
-                        <div className="form-actions">
-                <button
-                  type="submit"
-                            className="btn-primary"
-                >
-                  Save Changes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setFormData({
-                      name: user.name,
-                      email: user.email,
-                      phone: user.phone || ''
-                    });
-                  }}
-                            className="btn-secondary"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-                    </div>
-          ) : (
-                    <div className="card">
-                      <div className="profile-info">
-                        <div className="info-row">
-                          <span className="info-label">Name</span>
-                          <span className="info-value">{user.name}</span>
-                        </div>
-                        <div className="info-row">
-                          <span className="info-label">Email</span>
-                          <span className="info-value">{user.email}</span>
-              </div>
-                        <div className="info-row">
-                          <span className="info-label">Phone</span>
-                          <span className="info-value">{user.phone || 'Not provided'}</span>
-              </div>
-                        <div className="info-row">
-                          <span className="info-label">Role</span>
-                          <span className="info-value capitalize">{user.role}</span>
-              </div>
-              </div>
-            </div>
-          )}
+      <section className="hm-card">
+        <div className="hm-card-head">
+          <h2>Personal</h2>
+          {!isEditing && <button type="button" className="hm-btn primary" onClick={() => setIsEditing(true)}><i className="fa-solid fa-pen" style={{ marginRight: 7 }}></i>Edit</button>}
         </div>
-              </div>
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit}>
+            <label className="hm-kpi-label">Name</label>
+            <input style={inputStyle} type="text" name="name" value={formData.name} onChange={handleChange} required />
+            <label className="hm-kpi-label">Email</label>
+            <input style={inputStyle} type="email" name="email" value={formData.email} onChange={handleChange} required />
+            <label className="hm-kpi-label">Phone</label>
+            <input style={inputStyle} type="tel" name="phone" value={formData.phone} onChange={handleChange} />
+            <div className="hm-actions">
+              <button type="submit" className="hm-btn primary">Save changes</button>
+              <button
+                type="button"
+                className="hm-btn"
+                onClick={() => { setIsEditing(false); setFormData({ name: user.name, email: user.email, phone: user.phone || '' }); }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="hm-divided">
+            <div className="hm-divided-row">
+              <i className="fa-solid fa-user"></i>
+              <span className="hm-divided-label">Full name</span>
+              <span className="hm-divided-value">{user.name}</span>
+            </div>
+            <div className="hm-divided-row">
+              <i className="fa-solid fa-envelope"></i>
+              <span className="hm-divided-label">Email</span>
+              <span className="hm-divided-value">{user.email}</span>
+            </div>
+            <div className="hm-divided-row">
+              <i className="fa-solid fa-phone"></i>
+              <span className="hm-divided-label">Phone</span>
+              <span className="hm-divided-value">{user.phone || 'Not provided'}</span>
+            </div>
+            <div className="hm-divided-row">
+              <i className="fa-solid fa-shield-halved"></i>
+              <span className="hm-divided-label">Role</span>
+              <span className="hm-divided-value" style={{ textTransform: 'capitalize' }}>{user.role}</span>
             </div>
           </div>
-        </main>
-      </div>
+        )}
+      </section>
+
+      {currentUser?.role === 'guardian' && children && (
+        <section className="hm-card">
+          <div className="hm-card-head"><h2>Linked children</h2></div>
+          {prefNotice && <p style={{ color: 'var(--status-success)', fontSize: 13, marginBottom: 10 }}>{prefNotice}</p>}
+          {children.length ? (
+            <div className="hm-divided">
+              {children.map((c) => (
+                <div key={c.student_id} className="hm-divided-row">
+                  <i className="fa-solid fa-graduation-cap"></i>
+                  <span className="hm-divided-label" style={{ width: 'auto', flex: 1 }}>
+                    {c.name}{c.is_primary ? ' (primary)' : ''}
+                  </span>
+                  <label style={{ fontSize: 12.5, color: 'var(--shell-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Notifications
+                    <select
+                      defaultValue="all"
+                      className="hm-btn"
+                      style={{ height: 32, fontSize: 12.5 }}
+                      onChange={(e) => setNotificationMode(c.student_id, e.target.value)}
+                    >
+                      {PREF_MODES.map((m) => <option key={m} value={m}>{m.replace('_', ' ')}</option>)}
+                    </select>
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : <div className="hm-empty">No linked students yet.</div>}
+        </section>
+      )}
     </div>
   );
 }
 
-export default Profile; 
+export default Profile;

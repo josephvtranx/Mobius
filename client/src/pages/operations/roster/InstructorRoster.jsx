@@ -1,10 +1,18 @@
+// Instructor roster (design handoff: Mobius Staff.dc.html "## Roster" —
+// instructor tab). The roster table itself is rebuilt onto roster.css's
+// grid pattern; the nested availability editor (recurring slots +
+// unavailability overrides) below the fold is real functionality with no
+// counterpart in the design, so it keeps its existing InstructorRoster.css
+// styling rather than being rewritten wholesale.
 import React, { useState, useEffect } from 'react';
 import api from '@/services/api';
 import '../../../css/InstructorRoster.css';
+import '@/css/roster.css';
 import Modal from '../../../components/Modal';
 import SearchableDropdown from '../../../components/SearchableDropdown';
 import subjectService from '../../../services/subjectService';
 import instructorService from '../../../services/instructorService';
+import { tintFor } from '@/lib/rosterColors';
 import { useMemo } from 'react';
 
 
@@ -67,10 +75,8 @@ function InstructorRoster() {
       try {
         setLoading(true);
         const response = await api.get('/instructors/roster');
-        console.log('Raw instructor data from backend:', response.data);
-        
+
         const processedData = response.data.map((instructor, index) => {
-          console.log('Processing instructor:', instructor.name, 'Raw salary:', instructor.salary, 'Raw hourlyRate:', instructor.hourlyRate);
           return {
             id: instructor.id || `temp-${index}`,
             instructorId: instructor.instructorId, // Add instructorId from backend
@@ -213,22 +219,9 @@ function InstructorRoster() {
   };
 
   const formatCurrency = (amount) => {
-    console.log('formatCurrency called with:', amount, 'type:', typeof amount);
-    
-    if (amount === null || amount === undefined) {
-      return '$0';
-    }
-    
     const numAmount = parseFloat(amount);
-    console.log('Parsed amount:', numAmount, 'isNaN:', isNaN(numAmount));
-    
-    if (isNaN(numAmount)) {
-      return '$0';
-    }
-    
-    const formatted = `$${numAmount.toLocaleString()}`;
-    console.log('Formatted result:', formatted);
-    return formatted;
+    if (amount === null || amount === undefined || isNaN(numAmount)) return '$0';
+    return `$${numAmount.toLocaleString()}`;
   };
 
   const getEmploymentTypeClass = (type) => {
@@ -240,17 +233,9 @@ function InstructorRoster() {
   };
 
   const getRateDisplay = (instructor) => {
-    console.log('Rate display for instructor:', instructor.name, 'Employment type:', instructor.employmentType, 'Salary:', instructor.salary, 'Hourly rate:', instructor.hourlyRate);
-    
-    let displayValue;
-    if (instructor.employmentType === 'full_time') {
-      displayValue = formatCurrency(instructor.salary || 0);
-    } else {
-      displayValue = `${formatCurrency(instructor.hourlyRate || 0)}/hr`;
-    }
-    
-    console.log('Display value for', instructor.name, ':', displayValue);
-    return displayValue;
+    return instructor.employmentType === 'full_time'
+      ? formatCurrency(instructor.salary || 0)
+      : `${formatCurrency(instructor.hourlyRate || 0)}/hr`;
   };
 
   const handleEdit = (instructor) => {
@@ -416,189 +401,107 @@ function InstructorRoster() {
   const AvailabilityDayButtons = ({ instructorId }) => {
     const availableDays = getAvailabilityDays(instructorId);
     const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    
+
     return (
-      <div className="day-buttons-container" style={{
-        display: 'flex',
-        gap: '3px',
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%'
-      }}>
-        {days.map((day, index) => {
-          const isAvailable = availableDays.has(day);
-          return (
-            <div
-              key={index}
-              style={{
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                backgroundColor: isAvailable ? '#6b7280' : '#e5e7eb',
-                color: isAvailable ? 'white' : '#6b7280',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '10px',
-                fontWeight: isAvailable ? '600' : '400',
-                border: '1px solid',
-                borderColor: isAvailable ? '#6b7280' : '#d1d5db'
-              }}
-              title={isAvailable ? `Available on ${day}` : `Not available on ${day}`}
-            >
-              {day}
-            </div>
-          );
-        })}
+      <div className="rt-days">
+        {days.map((day, index) => (
+          <span
+            key={index}
+            className={`rt-day ${availableDays.has(day) ? 'rt-day--on' : 'rt-day--off'}`}
+            title={availableDays.has(day) ? `Available on ${day}` : `Not available on ${day}`}
+          >
+            {day}
+          </span>
+        ))}
       </div>
     );
   };
 
 
 
-  if (loading) {
-    return (
-      <div className="main">
-        <div className="main-instructor-roster">
-          <div className="loading">Loading instructor data...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="main">
-        <div className="main-instructor-roster">
-          <div className="error">{error}</div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="rt-page"><div className="hm-loading">Loading instructor roster…</div></div>;
+  if (error) return <div className="rt-page"><div className="hm-error">{error}</div></div>;
 
   const sortedInstructors = getSortedData();
 
   return (
-    <div className="main">
-      <div className="main-instructor-roster">
-        <table className="roster-table">
-          <thead>
-            <tr>
-              <th onClick={() => requestSort('name')} className="sortable">
-                Instructor {getSortIcon('name')}
-              </th>
-              <th>Contact</th>
-              <th onClick={() => requestSort('employmentType')} className="sortable">
-                Monthly/Hourly Rate {getSortIcon('employmentType')}
-              </th>
-              <th>Total Hours</th>
-              <th>Currently Teaching</th>
-              <th style={{ textAlign: 'center' }}>Availability</th>
-              <th>Edit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedInstructors.map((instructor) => (
-              <React.Fragment key={instructor.id}>
-                <tr 
-                  className={`roster-row ${expandedRows[instructor.id] ? 'expanded' : ''}`}
-                  onClick={() => toggleRow(instructor.id)}
-                >
-                <td>
-                    <div className="instructor-name">
-                      <span className={`name-pill ${getEmploymentTypeClass(instructor.employmentType)}`}>
-                        {instructor.name}
-                      </span>
-                  </div>
-                </td>
-                  <td>
-                    {instructor.email && (
-                      <span className="email">{instructor.email}</span>
-                    )}
-                  </td>
-                  <td className="rate-cell">
-                    {(() => {
-                      const rateDisplay = getRateDisplay(instructor);
-                      return rateDisplay || '$0';
-                    })()}
-                  </td>
-                  <td>--</td>
-                  <td>
-                    <div className="currently-teaching-container">
-                      {instructor.activeClassNames && instructor.activeClassNames.length > 0 ? (
-                        instructor.activeClassNames.map((className, idx) => (
-                          <span key={`${instructor.id}-class-${idx}`} className="tag-pill active-class-tag">
-                            {className}
-                    </span>
-                        ))
-                      ) : (
-                        <span className="no-tags">No active classes</span>
-                      )}
-                    </div>
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <AvailabilityDayButtons instructorId={instructor.id} />
-                </td>
-                <td>
-                    <button 
-                      className="edit-button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(instructor);
-                      }}
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-                {expandedRows[instructor.id] && (
-                  <React.Fragment key={`subrow-fragment-${instructor.id}`}>
-                    <tr key={`subrow-${instructor.id}`} className="roster-subrow">
-                      <td colSpan="7">
-                        <div className="instructor-details-dropdown">
-                          <div className="details-grid">
-                            <div className="detail-item">
-                              <span className="detail-label">Age:</span>
-                              <span className="detail-value">{instructor.age || 'N/A'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <span className="detail-label">College:</span>
-                              <span className="detail-value">{instructor.college || 'N/A'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <span className="detail-label">Major:</span>
-                              <span className="detail-value">{instructor.major || 'N/A'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <span className="detail-label">Phone:</span>
-                              <span className="detail-value">{instructor.phone || 'N/A'}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Tags for Scheduling Section */}
-                          <div className="scheduling-tags-section">
-                            
-                            {/* Teaching Subjects */}
-                            <div className="tags-group">
-                              <span className="tags-group-label">Teachable Subjects:</span>
-                              <div className="tags-container">
+    <div className="rt-page">
+      <header className="hm-greeting">
+        <h1>Instructor roster</h1>
+        <p>Teaching staff, rates, hours and class load.</p>
+      </header>
+
+      <section className="rt-section">
+        <div className="rt-grid rt-grid--instructor rt-head">
+          <span onClick={() => requestSort('name')} style={{ cursor: 'pointer' }}>Instructor{sortConfig.key === 'name' ? (sortConfig.direction === 'ascending' ? ' ↑' : ' ↓') : ''}</span>
+          <span className="rt-hide">Contact</span>
+          <span className="rt-hide2" onClick={() => requestSort('employmentType')} style={{ cursor: 'pointer' }}>Rate</span>
+          <span className="rt-hide2">Hours</span>
+          <span>Classes</span>
+          <span style={{ textAlign: 'center' }}>Availability</span>
+          <span></span>
+        </div>
+
+        {sortedInstructors.map((instructor) => {
+          const tint = tintFor(instructor.name);
+          return (
+          <div key={instructor.id}>
+            <div
+              className="rt-grid rt-grid--instructor rt-row rt-row--clickable"
+              onClick={() => toggleRow(instructor.id)}
+            >
+              <div className="rt-name-row">
+                <span className="rt-avatar" style={{ background: tint.bg, color: tint.fg }}>
+                  {instructor.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                </span>
+                <span className="rt-name">{instructor.name}</span>
+              </div>
+              <span className="rt-cell rt-hide">{instructor.email}</span>
+              <span className="rt-cell-strong rt-hide2">{getRateDisplay(instructor) || '$0'}</span>
+              <span className="rt-cell rt-hide2">--</span>
+              <div className="rt-chips">
+                {instructor.activeClassNames && instructor.activeClassNames.length > 0 ? (
+                  instructor.activeClassNames.map((className, idx) => (
+                    <span key={idx} className="rt-chip" style={{ background: tintFor(className).bg, color: tintFor(className).fg }}>{className}</span>
+                  ))
+                ) : <span className="rt-cell">No active classes</span>}
+              </div>
+              <div style={{ justifySelf: 'center' }}>
+                <AvailabilityDayButtons instructorId={instructor.id} />
+              </div>
+              <button
+                type="button"
+                className="hm-btn"
+                style={{ height: 30, fontSize: 12.5, justifySelf: 'end' }}
+                onClick={(e) => { e.stopPropagation(); handleEdit(instructor); }}
+              >
+                Edit
+              </button>
+            </div>
+            {expandedRows[instructor.id] && (
+                      <div style={{ padding: '16px 20px', background: 'var(--shell-wash, #f7fbfa)', borderBottom: '1px solid var(--shell-hairline, #eef5f3)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+                          <div><span className="rt-sub">Age</span><div className="rt-cell-strong">{instructor.age || 'N/A'}</div></div>
+                          <div><span className="rt-sub">College</span><div className="rt-cell-strong">{instructor.college || 'N/A'}</div></div>
+                          <div><span className="rt-sub">Major</span><div className="rt-cell-strong">{instructor.major || 'N/A'}</div></div>
+                          <div><span className="rt-sub">Phone</span><div className="rt-cell-strong">{instructor.phone || 'N/A'}</div></div>
+                        </div>
+
+                        <div style={{ marginBottom: 16 }}>
+                          <p className="hm-kpi-label" style={{ marginBottom: 8 }}>Teachable subjects</p>
+                          <div className="rt-chips">
                                 {instructor.teachingSubjects && instructor.teachingSubjects.length > 0 ? (
                                   instructor.teachingSubjects.map((subject, idx) => (
-                                    <span key={`${instructor.id}-subject-${idx}`} className="tag-pill teaching-subject-tag">
-                                      {subject}
-                      </span>
+                                <span key={idx} className="rt-chip" style={{ background: tintFor(subject).bg, color: tintFor(subject).fg }}>{subject}</span>
                                   ))
-                                ) : (
-                                  <span className="no-tags">No subjects assigned</span>
-                                )}
+                            ) : <span className="rt-cell">No subjects assigned</span>}
                               </div>
-                            </div>
                           </div>
 
                           {/* Availability Section */}
-                          <div className="availability-section">
+                          <div className="ir-scope availability-section">
                             <h4 className="availability-section-title">Availability</h4>
-                            
+
                             <div className="availability-layout">
                               {/* Recurring Weekly Availability */}
                               <div className="availability-column">
@@ -723,29 +626,24 @@ function InstructorRoster() {
                               </div>
                             </div>
                           </div>
-                  </div>
-                </td>
-              </tr>
-                  </React.Fragment>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-
+                      </div>
+            )}
+          </div>
+          );
+        })}
+        {sortedInstructors.length === 0 && <div className="hm-empty">No instructors on the roster yet.</div>}
+      </section>
 
       {/* Edit Modal using Modal component */}
       <Modal
         isOpen={editModal.open}
         onClose={() => setEditModal({ open: false, instructor: null })}
       >
-        <div className="modal-header">
+        <div className="ir-scope modal-header">
           <h2>Edit Instructor Details</h2>
         </div>
-        <div className="modal-body">
-          <EditInstructorForm 
+        <div className="ir-scope modal-body">
+          <EditInstructorForm
             instructor={editModal.instructor}
             onSave={handleSaveEdit}
             onCancel={() => setEditModal({ open: false, instructor: null })}
@@ -862,7 +760,7 @@ function EditInstructorForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="ir-scope">
       <div className="form-layout">
         {/* Left Column - Employment & Rate */}
         <div className="form-column">
@@ -1106,7 +1004,7 @@ function AvailabilityAddForm({ onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="availability-form">
+    <form onSubmit={handleSubmit} className="ir-scope availability-form">
       <div className="form-section">
         <h6>Time Block</h6>
         <div className="form-row">
@@ -1334,7 +1232,7 @@ function AvailabilityEditForm({ slot, onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="availability-form">
+    <form onSubmit={handleSubmit} className="ir-scope availability-form">
       <div className="form-row">
         <div className="form-group">
           <label>Day:</label>
@@ -1457,7 +1355,7 @@ function UnavailabilityAddForm({ onSave, onCancel }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="unavailability-form">
+    <form onSubmit={handleSubmit} className="ir-scope unavailability-form">
       <div className="form-row">
         <div className="form-group">
           <label>Start Date & Time:</label>

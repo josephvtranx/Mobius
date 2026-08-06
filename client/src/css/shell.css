@@ -82,6 +82,26 @@
   --shell-page-bg: #ffffff;
 }
 
+/* Guardian app — mauve accent (Mobius Guardian.dc.html), derived the same
+   way as the other three: light desaturated tints/borders off the primary. */
+.app-shell--mauve {
+  --shell-ink: #33202b;
+  --shell-primary: #9c4f78;
+  --shell-primary-hover: #82405f;
+  --shell-accent: #b96f95;
+  --shell-muted: #7d6472;
+  --shell-secondary: #5c4652;
+  --shell-faint: #c9a9bb;
+  --shell-border: #f0dbe6;
+  --shell-hairline: #f5e8ee;
+  --shell-wash: #fdf6fa;
+  --shell-card: #fdfafc;
+  --shell-tint: #fbeef4;
+  --shell-rail-gradient: linear-gradient(185deg, #9c4f78, #82405f 65%, #6c3550);
+  --shell-hero-gradient: linear-gradient(150deg, #33202b, #63354f 55%, #9c4f78 150%);
+  --shell-page-bg: radial-gradient(1200px 640px at 82% -12%, #fbeef4 0, #fdf6fa 55%);
+}
+
 /* ---------- Sidebar ---------- */
 
 .shell-sidebar {
