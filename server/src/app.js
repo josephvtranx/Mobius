@@ -32,6 +32,7 @@ import roomRoutes from './routes/roomRoutes.js';
 import payrollRoutes from './routes/payrollRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { HttpError } from './helpers/httpError.js';
 import { DateTime } from 'luxon';
@@ -174,6 +175,7 @@ app.use('/api/rooms', roomRoutes);                       // room directory — t
 app.use('/api/payroll', payrollRoutes);                  // payroll/time_logs predate this API too
 app.use('/api/payments', paymentRoutes);                 // payments/payment_methods predate this API too
 app.use('/api/invoices', invoiceRoutes);                 // invoices/invoice_payments predate this API too
+app.use('/api/messages', messageRoutes);                 // real two-way messaging — new schema, no v1 precedent
 app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07)
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);

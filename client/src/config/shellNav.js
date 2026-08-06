@@ -116,6 +116,7 @@ export function getShellNav(role, user) {
           items: [
             { label: 'Dashboard', icon: 'fa-solid fa-house', path: '/home' },
             { label: 'Task inbox', icon: 'fa-solid fa-inbox', path: '/operations/tasks' },
+            { label: 'Messages', icon: 'fa-regular fa-message', path: '/messages' },
             { label: 'Settings', icon: 'fa-solid fa-gear', path: '/profile' },
           ],
         },
