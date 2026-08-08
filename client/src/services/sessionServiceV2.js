@@ -59,6 +59,21 @@ const sessionServiceV2 = {
         }
     },
 
+    // ACA-4: instructor asks staff to unlock a locked session note so a
+    // past-the-window correction can be made (files a note_unlock_request
+    // staff task). 409 if a request is already pending for that note.
+    requestNoteUnlock: async (sessionId, studentId, reason) => {
+        try {
+            const response = await api.post(
+                `/sessions/${sessionId}/notes/${studentId}/unlock-request`,
+                reason ? { reason } : {});
+            return response.data;
+        } catch (error) {
+            console.error('Error requesting note unlock:', error);
+            throw error;
+        }
+    },
+
     // RSC-5: staff cancel — unbound by the Window; status defaults to the
     // never-deduct instructor_cancelled equivalent server-side
     staffCancel: async (sessionId, { status, reason } = {}) => {

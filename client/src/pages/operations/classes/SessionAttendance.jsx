@@ -35,6 +35,19 @@ function SessionAttendance() {
   const [results, setResults] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [unlock, setUnlock] = useState({}); // student_id -> 'busy' | 'requested' | error message
+
+  // ACA-4: when a save reports a note couldn't be written because the
+  // record is locked, the instructor can ask staff to unlock it.
+  const requestUnlock = (studentId) => async () => {
+    setUnlock((u) => ({ ...u, [studentId]: 'busy' }));
+    try {
+      await sessionServiceV2.requestNoteUnlock(sessionId, studentId);
+      setUnlock((u) => ({ ...u, [studentId]: 'requested' }));
+    } catch (err) {
+      setUnlock((u) => ({ ...u, [studentId]: err.response?.data?.message || 'Request failed' }));
+    }
+  };
 
   useEffect(() => {
     classService.getClass(classId)
@@ -179,12 +192,26 @@ function SessionAttendance() {
           <ul className="at-results-list">
             {results.results.map((r) => {
               const student = roster.find((x) => x.student_id === r.student_id);
+              // A note that couldn't be written because the record is locked
+              // surfaces either as r.note_error or a RECORD_LOCKED code.
+              const locked = /lock/i.test(`${r.note_error ?? ''} ${r.code ?? ''}`);
+              const u = unlock[r.student_id];
               return (
                 <li key={r.student_id}>
                   <strong>{student?.name ?? r.student_id}</strong>{' — '}
                   {r.ok
                     ? `${STATUS_META[r.status]?.label ?? r.status} (Δ${r.delta} → balance ${r.balance})${r.note_saved ? ' · note saved' : ''}${r.note_error ? ` · note: ${r.note_error}` : ''}`
                     : `${r.code ?? ''} ${r.message ?? ''}`}
+                  {locked && role !== 'staff' && (
+                    u === 'requested'
+                      ? <span className="hm-badge" style={{ marginLeft: 8 }}>unlock requested</span>
+                      : u && u !== 'busy'
+                        ? <span style={{ marginLeft: 8, color: 'var(--status-error)', fontSize: 12 }}>{u}</span>
+                        : <button type="button" className="hm-link" style={{ marginLeft: 8 }}
+                            disabled={u === 'busy'} onClick={requestUnlock(r.student_id)}>
+                            {u === 'busy' ? 'Requesting…' : 'Request unlock'}
+                          </button>
+                  )}
                 </li>
               );
             })}
