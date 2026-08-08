@@ -25,6 +25,7 @@ export function getShellNav(role, user) {
             { label: 'Home', icon: 'fa-solid fa-house', path: '/home' },
             { label: 'My schedule', icon: 'fa-regular fa-calendar', path: `/family/students/${uid}/schedule` },
             { label: 'My classes', icon: 'fa-solid fa-chalkboard', path: `/family/students/${uid}/classes` },
+            { label: 'My wallet', icon: 'fa-solid fa-wallet', path: `/family/students/${uid}/billing` },
             { label: 'Class catalog', icon: 'fa-solid fa-store', path: '/catalog' },
           ],
         },

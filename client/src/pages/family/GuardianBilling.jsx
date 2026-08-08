@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { DateTime } from 'luxon';
+import authService from '@/services/authService';
 import walletService from '@/services/walletService';
 import guardianPortalService from '@/services/guardianPortalService';
 import paymentService from '@/services/paymentService';
@@ -27,6 +28,9 @@ const dateFmt = (d) => (d ? DateTime.fromISO(d).toFormat('LLL d, yyyy') : '—')
 
 function GuardianBilling() {
   const { studentId } = useParams();
+  // A student views their own wallet here too; only guardians can (and need
+  // to) call the guardian-portal endpoint for the child's name.
+  const isStudentViewer = authService.getCurrentUser()?.role === 'student';
   const [wallet, setWallet] = useState(null);
   const [childName, setChildName] = useState('');
   const [payments, setPayments] = useState(null);
@@ -40,27 +44,30 @@ function GuardianBilling() {
     setError('');
     Promise.all([
       walletService.getWallet(studentId),
-      guardianPortalService.getPortal(),
+      isStudentViewer ? Promise.resolve(null) : guardianPortalService.getPortal(),
       paymentService.getStudentPayments(studentId),
       invoiceService.getStudentInvoices(studentId),
     ]).then(([w, portal, p, i]) => {
       setWallet(w);
-      setChildName(portal.children.find((c) => String(c.student_id) === String(studentId))?.name ?? '');
+      setChildName(portal?.children.find((c) => String(c.student_id) === String(studentId))?.name ?? '');
       setPayments(p);
       setInvoices(i);
     }).catch((err) => setError(err.response?.data?.message || 'Failed to load billing'));
-  }, [studentId]);
+  }, [studentId, isStudentViewer]);
 
   if (error) return <div className="hm-error">{error}</div>;
   if (!wallet) return <div className="hm-loading">Loading…</div>;
 
   const status = walletStatus(wallet);
+  // Same page serves a guardian viewing a child and a student viewing their
+  // own wallet — drop the guardian-only framing (back-to-children link,
+  // child name) when the viewer is the student themself.
 
   return (
     <div className="hm-page">
-      <p><Link to="/portal" className="hm-link">← Back to My children</Link></p>
+      {!isStudentViewer && <p><Link to="/portal" className="hm-link">← Back to My children</Link></p>}
       <header className="hm-greeting">
-        <h1>Billing{childName ? ` — ${childName}` : ''}</h1>
+        <h1>{isStudentViewer ? 'My wallet' : `Billing${childName ? ` — ${childName}` : ''}`}</h1>
       </header>
 
       <section className="hm-card">
