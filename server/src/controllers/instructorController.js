@@ -47,13 +47,23 @@ const getInstructorRoster = async (req, res) => {
     const result = await req.db.query(query);
     console.log('Query executed successfully. Number of results:', result.rows.length);
     
-    // Transform the data to match the frontend structure
+    // Transform the data to match the frontend structure.
+    // SECURITY: non-staff callers (students/guardians picking an instructor
+    // in the booking flow) get only the public directory fields — salary,
+    // hourly rate, contact info, age and gender are staff-only data.
+    const isStaff = req.user?.role === 'staff';
     const instructors = result.rows.map(instructor => {
-      console.log('Processing instructor:', instructor.name, 'Employment type:', instructor.employment_type, 'Raw salary:', instructor.salary, 'Raw hourly_rate:', instructor.hourly_rate);
-      return {
+      const publicFields = {
         id: instructor.user_id,
         instructorId: instructor.instructor_id,
         name: instructor.name,
+        college: instructor.college_attended,
+        major: instructor.major,
+        teachingSubjects: instructor.teaching_subjects || []
+      };
+      if (!isStaff) return publicFields;
+      return {
+        ...publicFields,
         email: instructor.email,
         phone: instructor.phone,
         employmentType: instructor.employment_type,
@@ -61,12 +71,9 @@ const getInstructorRoster = async (req, res) => {
         hourlyRate: instructor.hourly_rate || 0,
         age: instructor.age,
         gender: instructor.gender,
-        college: instructor.college_attended,
-        major: instructor.major,
         activeClasses: instructor.active_classes_count,
         activeClassNames: instructor.active_class_names || [],
-        availabilitySlots: instructor.availability_slots,
-        teachingSubjects: instructor.teaching_subjects || []
+        availabilitySlots: instructor.availability_slots
       };
     });
 

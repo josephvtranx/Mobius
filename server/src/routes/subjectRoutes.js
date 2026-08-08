@@ -1,8 +1,16 @@
 import express from 'express';
 import { body } from 'express-validator';
 import { validateRequest } from '../middleware/validation.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// SECURITY FIX: this entire router previously had zero auth middleware —
+// subject CRUD and instructor-specialty assignment were reachable by
+// anyone who sent a valid X-Institution-Code header, no login required.
+// Reads stay open to any authenticated role (registration and class-
+// catalog flows browse subjects); every mutation is staff-only.
+router.use(authenticateToken);
 
 // Validation middleware
 const subjectValidation = [
@@ -136,7 +144,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new subject
-router.post('/', validateSubjectCreation, async (req, res) => {
+router.post('/', authorizeRole('staff'), validateSubjectCreation, async (req, res) => {
     const client = await req.db.connect();
     try {
         const { name, group_id } = req.body;
@@ -183,7 +191,7 @@ router.post('/', validateSubjectCreation, async (req, res) => {
 });
 
 // Update subject
-router.put('/:id', subjectValidation, validateRequest, async (req, res) => {
+router.put('/:id', authorizeRole('staff'), subjectValidation, validateRequest, async (req, res) => {
     try {
         const { id } = req.params;
         const { name, department, description } = req.body;
@@ -217,7 +225,7 @@ router.put('/:id', subjectValidation, validateRequest, async (req, res) => {
 });
 
 // Delete subject (only if no active sessions)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authorizeRole('staff'), async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -252,7 +260,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Assign instructor to subject
-router.post('/:id/instructors', async (req, res) => {
+router.post('/:id/instructors', authorizeRole('staff'), async (req, res) => {
     try {
         const { id } = req.params;
         const { instructor_id } = req.body;
@@ -283,7 +291,7 @@ router.post('/:id/instructors', async (req, res) => {
 });
 
 // Remove instructor from subject
-router.delete('/:id/instructors/:instructorId', async (req, res) => {
+router.delete('/:id/instructors/:instructorId', authorizeRole('staff'), async (req, res) => {
     try {
         const { id, instructorId } = req.params;
 

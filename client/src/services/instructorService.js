@@ -40,16 +40,9 @@ const instructorService = {
         }
     },
 
-    // Create an instructor
-    createInstructor: async (instructorData) => {
-        try {
-            const response = await api.post('/instructors', instructorData);
-            return response.data;
-        } catch (error) {
-            console.error('Error creating instructor:', error);
-            throw error;
-        }
-    },
+    // (createInstructor/deleteInstructor removed 2026-08-08: the POST /
+    // route was deleted server-side — legacy v1 columns, zero callers —
+    // and DELETE /instructors/:id never existed as a server route at all.)
 
     // Update an instructor
     updateInstructor: async (id, instructorData) => {
@@ -58,17 +51,6 @@ const instructorService = {
             return response.data;
         } catch (error) {
             console.error(`Error updating instructor ${id}:`, error);
-            throw error;
-        }
-    },
-
-    // Delete an instructor
-    deleteInstructor: async (id) => {
-        try {
-            await api.delete(`/instructors/${id}`);
-            return true;
-        } catch (error) {
-            console.error(`Error deleting instructor ${id}:`, error);
             throw error;
         }
     },
@@ -84,21 +66,10 @@ const instructorService = {
         }
     },
 
-    // Get instructor schedule for a week
-    getInstructorSchedule: async (id, startDate, endDate) => {
-        try {
-            let url = `/instructors/${id}/schedule`;
-            const params = [];
-            if (startDate) params.push(`start_date=${startDate}`);
-            if (endDate) params.push(`end_date=${endDate}`);
-            if (params.length) url += `?${params.join('&')}`;
-            const response = await api.get(url);
-            return response.data;
-        } catch (error) {
-            console.error(`Error fetching instructor ${id} schedule:`, error);
-            throw error;
-        }
-    },
+    // (getInstructorSchedule removed 2026-08-08: its GET /:id/schedule
+    // server route was deleted earlier — it queried v1-only columns — and
+    // no page called this method. Real schedule reads use
+    // instructorCalendarService.)
 
     // Get instructor availability
     getInstructorAvailability: async (id) => {

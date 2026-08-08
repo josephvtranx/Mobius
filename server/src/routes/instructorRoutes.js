@@ -1,17 +1,27 @@
 import express from 'express';
 import { body } from 'express-validator';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
-import { toUtcIso, assertUtcIso } from 'mobius-lms';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 const router = express.Router();
 
-// Validation middleware
-const instructorValidation = [
-    body('user_id').isInt().withMessage('Valid user ID is required'),
-    body('hourly_rate').isFloat({ min: 0 }).withMessage('Valid hourly rate is required'),
-    body('max_weekly_hours').optional().isInt({ min: 0 }).withMessage('Max weekly hours must be positive'),
-    body('specialization').optional().isString().withMessage('Specialization must be a string')
-];
+// SECURITY FIX: this entire router previously had zero auth middleware —
+// every route (including instructor CRUD and availability writes) was
+// reachable by anyone who sent a valid X-Institution-Code header, no
+// login required. Baseline auth for every route; GET routes stay open to
+// any authenticated role since real student/guardian booking flows
+// (family/StudentClasses.jsx, family/BookSession.jsx, etc.) read from
+// here. Mutations are staff-only, except availability/unavailability
+// writes which an instructor may also do for themselves (both
+// InstructorRoster.jsx (staff) and the instructor's own Availability.jsx
+// call the same endpoints).
+router.use(authenticateToken);
+
+function staffOrSelf(req, res, next) {
+  if (req.user.role === 'staff') return next();
+  if (req.user.role === 'instructor' && Number(req.params.id) === req.user.user_id) return next();
+  return res.status(403).json({ message: 'Not authorized' });
+}
 
 const availabilityValidation = [
     body('day_of_week').isIn(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
@@ -32,8 +42,9 @@ const availabilityValidation = [
 // Get instructor roster
 router.get('/roster', getInstructorRoster);
 
-// Get all instructors
-router.get('/', async (req, res) => {
+// Get all instructors (full contact list — staff only; the sole client
+// caller is the staff Scheduling page)
+router.get('/', authorizeRole('staff'), async (req, res) => {
     try {
         const result = await req.db.query(`
             SELECT 
@@ -84,6 +95,14 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Instructor not found' });
         }
 
+        // SECURITY: students/guardians resolve instructor display names
+        // through this endpoint (StudentClasses/StudentSchedule use only
+        // `.name`) — pay, contact and demographic fields are staff-only.
+        if (req.user.role !== 'staff') {
+            const { instructor_id, name, college_attended, major, specialties } = result.rows[0];
+            return res.json({ instructor_id, name, college_attended, major, specialties });
+        }
+
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error fetching instructor:', error);
@@ -91,66 +110,18 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create new instructor
-router.post('/', instructorValidation, async (req, res) => {
-    try {
-        const { 
-            user_id, 
-            hourly_rate, 
-            max_weekly_hours, 
-            specialization,
-            biography 
-        } = req.body;
-
-        // Check if user exists and is not already an instructor
-        const userCheck = await req.db.query(
-            'SELECT role FROM users WHERE user_id = $1 AND is_deleted = false',
-            [user_id]
-        );
-
-        if (userCheck.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        if (userCheck.rows[0].role !== 'instructor') {
-            return res.status(400).json({ error: 'User must have instructor role' });
-        }
-
-        // Check if instructor record already exists
-        const instructorCheck = await req.db.query(
-            'SELECT instructor_id FROM instructors WHERE user_id = $1',
-            [user_id]
-        );
-
-        if (instructorCheck.rows.length > 0) {
-            return res.status(400).json({ error: 'Instructor record already exists' });
-        }
-
-        const result = await req.db.query(`
-            INSERT INTO instructors (
-                user_id, 
-                hourly_rate, 
-                max_weekly_hours, 
-                specialization,
-                biography,
-                hire_date
-            )
-            VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
-            RETURNING *
-        `, [user_id, hourly_rate, max_weekly_hours, specialization, biography]);
-
-        res.status(201).json(result.rows[0]);
-    } catch (error) {
-        console.error('Error creating instructor:', error);
-        res.status(500).json({ error: 'Failed to create instructor' });
-    }
-});
+// Removed (2026-08-08): the legacy v1 POST / handler — it inserted
+// v1-only columns (user_id, max_weekly_hours, specialization, biography,
+// hire_date; v2 keys instructors by instructor_id and has none of those)
+// and checked users.is_deleted, which v2 replaced with is_active. It
+// would 500 if hit and had zero client callers — instructor records are
+// created by registration (authRoutes signup).
 
 // Update instructor - using new controller function
-router.put('/:id', updateInstructor);
+router.put('/:id', authorizeRole('staff'), updateInstructor);
 
 // Add availability
-router.post('/:id/availability', requireUtcIso(['start_date', 'end_date']), availabilityValidation, async (req, res) => {
+router.post('/:id/availability', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, async (req, res) => {
     try {
         const { id } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
@@ -227,7 +198,7 @@ router.get('/:id/availability', async (req, res) => {
 });
 
 // Update availability slot
-router.put('/:id/availability/:availabilityId', async (req, res) => {
+router.put('/:id/availability/:availabilityId', staffOrSelf, async (req, res) => {
     try {
         const { id, availabilityId } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
@@ -261,7 +232,7 @@ router.put('/:id/availability/:availabilityId', async (req, res) => {
 });
 
 // Delete availability slot
-router.delete('/:id/availability/:availabilityId', async (req, res) => {
+router.delete('/:id/availability/:availabilityId', staffOrSelf, async (req, res) => {
     try {
         const { id, availabilityId } = req.params;
         const result = await req.db.query(`
@@ -299,7 +270,7 @@ router.get('/:id/unavailability', async (req, res) => {
 });
 
 // Add unavailability
-router.post('/:id/unavailability', async (req, res) => {
+router.post('/:id/unavailability', staffOrSelf, async (req, res) => {
     try {
         const { id } = req.params;
         const { start_datetime, end_datetime, reason } = req.body;
@@ -328,7 +299,7 @@ router.post('/:id/unavailability', async (req, res) => {
 });
 
 // Delete unavailability
-router.delete('/:id/unavailability/:unavailabilityId', async (req, res) => {
+router.delete('/:id/unavailability/:unavailabilityId', staffOrSelf, async (req, res) => {
     try {
         const { id, unavailabilityId } = req.params;
         const result = await req.db.query(`
