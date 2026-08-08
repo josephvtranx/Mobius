@@ -37,6 +37,7 @@ import staffTaskRoutes from './routes/staffTaskRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { registryPool } from './db/registryPool.js';
+import { authLimiter, apiLimiter } from './middleware/auth.js';
 import { HttpError } from './helpers/httpError.js';
 import { DateTime } from 'luxon';
 
@@ -104,6 +105,13 @@ app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Rate limiting: a tight limiter on the auth surface (brute-force) and a
+// generous general one on the rest of the API (scraping/abuse). /health is
+// exempt (not under /api) so uptime monitors can poll freely. Both no-op
+// under NODE_ENV=test. Order: auth first so /api/auth gets the stricter cap.
+app.use('/api/auth', authLimiter);
+app.use('/api', apiLimiter);
 
 // Tenant resolution (MODERNIZATION D7) — BEFORE all /api routes. The JWT is
 // the single credential: a verified Bearer token's tenantCode claim resolves

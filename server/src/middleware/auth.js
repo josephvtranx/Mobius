@@ -2,13 +2,31 @@ import { verifyAccessToken } from '../helpers/authHelpers.js';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 
-// Rate limiter for auth endpoints
+// Rate limiter for auth endpoints (login/register/refresh) — the
+// brute-force-sensitive surface, so it's tighter than the general API
+// limiter. NOTE: this was previously defined but never applied to any
+// route; it's now mounted on /api/auth in app.js.
 export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: {
-        message: 'Too many requests from this IP, please try again later'
-    }
+    max: 100, // per IP per window
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many requests from this IP, please try again later' },
+    // the test suite drives many requests from one IP via supertest
+    skip: () => process.env.NODE_ENV === 'test',
+});
+
+// Broad limiter for the rest of the API. Generous on purpose so legitimate
+// staff bursts (dashboard fan-out, marking a whole class's attendance)
+// never trip it — it exists to blunt scraping/abuse, not to throttle real
+// use. Keyed per IP (trust proxy is set for Render).
+export const apiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 300, // per IP per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many requests, please slow down and try again shortly' },
+    skip: () => process.env.NODE_ENV === 'test',
 });
 
 // Log authentication attempts
