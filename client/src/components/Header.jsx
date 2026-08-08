@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 import { getActiveSectionLabel, getActiveItemLabel } from '../config/shellNav';
+import NotificationBell from './NotificationBell';
 
 const ROUTE_TITLES = {
   '/home': 'Home',
@@ -81,9 +82,7 @@ function Header({ variant = 'default' }) {
             <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
             <input type="text" placeholder="Search" aria-label="Search" />
           </div>
-          <button className="shell-bell" aria-label="Notifications" type="button">
-            <i className="fa-regular fa-bell" aria-hidden="true"></i>
-          </button>
+          <NotificationBell />
         </div>
       )}
     </header>
