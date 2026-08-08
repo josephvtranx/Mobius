@@ -133,8 +133,12 @@ app.use(async (req, _res, next) => {
   next();
 });
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files from the uploads directory. NOTE: this must match
+// where multer actually writes — middleware/upload.js saves to
+// server/uploads (its own __dirname + '../../uploads'), i.e. one level
+// ABOVE src. This route's __dirname is server/src, so it needs '..'
+// to reach server/uploads. Without it every uploaded profile picture 404s.
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Logging middleware
 app.use((req, res, next) => {
