@@ -67,6 +67,12 @@ import './css/index.css';
 import './css/login.css';
 import './css/tokens.css';
 import './css/shell.css';
+// home.css defines the shared hm-* design-system vocabulary (cards,
+// buttons, page layout, tables) used across many pages — not just Home.
+// It must load globally: with route-level code-splitting, a lazy page that
+// uses hm-* classes but doesn't itself import home.css would otherwise
+// render unstyled (only its own chunk's CSS loads).
+import './css/home.css';
 
 function App() {
   return (
