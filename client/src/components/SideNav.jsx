@@ -48,8 +48,12 @@ function SideNav() {
 
       <div className="shell-body">
         <nav className="shell-rail" aria-label="Sections">
+          {/* The first section (Home/Overview) always stands alone in its
+              own pill; every other section is grouped together in a
+              second pill below it — matches the design handoff's rail
+              across all four role apps, rather than one shared pill. */}
           <div className="shell-rail-pill">
-            {sections.map((section, index) => (
+            {sections.slice(0, 1).map((section, index) => (
               <button
                 key={section.label}
                 type="button"
@@ -63,10 +67,30 @@ function SideNav() {
               </button>
             ))}
           </div>
+          {sections.length > 1 && (
+            <div className="shell-rail-pill">
+              {sections.slice(1).map((section, i) => {
+                const index = i + 1;
+                return (
+                  <button
+                    key={section.label}
+                    type="button"
+                    className={`shell-rail-tile ${index === activeIndex ? 'active' : ''}`}
+                    aria-label={section.label}
+                    aria-current={index === activeIndex ? 'true' : undefined}
+                    title={section.label}
+                    onClick={() => handleRailClick(index)}
+                  >
+                    <i className={section.icon} aria-hidden="true"></i>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </nav>
 
         <div className="shell-menu">
-          <h3 className="shell-menu-header">{activeSection.label}</h3>
+          <h3 className="shell-menu-header"><i className={activeSection.icon} aria-hidden="true"></i>{activeSection.label}</h3>
           <div className="shell-menu-items">
             {activeSection.items.map((item) => (
               <div key={item.path} className="shell-menu-group">

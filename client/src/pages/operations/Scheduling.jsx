@@ -1,33 +1,55 @@
 // Staff Scheduling (design handoff: Mobius Staff.dc.html "## Scheduling" —
-// person search (students + instructors) -> their week; selecting a
-// student reveals "Add subject", opening the enrollment wizard in
-// existing-student mode). The previous version of this page was built
-// entirely on classSeriesService/classSessionService/SmartSchedulingCalendar
-// (legacy v1 — classService.js's own header comment calls these "old
-// pages only"), which is why it failed against the real v2 schema. Rebuilt
-// on the same real per-person calls used everywhere else: a student's week
-// via studentViewService.getSchedule, an instructor's week via
-// instructorService.getInstructorById's real upcoming_sessions (cross-
-// referenced against classService.getAllClasses for subject names, since
-// the raw session rows don't carry one).
-import { useEffect, useState } from 'react';
-import SearchableDropdown from '@/components/SearchableDropdown';
+// person search (students + instructors) -> a real weekly time-grid
+// calendar; selecting a student reveals "Add subject", opening the
+// enrollment wizard in existing-student mode). Rebuilt on the same real
+// per-person calls used everywhere else: a student's week via
+// studentViewService.getSchedule, an instructor's week via
+// instructorService.getInstructorById's real upcoming_sessions
+// (cross-referenced against classService.getAllClasses for subject names).
+//
+// The mockup's week Prev/Today/Next controls are wired to `noop` even in
+// the design source itself — there's no real "browse an arbitrary past/
+// future week" data source (the schedule endpoints return the next N
+// upcoming sessions, not a date-range query), so those controls stay
+// visually present but inert here too rather than faking a working
+// week-browser. "This week" always means the real current week.
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { DateTime } from 'luxon';
 import EnrollmentWizard from './classes/EnrollmentWizard';
 import studentService from '@/services/studentService';
 import instructorService from '@/services/instructorService';
 import studentViewService from '@/services/studentViewService';
 import classService from '@/services/classService';
-import { isoToLocal } from 'mobius-lms';
+import { tintFor } from '@/lib/rosterColors';
 import '@/css/home.css';
+import '@/css/schedule.css';
+
+const GRID_START_HOUR = 7;   // 7 AM
+const GRID_END_HOUR = 21;    // 9 PM
+const GRID_HOURS = GRID_END_HOUR - GRID_START_HOUR;
+const HOUR_PX = 52;
+
+function initials(name) {
+  const parts = String(name ?? '').trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
+}
+
+function weekOf(dt) {
+  const start = dt.minus({ days: dt.weekday - 1 }).startOf('day');
+  return { start, end: start.plus({ days: 7 }) };
+}
 
 function Scheduling() {
   const [students, setStudents] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState(null); // { type, id, name }
   const [sessions, setSessions] = useState(null);
   const [error, setError] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     studentService.getAllStudents().then(setStudents).catch(() => {});
@@ -35,10 +57,31 @@ function Scheduling() {
     classService.getAllClasses().then(setClasses).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const people = useMemo(() => [
+    ...students.map((s) => ({ type: 'student', id: s.student_id ?? s.user_id, name: s.name, sub: 'Student' })),
+    ...instructors.map((i) => ({ type: 'instructor', id: i.instructor_id ?? i.id, name: i.name, sub: 'Instructor' })),
+  ], [students, instructors]);
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return people.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [query, people]);
+
   const load = (person) => {
     setSelected(person);
     setSessions(null);
     setError('');
+    setQuery('');
+    setSearchOpen(false);
     if (!person) return;
     if (person.type === 'student') {
       studentViewService.getSchedule(person.id)
@@ -58,66 +101,153 @@ function Scheduling() {
     }
   };
 
-  const options = [
-    ...students.map((s) => ({ id: `student-${s.student_id ?? s.user_id}`, personId: s.student_id ?? s.user_id, type: 'student', name: s.name })),
-    ...instructors.map((i) => ({ id: `instructor-${i.instructor_id ?? i.id}`, personId: i.instructor_id ?? i.id, type: 'instructor', name: i.name })),
-  ];
-  const optionGroups = {
-    Students: options.filter((o) => o.type === 'student'),
-    Instructors: options.filter((o) => o.type === 'instructor'),
-  };
+  const now = DateTime.now();
+  const { start: weekStart, end: weekEnd } = weekOf(now);
+  const weekLabel = weekStart.month === weekEnd.minus({ days: 1 }).month
+    ? `${weekStart.toFormat('LLL d')} – ${weekEnd.minus({ days: 1 }).toFormat('d, yyyy')}`
+    : `${weekStart.toFormat('LLL d')} – ${weekEnd.minus({ days: 1 }).toFormat('LLL d, yyyy')}`;
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => weekStart.plus({ days: i }));
+  const weekSessions = (sessions ?? []).filter((s) => {
+    const d = DateTime.fromISO(s.starts_at);
+    return d >= weekStart && d < weekEnd;
+  });
+  const byDay = weekDays.map((day) =>
+    weekSessions.filter((s) => DateTime.fromISO(s.starts_at).hasSame(day, 'day')));
+
+  const tint = selected ? tintFor(selected.name) : null;
 
   return (
     <div className="hm-page">
-      <header className="hm-greeting">
-        <h1>Scheduling</h1>
-        <p>Search a student or instructor to see their week.</p>
-      </header>
+      <div className="sch-topbar">
+        <h1>{weekLabel}</h1>
+        <div className="sch-nav" aria-hidden="true" title="This app doesn't support browsing other weeks yet — schedule data is fetched as upcoming sessions, not by date range.">
+          <button type="button" className="hm-btn" disabled>‹</button>
+          <button type="button" className="hm-btn" disabled>Today</button>
+          <button type="button" className="hm-btn" disabled>›</button>
+        </div>
 
-      <div className="hm-card">
-        <SearchableDropdown
-          optionGroups={optionGroups}
-          options={options}
-          value={selected ? options.find((o) => o.id === `${selected.type}-${selected.id}`) : null}
-          onChange={(opt) => load(opt ? { type: opt.type, id: opt.personId, name: opt.name } : null)}
-          getOptionLabel={(o) => o.name}
-          getOptionValue={(o) => o.id}
-          placeholder="Search students or instructors…"
-          aria-label="Search students or instructors"
-        />
-      </div>
-
-      {error && <div className="hm-error">{error}</div>}
-
-      {selected && (
-        <div className="hm-card">
-          <div className="hm-card-head">
-            <h2>{selected.name}'s week</h2>
-            {selected.type === 'student' && (
-              <button type="button" className="hm-btn primary" onClick={() => setWizardOpen(true)}>+ Add subject</button>
+        <div className="sch-search" ref={searchRef}>
+          <label className="sch-search-box">
+            <i className="fa-solid fa-magnifying-glass"></i>
+            <input
+              type="text"
+              placeholder="Search a student or instructor…"
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); }}
+              onFocus={() => setSearchOpen(true)}
+            />
+            {query && (
+              <button type="button" className="sch-clear" onClick={() => setQuery('')} aria-label="Clear">
+                <i className="fa-solid fa-circle-xmark"></i>
+              </button>
             )}
-          </div>
-          {sessions === null ? (
-            <div className="hm-loading">Loading…</div>
-          ) : sessions.length === 0 ? (
-            <div className="hm-empty">No upcoming sessions.</div>
-          ) : (
-            <ul className="hm-sessions">
-              {sessions.map((s) => (
-                <li key={s.session_id} className="hm-session">
-                  <div className="hm-session-when">
-                    <span className="hm-session-day">{isoToLocal(s.starts_at).toFormat('ccc, LLL d')}</span>
-                    <span className="hm-session-time">{isoToLocal(s.starts_at).toFormat('h:mm a')} – {isoToLocal(s.ends_at).toFormat('h:mm a')}</span>
-                  </div>
-                  <div className="hm-session-what">
-                    <span className="hm-session-subject">{s.subject}</span>
-                  </div>
-                  {s.status === 'reschedule_requested' && <span className="hm-badge warn">reschedule requested</span>}
-                </li>
-              ))}
-            </ul>
+          </label>
+          {searchOpen && query && (
+            <div className="sch-popover">
+              {results.map((p) => {
+                const t = tintFor(p.name);
+                return (
+                  <button key={`${p.type}-${p.id}`} type="button" className="sch-result" onClick={() => load(p)}>
+                    <span className="sch-avatar" style={{ background: t.bg, color: t.fg }}>{initials(p.name)}</span>
+                    <span className="sch-result-text">
+                      <span className="sch-result-name">{p.name}</span>
+                      <span className="sch-result-sub">{p.sub}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              {results.length === 0 && <div className="sch-no-results">No one matches "{query}"</div>}
+            </div>
           )}
         </div>
+      </div>
+
+      {selected && (
+        <div className="sch-selected">
+          <span className="sch-avatar sch-avatar-lg" style={{ background: tint.bg, color: tint.fg }}>{initials(selected.name)}</span>
+          <div className="sch-selected-text">
+            <span className="sch-selected-name">{selected.name}</span>
+            <span className="sch-selected-sub">{selected.sub ?? (selected.type === 'student' ? 'Student' : 'Instructor')} · {weekSessions.length} session{weekSessions.length === 1 ? '' : 's'} this week</span>
+          </div>
+          <div className="sch-selected-actions">
+            {selected.type === 'student' && (
+              <button type="button" className="hm-btn primary" onClick={() => setWizardOpen(true)}><i className="fa-solid fa-plus"></i> Add subject</button>
+            )}
+            <button type="button" className="hm-btn" onClick={() => load(null)}>Clear</button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="hm-empty sch-state sch-state-error">
+          <i className="fa-solid fa-triangle-exclamation"></i>
+          <div className="sch-state-title">Couldn't load the schedule</div>
+          <div className="sch-state-sub">{error}</div>
+        </div>
+      )}
+
+      {!error && !selected && (
+        <div className="hm-empty sch-state">
+          <i className="fa-solid fa-magnifying-glass"></i>
+          <div className="sch-state-title">Search a schedule</div>
+          <div className="sch-state-sub">Look up any student or instructor to see their week on the calendar.</div>
+        </div>
+      )}
+
+      {!error && selected && sessions === null && (
+        <div className="hm-loading">Loading…</div>
+      )}
+
+      {!error && selected && sessions !== null && weekSessions.length === 0 && (
+        <div className="hm-empty sch-state">
+          <i className="fa-regular fa-calendar"></i>
+          <div className="sch-state-title">Nothing scheduled this week</div>
+          <div className="sch-state-sub">No sessions for {selected.name} between {weekStart.toFormat('LLL d')} and {weekEnd.minus({ days: 1 }).toFormat('LLL d')}.</div>
+        </div>
+      )}
+
+      {!error && selected && sessions !== null && weekSessions.length > 0 && (
+        <section className="hm-card sch-cal">
+          <div className="sch-cal-head">
+            <div className="sch-cal-gutter"></div>
+            {weekDays.map((d) => (
+              <div key={d.toISODate()} className={`sch-cal-day-head ${d.hasSame(now, 'day') ? 'today' : ''}`}>
+                <span className="sch-dow">{d.toFormat('ccc')}</span>
+                <span className="sch-daynum">{d.toFormat('d')}</span>
+              </div>
+            ))}
+          </div>
+          <div className="sch-cal-body" style={{ height: GRID_HOURS * HOUR_PX }}>
+            <div className="sch-cal-gutter sch-cal-hours">
+              {Array.from({ length: GRID_HOURS + 1 }, (_, i) => (
+                <span key={i} className="sch-hour-label" style={{ top: i * HOUR_PX }}>
+                  {DateTime.fromObject({ hour: (GRID_START_HOUR + i) % 24 }).toFormat('h a')}
+                </span>
+              ))}
+            </div>
+            {byDay.map((daySessions, i) => (
+              <div key={i} className="sch-cal-col">
+                {daySessions.map((s) => {
+                  const start = DateTime.fromISO(s.starts_at);
+                  const end = DateTime.fromISO(s.ends_at);
+                  const startHour = start.hour + start.minute / 60;
+                  const endHour = end.hour + end.minute / 60;
+                  const top = Math.max(0, (startHour - GRID_START_HOUR)) * HOUR_PX;
+                  const height = Math.max(24, (endHour - startHour) * HOUR_PX);
+                  const t = tintFor(s.subject);
+                  return (
+                    <div key={s.session_id} className="sch-block" style={{ top, height, background: t.bg, borderLeftColor: t.fg }}>
+                      <div className="sch-block-subject" style={{ color: t.fg }}>{s.subject}</div>
+                      <div className="sch-block-meta"><i className="fa-regular fa-clock"></i>{start.toFormat('h:mm a')} – {end.toFormat('h:mm a')}</div>
+                      {s.status === 'reschedule_requested' && <div className="sch-block-meta">Reschedule requested</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {selected?.type === 'student' && (

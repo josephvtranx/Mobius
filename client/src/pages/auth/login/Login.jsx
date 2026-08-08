@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { FaArrowRight } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import authService from '@/services/authService';
 import '@/css/login.css';
@@ -44,75 +43,54 @@ export default function Login() {
 
   return (
     <div className="login-saas-bg">
-      <div className="login-saas-container">
-        {/* Left column */}
-        <div className="login-saas-left">
-          <form className="login-saas-form" onSubmit={handleSignIn} autoComplete="off">
-            <div className="login-saas-heading">Welcome back</div>
-            <p className="login-saas-subheading">Sign in to your institution’s workspace.</p>
-            <div className="login-saas-input-group">
-              <label htmlFor="email" className="login-saas-input-label">Email address</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="login-saas-input"
-                placeholder="Enter your email"
-                autoComplete="email"
-                required
-              />
-            </div>
-            <div className="login-saas-input-group">
+      <div className="login-solo-card">
+        <form className="login-saas-form" onSubmit={handleSignIn} autoComplete="off" style={{ maxWidth: 'none' }}>
+          <div className="login-saas-heading">Sign in</div>
+          <div className="login-saas-input-group" style={{ marginTop: 28 }}>
+            <label htmlFor="email" className="login-saas-input-label">Email address</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="login-saas-input"
+              placeholder="you@institution.edu"
+              autoComplete="email"
+              required
+            />
+          </div>
+          <div className="login-saas-input-group">
+            <div className="login-saas-password-row">
               <label htmlFor="password" className="login-saas-input-label">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="login-saas-input"
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                required
-              />
-              <Link to="/auth/reset" className="login-saas-input-label" style={{ display: 'inline-block', marginTop: 6 }}>
-                Forgot password?
-              </Link>
+              <Link to="/auth/reset" className="login-saas-input-label">Forgot password?</Link>
             </div>
-            {error && <div className="login-saas-error">{error}</div>}
-            <div className="login-saas-btn-group">
-              <button type="submit" disabled={isLoading} className="login-saas-signin-btn">
-                {isLoading
-                  ? 'Signing in...'
-                  : (<><span>Sign in</span> <FaArrowRight style={{ fontSize: 16 }} /></>)}
-              </button>
-              <div className="login-saas-divider"><span>or</span></div>
-              <button
-                type="button"
-                className="login-saas-register-btn"
-                onClick={() => navigate('/auth/register/user/role-select')}
-              >
-                <span>New user? Register with your institution code</span>
-                <span className="login-saas-register-arrow"><FaArrowRight /></span>
-              </button>
-              <button
-                type="button"
-                className="login-saas-register-btn"
-                onClick={() => navigate('/auth/register/institution')}
-              >
-                <span>Setting up a new institution? Request a workspace</span>
-                <span className="login-saas-register-arrow"><FaArrowRight /></span>
-              </button>
-            </div>
-          </form>
-        </div>
-        {/* Right column: Image */}
-        <div className="login-saas-right">
-          <img src="/sign-in.png" alt="Sign in illustration" className="login-saas-image" />
-        </div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              className="login-saas-input"
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              required
+            />
+          </div>
+          {error && <div className="login-saas-error">{error}</div>}
+          <div className="login-saas-btn-group">
+            <button type="submit" disabled={isLoading} className="login-saas-signin-btn">
+              {isLoading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </div>
+          <p className="login-solo-footer" style={{ marginTop: 20 }}>
+            New here? <Link to="/auth/register/user/role-select">Register with an institution code</Link>
+          </p>
+        </form>
       </div>
+      <p className="login-solo-footer">
+        Setting up a new institution? <Link to="/auth/register/institution">Request a workspace</Link>
+      </p>
     </div>
   );
 }

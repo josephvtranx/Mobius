@@ -2,15 +2,51 @@
    one centered two-column card (form | illustration). */
 
 .login-saas-bg {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
-  background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(99, 179, 166, 0.18), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(99, 179, 166, 0.14), transparent 55%),
-    #f4f9f8;
+  gap: 28px;
+  padding: 24px;
+  overflow: auto;
+  /* One flat color for the whole canvas (the logo above it, via
+     .shell-topbar--auth, sits on this same color — no separate bar/seam). */
+  background: #dde8e7;
+}
+
+/* Login-only single-column card (Login.jsx) — Reset/RoleSelect/
+   InstitutionRegistration still use the two-column .login-saas-container
+   below; this is a separate, additive variant so their layout is untouched. */
+.login-solo-logo { height: 40px; }
+
+.login-solo-card {
+  width: min(480px, 100%);
+  background: linear-gradient(160deg, #ffffff 0%, #f3f8f7 100%);
+  border-radius: 20px;
+  padding: 40px 44px;
+  box-shadow:
+    0 1px 2px rgba(16, 42, 38, 0.04),
+    0 24px 60px -12px rgba(16, 42, 38, 0.18);
+}
+
+.login-solo-footer {
+  font-size: 13.5px;
+  color: #64827e;
+  text-align: center;
+}
+
+.login-solo-footer a {
+  color: #2e7d70;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.login-saas-password-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .login-saas-container {

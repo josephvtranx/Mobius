@@ -3,7 +3,7 @@
    render correctly under every role instead of being hardcoded teal. */
 
 .hm-page {
-  max-width: 1080px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 40px 32px 64px;
   display: flex;
@@ -69,6 +69,50 @@
   color: var(--shell-muted, #64827e);
 }
 
+/* The hero card's own divided KPI footer (see .hm-hero-card above) — a
+   single flex row with border-right dividers between items, not separate
+   bordered tiles like the standalone .hm-kpis grid used elsewhere. */
+.hm-hero-kpis {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--shell-hairline, #eef5f3);
+  background: var(--shell-card, #fbfdfc);
+  padding: 16px 4px;
+}
+
+.hm-hero-kpi {
+  flex: 1;
+  text-align: center;
+  padding: 0 18px;
+  border-right: 1px solid var(--shell-hairline, #eef5f3);
+}
+
+.hm-hero-kpi:last-child {
+  border-right: none;
+}
+
+.hm-hero-kpi-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--shell-faint, #9fb4b0);
+}
+
+.hm-hero-kpi-value {
+  display: block;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 5px 0 3px;
+  color: var(--shell-ink, #16303a);
+}
+
+.hm-hero-kpi-value.alert {
+  color: var(--status-error, #9c3a31);
+}
+
 /* Cards */
 .hm-grid {
   display: grid;
@@ -88,7 +132,11 @@
 }
 
 .hm-card {
-  background: var(--shell-card, #ffffff);
+  /* Canonical design-system value (_ds_bundle.css) is plain white for
+     every role — only the border color varies per theme. --shell-card is
+     a subtly-tinted value meant for smaller inset surfaces (like the hero
+     card's KPI footer), not the card background itself. */
+  background: #ffffff;
   border: 1px solid var(--shell-border, #e3eeec);
   border-radius: 16px;
   padding: 20px 22px;
@@ -287,20 +335,30 @@
   color: var(--shell-ink, #16303a);
 }
 
-/* Hero + "Needs attention" (design handoff: staff/instructor Dashboard —
-   greeting + generated summary next to a dark gradient attention card). */
+/* Hero + "Needs attention" + KPI footer, all one continuous card (design
+   handoff: staff/instructor/student Dashboard). Previously the hero-copy
+   and needs-attention panel were two separate bordered cards side by side,
+   and the KPIs were an entirely separate row of individually-bordered
+   tiles below — the design instead wants ONE white card whose top half is
+   the hero grid (no border/background of its own — the copy sits directly
+   on the card) and whose bottom half is a divided KPI strip. */
+.hm-hero-card {
+  background: #fff;
+  border: 1px solid var(--shell-border, #e3eeec);
+  border-radius: 18px;
+  box-shadow: 0 1px 3px rgba(22, 48, 58, 0.05);
+  overflow: hidden;
+}
+
 .hm-hero {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
-  gap: 18px;
-  align-items: stretch;
+  gap: 24px;
+  align-items: center;
+  padding: 24px 26px;
 }
 
 .hm-hero-copy {
-  background: var(--shell-card, #fff);
-  border: 1px solid var(--shell-border, #e3eeec);
-  border-radius: 16px;
-  padding: 22px 24px;
   display: flex;
   flex-direction: column;
   justify-content: center;

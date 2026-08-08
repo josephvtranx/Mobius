@@ -82,7 +82,7 @@ export function getShellNav(role, user) {
       return [
         {
           label: 'Overview',
-          icon: 'fa-solid fa-gauge',
+          icon: 'fa-solid fa-compass',
           items: [
             { label: 'Today', icon: 'fa-solid fa-house', path: '/home' },
           ],
@@ -112,7 +112,7 @@ export function getShellNav(role, user) {
       return [
         {
           label: 'Overview',
-          icon: 'fa-solid fa-gauge',
+          icon: 'fa-solid fa-compass',
           items: [
             { label: 'Dashboard', icon: 'fa-solid fa-house', path: '/home' },
             { label: 'Task inbox', icon: 'fa-solid fa-inbox', path: '/operations/tasks' },
@@ -180,4 +180,32 @@ export function getActiveSectionLabel(role, user, pathname) {
   const sections = getShellNav(role, user);
   const match = sections.find((s) => sectionMatchesPath(s, pathname));
   return match ? match.label : sections[0]?.label ?? '';
+}
+
+// The page title should say whatever this role's own sidebar calls the
+// page (staff's /home is "Dashboard", instructor's is "Today", student's
+// is "Home") rather than one hardcoded string per route — Header.jsx used
+// to hardcode '/home' -> 'Home' for every role, which drifted from the
+// sidebar label as soon as a role used a different word for the same page.
+export function getActiveItemLabel(role, user, pathname) {
+  const sections = getShellNav(role, user);
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (pathname === item.path) return item.label;
+      if (item.children) {
+        const child = item.children.find((c) => pathname === c.path);
+        if (child) return child.label;
+      }
+    }
+  }
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (pathname.startsWith(item.path + '/')) return item.label;
+      if (item.children) {
+        const child = item.children.find((c) => pathname.startsWith(c.path + '/'));
+        if (child) return child.label;
+      }
+    }
+  }
+  return null;
 }

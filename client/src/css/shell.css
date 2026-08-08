@@ -40,8 +40,10 @@
   --shell-card: #fbfdfc;
   --shell-tint: #e6f3f0;
   --shell-rail-gradient: linear-gradient(185deg, #2e9d8d, #1f8074 65%, #1a6b62);
+  --shell-rail-pill-bg: rgba(255, 255, 255, 0.16);
   --shell-hero-gradient: linear-gradient(150deg, #16303a, #234a52 55%, #2e9d8d 150%);
   --shell-page-bg: radial-gradient(1200px 640px at 82% -12%, #eaf6f3 0, #f4f9f8 55%);
+  --shell-topbar-bg: rgba(244, 249, 248, 0.82);
 }
 
 .app-shell--indigo {
@@ -58,8 +60,10 @@
   --shell-card: #fbfcfe;
   --shell-tint: #eef1fb;
   --shell-rail-gradient: linear-gradient(185deg, #5b6bc0, #4453a4 65%, #39468d);
+  --shell-rail-pill-bg: rgba(255, 255, 255, 0.16);
   --shell-hero-gradient: linear-gradient(150deg, #1c2233, #2f3a63 55%, #5b6bc0 155%);
   --shell-page-bg: radial-gradient(1200px 620px at 82% -12%, #eef0fb 0, #f8f9fd 55%);
+  --shell-topbar-bg: rgba(248, 249, 253, 0.85);
 }
 
 .app-shell--orange {
@@ -75,11 +79,16 @@
   --shell-wash: #fffaf5;
   --shell-card: #fdfaf6;
   --shell-tint: #fdeedd;
-  --shell-rail-gradient: linear-gradient(185deg, #d9772e, #c26a24 65%, #a3672a);
+  /* Staff's rail is uniquely a flat light gold, not a gradient like the
+     other three roles — matches the mockup exactly (#FFC06E), not the
+     much darker burnt-orange gradient this used to render. */
+  --shell-rail-gradient: #ffc06e;
+  --shell-rail-pill-bg: rgba(255, 255, 255, 0.35);
   /* README doesn't spec a staff hero/page-bg gradient (page bg is plain
      white there) — derived to match the other two roles' pattern. */
   --shell-hero-gradient: linear-gradient(150deg, #33231a, #6b4a2e 55%, #d9772e 150%);
   --shell-page-bg: #ffffff;
+  --shell-topbar-bg: rgba(255, 255, 255, 0.82);
 }
 
 /* Guardian app — mauve accent (Mobius Guardian.dc.html), derived the same
@@ -98,8 +107,10 @@
   --shell-card: #fdfafc;
   --shell-tint: #fbeef4;
   --shell-rail-gradient: linear-gradient(185deg, #9c4f78, #82405f 65%, #6c3550);
+  --shell-rail-pill-bg: rgba(255, 255, 255, 0.16);
   --shell-hero-gradient: linear-gradient(150deg, #33202b, #63354f 55%, #9c4f78 150%);
   --shell-page-bg: radial-gradient(1200px 640px at 82% -12%, #fbeef4 0, #fdf6fa 55%);
+  --shell-topbar-bg: rgba(253, 246, 250, 0.82);
 }
 
 /* ---------- Sidebar ---------- */
@@ -112,8 +123,10 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--shell-card, #fff);
-  border-right: 1px solid var(--shell-border, #e3eeec);
+  /* The mockup's <aside> sets no background of its own — it just inherits
+     the page's plain white, same as .content-area/.hm-card. --shell-card
+     is a subtle per-role tint meant for smaller inset surfaces, not this. */
+  background: #ffffff;
 }
 
 .shell-wordmark {
@@ -146,17 +159,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 18px;
   border-radius: 0 28px 28px 0;
   padding: 22px 0;
   background: var(--shell-rail-gradient);
   box-shadow: 0 24px 50px -30px rgba(22, 48, 58, 0.55);
 }
 
+/* Each pill is its own visually-distinct group — the first section (Home/
+   Overview) always stands alone; the rest are grouped together in a second
+   pill below it. Rendering every section into one shared pill (the old
+   behavior) welded all the rail icons into a single connected blob. */
 .shell-rail-pill {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  background: rgba(255, 255, 255, 0.16);
+  gap: 8px;
+  background: var(--shell-rail-pill-bg, rgba(255, 255, 255, 0.16));
   border-radius: 24px;
   padding: 10px 6px;
 }
@@ -193,11 +211,19 @@
 }
 
 .shell-menu-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   color: var(--shell-primary);
   font-size: 15px;
   font-weight: 600;
   margin: 0 0 10px;
+  padding: 0 8px;
   text-transform: none;
+}
+
+.shell-menu-header i {
+  font-size: 13px;
 }
 
 .shell-menu-items {
@@ -388,16 +414,48 @@
   gap: 20px;
   padding: 14px 30px;
   backdrop-filter: blur(10px);
-  background: rgba(244, 249, 248, 0.82);
-  border-bottom: 1px solid var(--shell-hairline, #eef5f3);
+  background: var(--shell-topbar-bg, rgba(244, 249, 248, 0.82));
+  border-bottom: 1px solid var(--shell-border, #e3eeec);
   font-family: 'Poppins', sans-serif;
 }
 
+/* The auth pages (login/register/reset) own a single flat-color canvas of
+   their own (login.css .login-saas-bg) — the logo just floats on it,
+   centered, with no separate colored bar/border creating a visible seam,
+   and no backdrop-filter blur (nothing scrolls behind it to blur). */
 .shell-topbar--auth {
-  background: #eaf9fc;
+  position: static;
+  background: transparent;
+  backdrop-filter: none;
   border-bottom: none;
-  justify-content: flex-start;
-  padding: 24px 40px 16px;
+  justify-content: center;
+  padding: 64px 40px 0;
+  flex-shrink: 0;
+}
+
+/* Auth routes get an exact-100vh column [logo][page canvas] — no page
+   scroll, and the canvas below can truly center its card in the full
+   remaining viewport instead of drifting down by the logo's height. */
+.auth-layout {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Same flat color as .login-saas-bg (login.css) — set here too so the
+     topbar's own row (above .content-area, where .login-saas-bg doesn't
+     reach) isn't left showing the body's white through a transparent bar. */
+  background: #dde8e7;
+}
+.auth-layout .app-main-column {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.auth-layout .content-area {
+  flex: 1;
+  min-height: 0;
+  background: none;
 }
 
 .shell-topbar-left {
@@ -501,5 +559,10 @@
 .app-layout .content-area {
   flex: 1;
   min-width: 0;
-  background: var(--shell-wash, #f4f9f8);
+  /* --shell-page-bg (not --shell-wash) is the intended per-role page
+     background — plain white for staff, a subtle radial gradient for the
+     other three roles, per the design handoff. It was defined per theme
+     but never actually consumed anywhere, leaving every role stuck with
+     the (visibly cream, not white) wash tint instead. */
+  background: var(--shell-page-bg, #f4f9f8);
 }

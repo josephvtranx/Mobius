@@ -17,6 +17,7 @@ import rescheduleService from '@/services/rescheduleService';
 import bookingService from '@/services/bookingService';
 import studentViewService from '@/services/studentViewService';
 import walletService from '@/services/walletService';
+import paymentService from '@/services/paymentService';
 import { walletStatus, attendanceRate, findRoomClashes } from '@/lib/derive';
 import { tintFor } from '@/lib/rosterColors';
 import '@/css/home.css';
@@ -35,6 +36,13 @@ function subjectIcon(subject) {
 }
 
 const label = (s) => String(s ?? '').replace(/_/g, ' ');
+// Compact "$24.6k"-style KPI display — the full "$24,600.00" form used on
+// the Financial dashboard/Payments pages is too wide for a small KPI tile.
+const moneyCompact = (n) => {
+  const v = Number(n);
+  if (Math.abs(v) >= 1000) return `$${(v / 1000).toFixed(1)}k`;
+  return `$${v.toFixed(0)}`;
+};
 const day = (iso) => isoToLocal(iso).toFormat('ccc, LLL d');
 const time = (iso) => isoToLocal(iso).toFormat('h:mm a');
 
@@ -100,14 +108,17 @@ function StaffHome({ user }) {
   const [busyRequest, setBusyRequest] = useState(null);
 
   const load = () => {
+    const monthStart = DateTime.now().startOf('month').toISODate();
+    const monthEnd = DateTime.now().endOf('month').toISODate();
     Promise.all([
       reportService.getDashboard(),
       classService.getAllClasses(),
       classService.getMembershipRequests('pending'),
       studentService.getAllStudents(),
       roomService.getAllRooms(),
+      paymentService.getPayments({ start: monthStart, end: monthEnd }),
     ])
-      .then(async ([dash, classes, requests, students, rooms]) => {
+      .then(async ([dash, classes, requests, students, rooms, monthPayments]) => {
         const active = classes.filter((c) => c.status === 'active');
         // Per-class sessions aren't on the list endpoint — same N+1 pattern
         // Attendance.jsx already uses to get real session instances.
@@ -115,7 +126,7 @@ function StaffHome({ user }) {
         const allSessions = details.flatMap((d, i) =>
           (d.sessions || []).map((s) => ({ ...s, class_id: active[i].class_id, subject: active[i].subject, instructor: active[i].instructor, enrolled: active[i].enrolled, student_limit: active[i].student_limit }))
         );
-        setData({ dash, classes: active, requests, students, allSessions, rooms });
+        setData({ dash, classes: active, requests, students, allSessions, rooms, monthPayments });
       })
       .catch((err) => setError(err.response?.data?.message || 'Could not load the dashboard'));
   };
@@ -136,7 +147,8 @@ function StaffHome({ user }) {
   if (error) return <div className="hm-error">{error}</div>;
   if (!data) return <Loading />;
 
-  const { dash, classes, requests, students, allSessions, rooms } = data;
+  const { dash, classes, requests, students, allSessions, rooms, monthPayments } = data;
+  const revenueMtd = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
   const roomName = new Map(rooms.map((r) => [r.room_id, r.name]));
   const now = DateTime.now();
   const todayIso = now.toISODate();
@@ -163,33 +175,35 @@ function StaffHome({ user }) {
 
   return (
     <div className="hm-page">
-      <div className="hm-hero">
-        <div className="hm-hero-copy">
-          <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
-          <h1>Good {now.hour < 12 ? 'morning' : now.hour < 18 ? 'afternoon' : 'evening'}, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
-          <p>{heroParts.join(' ')}</p>
-        </div>
-        <div className="hm-needs">
-          <div>
-            <span className="hm-eyebrow">Needs attention</span>
-            <h2>{requests.length} open request{requests.length === 1 ? '' : 's'}{clashes.length ? ` · ${clashes.length} room clash${clashes.length === 1 ? '' : 'es'}` : ''}</h2>
-            <div className="hm-needs-meta">
-              <span><i className="fa-regular fa-clock"></i>{todaySessions.length} sessions today</span>
-              <span><i className="fa-solid fa-users"></i>{new Set(todaySessions.map((s) => s.instructor)).size} tutors on site</span>
+      <div className="hm-hero-card">
+        <div className="hm-hero">
+          <div className="hm-hero-copy">
+            <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
+            <h1>Good {now.hour < 12 ? 'morning' : now.hour < 18 ? 'afternoon' : 'evening'}, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+            <p>{heroParts.join(' ')}</p>
+          </div>
+          <div className="hm-needs">
+            <div>
+              <span className="hm-eyebrow">Needs attention</span>
+              <h2>{requests.length} open request{requests.length === 1 ? '' : 's'}{clashes.length ? ` · ${clashes.length} room clash${clashes.length === 1 ? '' : 'es'}` : ''}</h2>
+              <div className="hm-needs-meta">
+                <span><i className="fa-regular fa-clock"></i>{todaySessions.length} sessions today</span>
+                <span><i className="fa-solid fa-users"></i>{new Set(todaySessions.map((s) => s.instructor)).size} tutors on site</span>
+              </div>
+            </div>
+            <div className="hm-needs-actions">
+              <Link className="hm-needs-btn solid" to="/operations/requests"><i className="fa-solid fa-user-check"></i>Review requests</Link>
+              <Link className="hm-needs-btn ghost" to="/operations/scheduling"><i className="fa-regular fa-calendar"></i>Open schedule</Link>
             </div>
           </div>
-          <div className="hm-needs-actions">
-            <Link className="hm-needs-btn solid" to="/operations/requests"><i className="fa-solid fa-user-check"></i>Review requests</Link>
-            <Link className="hm-needs-btn ghost" to="/operations/scheduling"><i className="fa-regular fa-calendar"></i>Open schedule</Link>
-          </div>
         </div>
-      </div>
 
-      <div className="hm-kpis">
-        <div className="hm-kpi"><span className="hm-kpi-value">{students.length}</span><span className="hm-kpi-label">Active students</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{sessionsThisWeek}</span><span className="hm-kpi-label">Sessions this week</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{seatFillRate != null ? `${seatFillRate}%` : '—'}</span><span className="hm-kpi-label">Seat fill rate</span></div>
-        <div className={`hm-kpi ${dash.delinquency_queue.length ? 'alert' : ''}`}><span className="hm-kpi-value">{dash.delinquency_queue.length}</span><span className="hm-kpi-label">Delinquent wallets</span></div>
+        <div className="hm-hero-kpis">
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{students.length}</span><span className="hm-hero-kpi-label">Active students</span></div>
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{sessionsThisWeek}</span><span className="hm-hero-kpi-label">Sessions this week</span></div>
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{seatFillRate != null ? `${seatFillRate}%` : '—'}</span><span className="hm-hero-kpi-label">Seat fill rate</span></div>
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{moneyCompact(revenueMtd)}</span><span className="hm-hero-kpi-label">Revenue MTD</span></div>
+        </div>
       </div>
 
       <div className="hm-grid">
@@ -294,43 +308,45 @@ function InstructorHome({ user }) {
 
   return (
     <div className="hm-page">
-      <div className="hm-hero">
-        <div className="hm-hero-copy">
-          <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
-          <h1>Good {now.hour < 12 ? 'morning' : now.hour < 18 ? 'afternoon' : 'evening'}, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
-          <p>{heroLine}</p>
-        </div>
-        {nextSession ? (
-          <div className="hm-needs">
-            <div>
-              <span className="hm-eyebrow">Up next</span>
-              <h2>{nextSession.subject} · {isoToLocal(nextSession.starts_at).toFormat('ccc h:mm a')}</h2>
-              <div className="hm-needs-meta">
-                <span><i className="fa-solid fa-users"></i>{nextSession.enrolled} enrolled</span>
-                <span><i className="fa-regular fa-clock"></i>{isoToLocal(nextSession.starts_at).toRelative()}</span>
+      <div className="hm-hero-card">
+        <div className="hm-hero">
+          <div className="hm-hero-copy">
+            <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
+            <h1>Good {now.hour < 12 ? 'morning' : now.hour < 18 ? 'afternoon' : 'evening'}, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+            <p>{heroLine}</p>
+          </div>
+          {nextSession ? (
+            <div className="hm-needs">
+              <div>
+                <span className="hm-eyebrow">Up next</span>
+                <h2>{nextSession.subject} · {isoToLocal(nextSession.starts_at).toFormat('ccc h:mm a')}</h2>
+                <div className="hm-needs-meta">
+                  <span><i className="fa-solid fa-users"></i>{nextSession.enrolled} enrolled</span>
+                  <span><i className="fa-regular fa-clock"></i>{isoToLocal(nextSession.starts_at).toRelative()}</span>
+                </div>
+              </div>
+              <div className="hm-needs-actions">
+                <Link className="hm-needs-btn solid" to={`/operations/classes/${nextSession.class_id}/sessions/${nextSession.session_id}/attendance`}><i className="fa-solid fa-clipboard-check"></i>Take attendance</Link>
+                <Link className="hm-needs-btn ghost" to="/instructor/classes"><i className="fa-solid fa-users"></i>Roster</Link>
               </div>
             </div>
-            <div className="hm-needs-actions">
-              <Link className="hm-needs-btn solid" to={`/operations/classes/${nextSession.class_id}/sessions/${nextSession.session_id}/attendance`}><i className="fa-solid fa-clipboard-check"></i>Take attendance</Link>
-              <Link className="hm-needs-btn ghost" to="/instructor/classes"><i className="fa-solid fa-users"></i>Roster</Link>
+          ) : (
+            <div className="hm-needs">
+              <div>
+                <span className="hm-eyebrow">Up next</span>
+                <h2>Nothing scheduled</h2>
+                <p style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>No sessions in the next 7 days.</p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="hm-needs">
-            <div>
-              <span className="hm-eyebrow">Up next</span>
-              <h2>Nothing scheduled</h2>
-              <p style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>No sessions in the next 7 days.</p>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="hm-kpis">
-        <div className="hm-kpi"><span className="hm-kpi-value">{todaySessions.length}</span><span className="hm-kpi-label">Sessions today</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{data.sessions.length}</span><span className="hm-kpi-label">Sessions this week</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{rosterStudentIds.size}</span><span className="hm-kpi-label">Students (all classes)</span></div>
-        <div className={`hm-kpi ${pending ? 'alert' : ''}`}><span className="hm-kpi-value">{pending}</span><span className="hm-kpi-label">Pending requests</span></div>
+        <div className="hm-hero-kpis">
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{todaySessions.length}</span><span className="hm-hero-kpi-label">Sessions today</span></div>
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{data.sessions.length}</span><span className="hm-hero-kpi-label">Sessions this week</span></div>
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{rosterStudentIds.size}</span><span className="hm-hero-kpi-label">Students (all classes)</span></div>
+          <div className="hm-hero-kpi"><span className={`hm-hero-kpi-value ${pending ? 'alert' : ''}`}>{pending}</span><span className="hm-hero-kpi-label">Pending requests</span></div>
+        </div>
       </div>
 
       <div className="hm-grid">
@@ -425,47 +441,49 @@ function StudentHome({ user }) {
 
   return (
     <div className="hm-page">
-      <div className="hm-hero">
-        <div className="hm-hero-copy">
-          <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
-          <h1>Welcome back, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+      <div className="hm-hero-card">
+        <div className="hm-hero">
+          <div className="hm-hero-copy">
+            <span className="hm-eyebrow">{now.toFormat('cccc, LLLL d')}</span>
+            <h1>Welcome back, {String(user?.name ?? '').split(' ')[0] || 'there'}</h1>
+            {nextSession ? (
+              <p>Your next session is {label(nextSession.class_type)} <strong>{nextSession.subject}</strong> {isoToLocal(nextSession.starts_at).toRelative()}.</p>
+            ) : <p>No upcoming sessions booked yet.</p>}
+          </div>
           {nextSession ? (
-            <p>Your next session is {label(nextSession.class_type)} <strong>{nextSession.subject}</strong> {isoToLocal(nextSession.starts_at).toRelative()}.</p>
-          ) : <p>No upcoming sessions booked yet.</p>}
-        </div>
-        {nextSession ? (
-          <div className="hm-needs">
-            <div>
-              <span className="hm-eyebrow">Up next</span>
-              <h2>{nextSession.subject}</h2>
-              <div className="hm-needs-meta">
-                <span><i className="fa-regular fa-clock"></i>{isoToLocal(nextSession.starts_at).toFormat('ccc, LLL d · h:mm a')}</span>
+            <div className="hm-needs">
+              <div>
+                <span className="hm-eyebrow">Up next</span>
+                <h2>{nextSession.subject}</h2>
+                <div className="hm-needs-meta">
+                  <span><i className="fa-regular fa-clock"></i>{isoToLocal(nextSession.starts_at).toFormat('ccc, LLL d · h:mm a')}</span>
+                </div>
+              </div>
+              <div className="hm-needs-actions">
+                <Link className="hm-needs-btn solid" to={`/family/students/${me}/schedule`}><i className="fa-regular fa-eye"></i>Details</Link>
+                <Link className="hm-needs-btn ghost" to={`/family/students/${me}/schedule`}><i className="fa-regular fa-calendar"></i>Reschedule</Link>
               </div>
             </div>
-            <div className="hm-needs-actions">
-              <Link className="hm-needs-btn solid" to={`/family/students/${me}/schedule`}><i className="fa-regular fa-eye"></i>Details</Link>
-              <Link className="hm-needs-btn ghost" to={`/family/students/${me}/schedule`}><i className="fa-regular fa-calendar"></i>Reschedule</Link>
+          ) : (
+            <div className="hm-needs">
+              <div>
+                <span className="hm-eyebrow">Up next</span>
+                <h2>Nothing scheduled</h2>
+              </div>
+              <div className="hm-needs-actions">
+                <Link className="hm-needs-btn solid" to={`/family/students/${me}/book`}><i className="fa-solid fa-plus"></i>Book a session</Link>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="hm-needs">
-            <div>
-              <span className="hm-eyebrow">Up next</span>
-              <h2>Nothing scheduled</h2>
-            </div>
-            <div className="hm-needs-actions">
-              <Link className="hm-needs-btn solid" to={`/family/students/${me}/book`}><i className="fa-solid fa-plus"></i>Book a session</Link>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="hm-kpis">
-        <div className="hm-kpi"><span className="hm-kpi-value">{attendedThisMonth.length}</span><span className="hm-kpi-label">Sessions attended (this month)</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{hoursThisMonth.toFixed(1)}</span><span className="hm-kpi-label">Hours this month</span></div>
-        {attendancePct != null && (
-          <div className="hm-kpi"><span className="hm-kpi-value">{attendancePct}%</span><span className="hm-kpi-label">Attendance rate</span></div>
-        )}
+        <div className="hm-hero-kpis">
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{attendedThisMonth.length}</span><span className="hm-hero-kpi-label">Sessions attended (this month)</span></div>
+          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{hoursThisMonth.toFixed(1)}</span><span className="hm-hero-kpi-label">Hours this month</span></div>
+          {attendancePct != null && (
+            <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{attendancePct}%</span><span className="hm-hero-kpi-label">Attendance rate</span></div>
+          )}
+        </div>
       </div>
 
       <div className="hm-grid">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import authService from '../services/authService';
-import { getActiveSectionLabel } from '../config/shellNav';
+import { getActiveSectionLabel, getActiveItemLabel } from '../config/shellNav';
 
 const ROUTE_TITLES = {
   '/home': 'Home',
@@ -65,7 +65,8 @@ function Header({ variant = 'default' }) {
 
   const role = user?.role;
   const breadcrumb = role ? getActiveSectionLabel(role, user, location.pathname) : '';
-  const title = isAuthRoute ? getPageTitle(location.pathname) : getPageTitle(location.pathname);
+  const navLabel = !isAuthRoute && role ? getActiveItemLabel(role, user, location.pathname) : null;
+  const title = navLabel || getPageTitle(location.pathname);
 
   return (
     <header className={`shell-topbar ${isAuthRoute ? 'shell-topbar--auth' : ''}`}>
