@@ -212,7 +212,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
     `SELECT e.enrollment_id, e.student_id, e.status, u.name FROM enrollments e
       JOIN users u ON u.user_id = e.student_id
       WHERE e.class_id = $1 ORDER BY e.joined_at`, [cls.class_id]);
-  res.json({ ...cls, sessions, roster });
+  // include the subject display name (cls is SELECT * so it only has
+  // subject_id) — consumers like the instructor "My classes" cards title
+  // on it rather than the raw class_type.
+  const { rows: [subj] } = await req.db.query(
+    `SELECT name FROM subjects WHERE subject_id = $1`, [cls.subject_id]);
+  res.json({ ...cls, subject: subj?.name ?? null, sessions, roster });
 });
 
 // ---------------------------------------------------------------------------
