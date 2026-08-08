@@ -139,7 +139,7 @@ function AppContent() {
             <Route
               path="/operations/scheduling"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <Scheduling />
                 </ProtectedRoute>
               }
@@ -262,7 +262,7 @@ function AppContent() {
             <Route
               path="/operations/schedule"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['instructor', 'staff']}>
                   <Schedule />
                 </ProtectedRoute>
               }
@@ -270,7 +270,7 @@ function AppContent() {
             <Route
               path="/operations/roster/students"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <StudentRoster />
                 </ProtectedRoute>
               }
@@ -278,7 +278,7 @@ function AppContent() {
             <Route
               path="/operations/roster/instructors"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <InstructorRoster />
                 </ProtectedRoute>
               }
@@ -286,7 +286,7 @@ function AppContent() {
             <Route
               path="/operations/roster/staff"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <StaffRoster />
                 </ProtectedRoute>
               }
@@ -294,7 +294,7 @@ function AppContent() {
             <Route
               path="/operations/roster/classes"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <ClassRoster />
                 </ProtectedRoute>
               }
@@ -304,7 +304,7 @@ function AppContent() {
             <Route
               path="/operations/finance/overview"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <Overview />
                 </ProtectedRoute>
               }
@@ -312,7 +312,7 @@ function AppContent() {
             <Route
               path="/operations/finance/income"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <IncomeBreakdown />
                 </ProtectedRoute>
               }
@@ -320,7 +320,7 @@ function AppContent() {
             <Route
               path="/operations/finance/costs"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <CostBreakdown />
                 </ProtectedRoute>
               }
@@ -328,7 +328,7 @@ function AppContent() {
             <Route
               path="/operations/finance/payments"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute allowedRoles={['staff']}>
                   <Payments />
                 </ProtectedRoute>
               }
