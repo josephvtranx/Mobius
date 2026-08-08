@@ -5,9 +5,10 @@
   "private": true,
   "type": "module",
   "main": "index.js",
-  "exports": { ".": "./index.js" },
+  "exports": {
+    ".": "./index.js"
+  },
   "dependencies": {
-    "date-fns": "^4.1.0",
     "luxon": "^3.7.1"
   },
   "scripts": {
