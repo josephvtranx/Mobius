@@ -5,6 +5,19 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Fail fast at boot if required config is missing, rather than limping
+// along and throwing confusing errors on the first request that needs it.
+// JWT_SECRET: every token verify/sign; REGISTRY_URL: the institutions
+// lookup that resolves every tenant. RESEND_API_KEY is intentionally NOT
+// required — email is best-effort and the send path already no-ops when
+// it's empty (tests rely on that).
+const REQUIRED_ENV = ['JWT_SECRET', 'REGISTRY_URL'];
+const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missing.length) {
+  console.error(`❌ Missing required environment variable(s): ${missing.join(', ')}. Refusing to start.`);
+  process.exit(1);
+}
+
 import app from './src/app.js';
 import { registryPool } from './src/db/registryPool.js';
 import { getTenantPool } from './src/db/tenantPool.js';

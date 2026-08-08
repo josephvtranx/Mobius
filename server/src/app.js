@@ -34,6 +34,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
+import { registryPool } from './db/registryPool.js';
 import { HttpError } from './helpers/httpError.js';
 import { DateTime } from 'luxon';
 
@@ -147,6 +148,18 @@ app.use((req, res, next) => {
         console.log('Request body:', req.body);
     }
     next();
+});
+
+// Health check for Render / uptime monitoring. Unauthenticated and
+// tenant-agnostic — a quick registry-DB ping so it reports "unhealthy"
+// (503) if the database is unreachable, not just "the process is up".
+app.get('/health', async (_req, res) => {
+  try {
+    await registryPool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'ok' });
+  } catch {
+    res.status(503).json({ status: 'unhealthy', db: 'unreachable' });
+  }
 });
 
 // Institution code validation (D7: stateless — the login UI checks the code
