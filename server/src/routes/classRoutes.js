@@ -395,6 +395,16 @@ router.post('/membership-requests/:requestId/resolve', authenticateToken, author
           WHERE request_id = $3`,
         [resolvedStatus, req.user.user_id, request.request_id]
       );
+      // Close the matching staff_tasks row (join_request/leave_request) so
+      // the task inbox reflects that this request has been handled. Its
+      // subject_id is the membership request_id (see the insert above).
+      // Previously these tasks were never closed, so they piled up forever.
+      await client.query(
+        `UPDATE staff_tasks SET status = 'done', resolved_by = $1, resolved_at = CURRENT_TIMESTAMP
+          WHERE kind IN ('join_request','leave_request') AND subject_id = $2
+            AND status IN ('open','in_progress')`,
+        [req.user.user_id, String(request.request_id)]
+      );
       await notifyFamily(client, {
         studentId: request.student_id, eventType: `${request.kind}_request_${resolvedStatus}`,
         subjectType: 'membership_request', subjectId: request.request_id,

@@ -33,6 +33,7 @@ import payrollRoutes from './routes/payrollRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
+import staffTaskRoutes from './routes/staffTaskRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { registryPool } from './db/registryPool.js';
 import { HttpError } from './helpers/httpError.js';
@@ -193,6 +194,7 @@ app.use('/api/payroll', payrollRoutes);                  // payroll/time_logs pr
 app.use('/api/payments', paymentRoutes);                 // payments/payment_methods predate this API too
 app.use('/api/invoices', invoiceRoutes);                 // invoices/invoice_payments predate this API too
 app.use('/api/messages', messageRoutes);                 // real two-way messaging — new schema, no v1 precedent
+app.use('/api/staff-tasks', staffTaskRoutes);            // staff task inbox — generic list/resolve over staff_tasks
 app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07)
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);

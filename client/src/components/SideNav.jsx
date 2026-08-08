@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import staffTaskService from '../services/staffTaskService';
 import ProfileCard from './ProfileCard';
 import { getShellNav, sectionMatchesPath } from '../config/shellNav';
 
@@ -20,11 +21,24 @@ function SideNav() {
   );
   const [activeIndex, setActiveIndex] = useState(initialSectionIndex === -1 ? 0 : initialSectionIndex);
   const [openChildren, setOpenChildren] = useState(null);
+  const [taskCount, setTaskCount] = useState(0);
 
   useEffect(() => {
     const matchIndex = sections.findIndex((s) => sectionMatchesPath(s, location.pathname));
     if (matchIndex !== -1) setActiveIndex(matchIndex);
   }, [location.pathname, sections]);
+
+  // Live open-task count for the staff "Task inbox" badge. Refetched on
+  // navigation and on a 'staff-tasks-changed' event (dispatched by the
+  // Task inbox when a task is resolved) so the badge stays in sync without
+  // a full reload.
+  useEffect(() => {
+    if (role !== 'staff') return undefined;
+    const refresh = () => staffTaskService.getOpenCount().then(setTaskCount).catch(() => {});
+    refresh();
+    window.addEventListener('staff-tasks-changed', refresh);
+    return () => window.removeEventListener('staff-tasks-changed', refresh);
+  }, [role, location.pathname]);
 
   if (!role || sections.length === 0) return null;
 
@@ -132,9 +146,12 @@ function SideNav() {
                   >
                     <i className={item.icon} aria-hidden="true"></i>
                     <span>{item.label}</span>
-                    {typeof item.badge === 'number' && item.badge > 0 && (
-                      <span className="shell-menu-badge">{item.badge}</span>
-                    )}
+                    {(() => {
+                      const badge = item.path === '/operations/tasks' ? taskCount : item.badge;
+                      return typeof badge === 'number' && badge > 0
+                        ? <span className="shell-menu-badge">{badge}</span>
+                        : null;
+                    })()}
                   </NavLink>
                 )}
               </div>

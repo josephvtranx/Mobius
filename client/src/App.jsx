@@ -34,6 +34,7 @@ const ClassesList = lazy(() => import('./pages/operations/classes/ClassesList'))
 const WalletView = lazy(() => import('./pages/operations/wallets/WalletView'));
 const ReportsDashboard = lazy(() => import('./pages/operations/ReportsDashboard'));
 const MembershipRequests = lazy(() => import('./pages/operations/MembershipRequests'));
+const TaskInbox = lazy(() => import('./pages/operations/TaskInbox'));
 const GuardianPortal = lazy(() => import('./pages/family/GuardianPortal'));
 const GuardianBilling = lazy(() => import('./pages/family/GuardianBilling'));
 const GuardianRequests = lazy(() => import('./pages/family/GuardianRequests'));
@@ -237,6 +238,9 @@ function AppContent() {
             } />
             <Route path="/operations/requests" element={
               <ProtectedRoute allowedRoles={['staff']}><MembershipRequests /></ProtectedRoute>
+            } />
+            <Route path="/operations/tasks" element={
+              <ProtectedRoute allowedRoles={['staff']}><TaskInbox /></ProtectedRoute>
             } />
             {/* v2 billing + reports (template pages — staff-gated) */}
             <Route
