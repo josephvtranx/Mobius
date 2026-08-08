@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import { DateTime } from 'luxon';
 import { startTestEnv, TEST_CODE, SEED_USER } from './helpers/testEnv.js';
 
 let env;
@@ -12,6 +13,33 @@ let classA; // fixed-end group class used across suites
 let classB; // open-ended group class in the tiny room
 
 const TZ = 'America/Los_Angeles';
+
+// These fixtures were originally written against a hardcoded Aug 2026
+// window. Much of the domain logic under test is relative to "now" —
+// the credit gate counts only FUTURE sessions, INV-4 rejects past
+// effective dates, record-lock deadlines fire N days after a session —
+// so once real wall-clock time passed those literals the assertions
+// drifted (a class that was all-future became partly-past, etc).
+//
+// Fix: shift every fixture date forward by a whole number of WEEKS,
+// computed once from today, so the whole window lands ~2-3 weeks in the
+// future. Whole-week shifting preserves every weekday (Mon/Wed/Tue/Thu
+// patterns → identical session counts) and every relative gap (a date
+// that was 33 days before the anchor stays 33 days before it, so the
+// "past effective date" case stays past). The original Monday anchor is
+// 2026-08-03. d() shifts a plain 'YYYY-MM-DD'; ts() shifts the date part
+// of a UTC timestamp while keeping the time-of-day (and the required Z).
+// NOTE: the shift keeps the window inside PDT for realistic run dates —
+// the one DST-sensitive assertion (the 17:00-PT == 00:00Z collision) is
+// in the first shifted week, comfortably before the Nov PST changeover.
+const FIXTURE_ANCHOR = DateTime.fromISO('2026-08-03');
+const _target = DateTime.now().plus({ days: 14 }).startOf('day');
+const SHIFT_WEEKS = Math.max(0, Math.ceil(_target.diff(FIXTURE_ANCHOR, 'weeks').weeks));
+const SHIFT_DAYS = SHIFT_WEEKS * 7;
+const d = (iso) => DateTime.fromISO(iso).plus({ days: SHIFT_DAYS }).toISODate();
+const ts = (iso) => DateTime.fromISO(iso, { zone: 'utc' })
+  .plus({ days: SHIFT_DAYS })
+  .toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
 async function seed() {
   const db = env.tenantDb;
@@ -60,7 +88,7 @@ describe('SCH-1 — staff creates a class', () => {
         { day: 'mon', start: '17:00', end: '18:30' },
         { day: 'wed', start: '17:00', end: '18:30' }
       ] },
-      starts_on: '2026-08-03', ends_on: '2026-08-28', default_room_id: 2
+      starts_on: d('2026-08-03'), ends_on: d('2026-08-28'), default_room_id: 2
     });
     expect(res.status).toBe(201);
     expect(res.body.sessions_created).toBe(8); // Mon×4 + Wed×4 in Aug 3–28
@@ -80,7 +108,7 @@ describe('SCH-1 — staff creates a class', () => {
         { day: 'tue', start: '10:00', end: '11:00' },
         { day: 'thu', start: '10:00', end: '11:00' }
       ] },
-      starts_on: '2026-08-04', ends_on: null, default_room_id: 1 // open-ended, tiny room
+      starts_on: d('2026-08-04'), ends_on: null, default_room_id: 1 // open-ended, tiny room
     });
     expect(res.status).toBe(201);
     expect(res.body.warnings[0]).toContain('seats 2 of 8');
@@ -92,8 +120,8 @@ describe('SCH-1 — staff creates a class', () => {
     // one-off request colliding with a classA session (Mon Aug 10 17:00 PDT = 00:00Z Aug 11)
     const res = await staff.agent.post('/api/classes').set(staff.auth).send({
       class_type: 'one_on_one', subject_id: 1, instructor_id: 2, student_limit: 1,
-      session_credit_cost: 5, recurrence: 'none', starts_on: '2026-08-11',
-      sessions: [{ starts_at: '2026-08-11T00:30:00.000Z', ends_at: '2026-08-11T01:30:00.000Z' }]
+      session_credit_cost: 5, recurrence: 'none', starts_on: d('2026-08-11'),
+      sessions: [{ starts_at: ts('2026-08-11T00:30:00.000Z'), ends_at: ts('2026-08-11T01:30:00.000Z') }]
     });
     expect(res.status).toBe(409);
     expect(res.body.message).toContain('conflict');
@@ -102,8 +130,8 @@ describe('SCH-1 — staff creates a class', () => {
   it('creates a one-off 1:1 (recurrence none) with exactly one session', async () => {
     const res = await staff.agent.post('/api/classes').set(staff.auth).send({
       class_type: 'one_on_one', subject_id: 1, instructor_id: 2, student_limit: 1,
-      session_credit_cost: 7, recurrence: 'none', starts_on: '2026-09-04',
-      sessions: [{ starts_at: '2026-09-04T17:00:00.000Z', ends_at: '2026-09-04T18:00:00.000Z' }]
+      session_credit_cost: 7, recurrence: 'none', starts_on: d('2026-09-04'),
+      sessions: [{ starts_at: ts('2026-09-04T17:00:00.000Z'), ends_at: ts('2026-09-04T18:00:00.000Z') }]
     });
     expect(res.status).toBe(201);
     expect(res.body.sessions_created).toBe(1);
@@ -112,15 +140,15 @@ describe('SCH-1 — staff creates a class', () => {
   it('rejects one-off group classes and unsupported custom recurrence', async () => {
     const oneOffGroup = await staff.agent.post('/api/classes').set(staff.auth).send({
       class_type: 'group', subject_id: 1, instructor_id: 2, student_limit: 4,
-      session_credit_cost: 5, recurrence: 'none', starts_on: '2026-09-05',
-      sessions: [{ starts_at: '2026-09-05T17:00:00.000Z', ends_at: '2026-09-05T18:00:00.000Z' }]
+      session_credit_cost: 5, recurrence: 'none', starts_on: d('2026-09-05'),
+      sessions: [{ starts_at: ts('2026-09-05T17:00:00.000Z'), ends_at: ts('2026-09-05T18:00:00.000Z') }]
     });
     expect(oneOffGroup.status).toBe(400);
 
     const custom = await staff.agent.post('/api/classes').set(staff.auth).send({
       class_type: 'group', subject_id: 1, instructor_id: 2, student_limit: 4,
       session_credit_cost: 5, recurrence: 'custom', recurrence_rule: { timezone: TZ, byday: [] },
-      starts_on: '2026-09-05'
+      starts_on: d('2026-09-05')
     });
     expect(custom.status).toBe(400);
     expect(custom.body.message).toContain('custom');
@@ -267,7 +295,7 @@ describe('SCH-3 — catalog and membership requests', () => {
 describe('SCH-6 — end and terminate', () => {
   it('ending a class removes only sessions after the end date', async () => {
     const res = await staff.agent.patch(`/api/classes/${classA.class_id}/end`)
-      .set(staff.auth).send({ ends_on: '2026-08-14' });
+      .set(staff.auth).send({ ends_on: d('2026-08-14') });
     expect(res.status).toBe(200);
     expect(res.body.sessions_removed).toBe(4); // Mon 17, Wed 19, Mon 24, Wed 26
 
@@ -298,14 +326,14 @@ describe('SCH-6 — end and terminate', () => {
       class_type: 'one_on_one', subject_id: 1, instructor_id: 2, student_limit: 1,
       session_credit_cost: 5, recurrence: 'weekly',
       recurrence_rule: { timezone: TZ, byday: [{ day: 'mon', start: '20:00', end: '21:00' }] },
-      starts_on: '2026-08-03', ends_on: '2026-08-03'
+      starts_on: d('2026-08-03'), ends_on: d('2026-08-03')
     });
     expect(created.status).toBe(201);
     expect(created.body.sessions_created).toBe(1);
 
     // ending on that same local Monday must KEEP the session (a UTC-date cutoff would drop it)
     const ended = await staff.agent.patch(`/api/classes/${created.body.class.class_id}/end`)
-      .set(staff.auth).send({ ends_on: '2026-08-03' });
+      .set(staff.auth).send({ ends_on: d('2026-08-03') });
     expect(ended.status).toBe(200);
     expect(ended.body.sessions_removed).toBe(0);
   });
@@ -313,7 +341,7 @@ describe('SCH-6 — end and terminate', () => {
   it('will not end or re-terminate an already-terminated class', async () => {
     // classB was terminated above
     const reEnd = await staff.agent.patch(`/api/classes/${classB.class_id}/end`)
-      .set(staff.auth).send({ ends_on: '2026-09-01' });
+      .set(staff.auth).send({ ends_on: d('2026-09-01') });
     expect(reEnd.status).toBe(400);
 
     const reTerm = await staff.agent.post(`/api/classes/${classB.class_id}/terminate`).set(staff.auth);
@@ -347,7 +375,7 @@ describe('SCH-5 — series-level schedule change', () => {
         { day: 'tue', start: '13:00', end: '14:00' },
         { day: 'thu', start: '13:00', end: '14:00' }
       ] },
-      starts_on: '2026-08-04', ends_on: '2026-08-28'
+      starts_on: d('2026-08-04'), ends_on: d('2026-08-28')
     });
     expect(created.status).toBe(201);
     expect(created.body.sessions_created).toBe(8);
@@ -361,7 +389,7 @@ describe('SCH-5 — series-level schedule change', () => {
     const res = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
       .set(staff.auth).send({
         recurrence_rule: { timezone: TZ, byday: [{ day: 'fri', start: '13:00', end: '14:00' }] },
-        effective_from: '2026-08-14'
+        effective_from: d('2026-08-14')
       });
     expect(res.status).toBe(200);
     expect(res.body.sessions_removed).toBe(4); // Aug 18, 20, 25, 27
@@ -387,7 +415,7 @@ describe('SCH-5 — series-level schedule change', () => {
     const res = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
       .set(staff.auth).send({
         recurrence_rule: { timezone: TZ, byday: [{ day: 'mon', start: '17:30', end: '18:00' }] },
-        effective_from: '2026-08-05'
+        effective_from: d('2026-08-05')
       });
     expect(res.status).toBe(409);
     expect(res.body.message).toContain('conflict');
@@ -401,36 +429,36 @@ describe('SCH-5 — series-level schedule change', () => {
   it('rejects one-offs, past effective dates, invalid rules, and inactive classes', async () => {
     const oneOff = await staff.agent.post('/api/classes').set(staff.auth).send({
       class_type: 'one_on_one', subject_id: 1, instructor_id: 2, student_limit: 1,
-      session_credit_cost: 5, recurrence: 'none', starts_on: '2026-09-10',
-      sessions: [{ starts_at: '2026-09-10T20:00:00.000Z', ends_at: '2026-09-10T21:00:00.000Z' }]
+      session_credit_cost: 5, recurrence: 'none', starts_on: d('2026-09-10'),
+      sessions: [{ starts_at: ts('2026-09-10T20:00:00.000Z'), ends_at: ts('2026-09-10T21:00:00.000Z') }]
     });
     expect(oneOff.status).toBe(201);
     const newRule = { timezone: TZ, byday: [{ day: 'mon', start: '09:00', end: '10:00' }] };
 
     const noSeries = await staff.agent.patch(`/api/classes/${oneOff.body.class.class_id}/schedule`)
-      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-09-15' });
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: d('2026-09-15') });
     expect(noSeries.status).toBe(400);
     expect(noSeries.body.message).toContain('series');
 
     const past = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
-      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-07-01' });
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: d('2026-07-01') });
     expect(past.status).toBe(400);
     expect(past.body.message).toContain('future');
 
     const badRule = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
       .set(staff.auth).send({
         recurrence_rule: { timezone: TZ, byday: [{ day: 'xyz', start: '09:00', end: '10:00' }] },
-        effective_from: '2026-08-20'
+        effective_from: d('2026-08-20')
       });
     expect(badRule.status).toBe(400);
 
     const tooLate = await staff.agent.patch(`/api/classes/${classS.class_id}/schedule`)
-      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-09-15' });
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: d('2026-09-15') });
     expect(tooLate.status).toBe(400);
     expect(tooLate.body.message).toContain('end date');
 
     const ended = await staff.agent.patch(`/api/classes/${classA.class_id}/schedule`)
-      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: '2026-08-20' });
+      .set(staff.auth).send({ recurrence_rule: newRule, effective_from: d('2026-08-20') });
     expect(ended.status).toBe(400);
     expect(ended.body.message).toContain('ended');
   });
