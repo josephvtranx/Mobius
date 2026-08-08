@@ -14,10 +14,37 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import { DateTime } from 'luxon';
 import { startTestEnv, TEST_CODE, SEED_USER } from './helpers/testEnv.js';
 import { runAutoComplete, runLowBalanceScan, runRecordLock, runPriceSync } from '../src/jobs/billingJobs.js';
 import { applyAttendanceWithinTx } from '../src/helpers/deductionEngine.js';
 import { getSettings } from '../src/helpers/institutionSettings.js';
+
+// This suite hardcoded a mid-July-2026 timeline. Two clocks are in play:
+// the job functions (runAutoComplete/runRecordLock/runLowBalanceScan/
+// applyAttendanceWithinTx) take an explicit `now`, but the HTTP attendance
+// marks, the price INV-4 future-check, runPriceSync (no `now` param) and
+// the wallet committed-math all run against the REAL clock. The suite only
+// passed when real "now" sat a day or two after the 2026-07-16 anchor;
+// once real time moved past it, the recent sessions fell outside the
+// record-lock window, future price dates became past, and the
+// committed/runway sessions (Jul 20-25) stopped counting as future.
+//
+// Fix: shift EVERY fixture timestamp AND every explicit `now` arg by the
+// same exact-day offset, chosen so the 2026-07-16 anchor lands on
+// (today - 1). That keeps the simulated clock aligned with the shifted
+// sessions (their internal relationships are untouched) while placing the
+// whole timeline at the same position relative to real "now" that it had
+// the day it was written. Exact-day (not whole-week) because these
+// sessions are inserted with explicit timestamps, so weekday alignment is
+// irrelevant here — only the offset from real now matters. bd() shifts a
+// plain date; bt() shifts a UTC timestamp (keeps time-of-day + Z).
+const BILL_ANCHOR = DateTime.fromISO('2026-07-16');
+const SHIFT_DAYS = Math.round(DateTime.now().startOf('day').diff(BILL_ANCHOR, 'days').days) - 1;
+const bd = (iso) => DateTime.fromISO(iso).plus({ days: SHIFT_DAYS }).toISODate();
+const bt = (iso) => DateTime.fromISO(iso, { zone: 'utc' })
+  .plus({ days: SHIFT_DAYS })
+  .toFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 // NOTE: never statically import src/db/* here — those modules capture
 // REGISTRY_URL/PGSSLMODE at module scope, and the harness only sets them
 // inside startTestEnv() (env.getTenantPool is the post-env import).
@@ -64,8 +91,8 @@ async function seed() {
     const { rows: [row] } = await db.query(
       `INSERT INTO classes (class_type, subject_id, instructor_id, student_limit,
                             session_credit_cost, recurrence, starts_on, ends_on, created_by)
-       VALUES ('group', 1, $1, $2, $3, 'weekly', '2026-07-01', $4, 1) RETURNING class_id`,
-      [instructor, limit, cost, open ? null : (endsOn ?? '2026-07-31')]);
+       VALUES ('group', 1, $1, $2, $3, 'weekly', $5, $4, 1) RETURNING class_id`,
+      [instructor, limit, cost, open ? null : bd(endsOn ?? '2026-07-31'), bd('2026-07-01')]);
     cls[name] = row.class_id;
     return row.class_id;
   }
@@ -85,49 +112,49 @@ async function seed() {
 
   await mkClass('A', { cost: 5 });                    // BIL-1 AC1 + edges
   await enroll('A', 3, 4, 5, 6, 7, 8);
-  await mkSession('s1', 'A', '2026-07-16T10:00:00Z', '2026-07-16T11:00:00Z');
-  await mkSession('sX', 'A', '2026-07-16T18:00:00Z', '2026-07-16T19:00:00Z');
+  await mkSession('s1', 'A', bt('2026-07-16T10:00:00Z'), bt('2026-07-16T11:00:00Z'));
+  await mkSession('sX', 'A', bt('2026-07-16T18:00:00Z'), bt('2026-07-16T19:00:00Z'));
 
   await mkClass('B', { cost: 5 });                    // auto-complete
   await enroll('B', 3, 4);
-  await mkSession('s2', 'B', '2026-07-15T10:00:00Z', '2026-07-15T11:00:00Z');
+  await mkSession('s2', 'B', bt('2026-07-15T10:00:00Z'), bt('2026-07-15T11:00:00Z'));
 
   await mkClass('C', { cost: 5 });                    // lock window
   await enroll('C', 3);
-  await mkSession('s3', 'C', '2026-07-01T10:00:00Z', '2026-07-01T11:00:00Z');
+  await mkSession('s3', 'C', bt('2026-07-01T10:00:00Z'), bt('2026-07-01T11:00:00Z'));
 
   await mkClass('D', { cost: 5 });                    // grace / blocked / lazy wallet
   await enroll('D', 3, 12);
-  await mkSession('s4',  'D', '2026-07-16T12:00:00Z', '2026-07-16T13:00:00Z');
-  await mkSession('s4b', 'D', '2026-07-16T14:00:00Z', '2026-07-16T15:00:00Z');
-  await mkSession('s5',  'D', '2026-07-16T16:00:00Z', '2026-07-16T17:00:00Z');
-  await mkSession('s6',  'D', '2026-07-16T20:00:00Z', '2026-07-16T21:00:00Z');
+  await mkSession('s4',  'D', bt('2026-07-16T12:00:00Z'), bt('2026-07-16T13:00:00Z'));
+  await mkSession('s4b', 'D', bt('2026-07-16T14:00:00Z'), bt('2026-07-16T15:00:00Z'));
+  await mkSession('s5',  'D', bt('2026-07-16T16:00:00Z'), bt('2026-07-16T17:00:00Z'));
+  await mkSession('s6',  'D', bt('2026-07-16T20:00:00Z'), bt('2026-07-16T21:00:00Z'));
 
   await mkClass('E', { cost: 5 });                    // BIL-3: price history 5 → 8 on 07-10
   await enroll('E', 4);
   await db.query(
     `INSERT INTO class_price_history (class_id, session_credit_cost, effective_from, set_by) VALUES
-       ($1, 5, '2026-07-01T00:00:00Z', 1), ($1, 8, '2026-07-10T00:00:00Z', 1)`, [cls.E]);
-  await mkSession('sE1', 'E', '2026-07-08T10:00:00Z', '2026-07-08T11:00:00Z');
-  await mkSession('sE2', 'E', '2026-07-12T10:00:00Z', '2026-07-12T11:00:00Z');
+       ($1, 5, $2, 1), ($1, 8, $3, 1)`, [cls.E, bt('2026-07-01T00:00:00Z'), bt('2026-07-10T00:00:00Z')]);
+  await mkSession('sE1', 'E', bt('2026-07-08T10:00:00Z'), bt('2026-07-08T11:00:00Z'));
+  await mkSession('sE2', 'E', bt('2026-07-12T10:00:00Z'), bt('2026-07-12T11:00:00Z'));
 
   await mkClass('Y', { cost: 5, instructor: 11 });    // other-instructor 403
   await enroll('Y', 3);
-  await mkSession('sY', 'Y', '2026-07-16T09:00:00Z', '2026-07-16T10:00:00Z', 11);
+  await mkSession('sY', 'Y', bt('2026-07-16T09:00:00Z'), bt('2026-07-16T10:00:00Z'), 11);
 
   await mkClass('F', { cost: 4, open: true });        // committed: open-ended, runway-limited
   await enroll('F', 10);
   await db.query(
     `INSERT INTO class_price_history (class_id, session_credit_cost, effective_from, set_by) VALUES
-       ($1, 4, '2026-07-01T00:00:00Z', 1), ($1, 6, '2026-07-23T00:00:00Z', 1)`, [cls.F]);
+       ($1, 4, $2, 1), ($1, 6, $3, 1)`, [cls.F, bt('2026-07-01T00:00:00Z'), bt('2026-07-23T00:00:00Z')]);
   for (let d = 20; d <= 25; d++) {
-    await mkSession(`sF${d}`, 'F', `2026-07-${d}T10:00:00Z`, `2026-07-${d}T11:00:00Z`);
+    await mkSession(`sF${d}`, 'F', bt(`2026-07-${d}T10:00:00Z`), bt(`2026-07-${d}T11:00:00Z`));
   }
 
   await mkClass('G', { cost: 4, endsOn: '2026-07-31' }); // committed: fixed-end, all remaining
   await enroll('G', 10);
   for (let d = 20; d <= 22; d++) {
-    await mkSession(`sG${d}`, 'G', `2026-07-${d}T12:00:00Z`, `2026-07-${d}T13:00:00Z`);
+    await mkSession(`sG${d}`, 'G', bt(`2026-07-${d}T12:00:00Z`), bt(`2026-07-${d}T13:00:00Z`));
   }
 }
 
@@ -180,7 +207,7 @@ describe('BIL-1 AC1 — group session: 5 present + 1 excused', () => {
 describe('BIL-1 AC2 — auto-complete then day-3 correction', () => {
   it('auto-completes every stale unmarked session in ends_at order', async () => {
     // cutoff 07-15T12Z catches s3, sE1, sE2, s2 (s4..s6/sX/sY end later)
-    const run = await runAutoComplete(pool, '2026-07-16T12:00:00Z');
+    const run = await runAutoComplete(pool, bt('2026-07-16T12:00:00Z'));
     expect(run.sessions).toBe(4);
     expect(run.marked).toBe(5); // s3:1, sE1:1, sE2:1, s2:2
     expect(run.blocked).toBe(0);
@@ -207,7 +234,7 @@ describe('BIL-1 AC2 — auto-complete then day-3 correction', () => {
     expect(await balanceOf(4)).toBe(-3);
 
     // rerun: nothing left to do
-    const rerun = await runAutoComplete(pool, '2026-07-16T12:00:00Z');
+    const rerun = await runAutoComplete(pool, bt('2026-07-16T12:00:00Z'));
     expect(rerun.sessions).toBe(0);
   });
 
@@ -236,7 +263,7 @@ describe('BIL-1 AC2 — auto-complete then day-3 correction', () => {
 describe('BIL-1 AC3 — record lock', () => {
   it('runRecordLock stamps rows past the window and leaves recent ones alone', async () => {
     // cutoff 07-15T12Z: locks s3, sE1, sE2, s2 rows (5); s1 (ends 07-16) stays open
-    const run = await runRecordLock(pool, '2026-07-22T12:00:00Z');
+    const run = await runRecordLock(pool, bt('2026-07-22T12:00:00Z'));
     expect(run.attendance).toBe(5);
 
     const { rows: s1open } = await env.tenantDb.query(
@@ -257,7 +284,7 @@ describe('BIL-1 AC3 — record lock', () => {
     const settings = await getSettings(env.tenantDb);
     const r = await applyAttendanceWithinTx(env.tenantDb, {
       session, studentId: 3, status: 'absent_unexcused',
-      actorUserId: 1, settings, now: '2026-07-24T00:00:00Z'
+      actorUserId: 1, settings, now: bt('2026-07-24T00:00:00Z')
     });
     expect(r.ok).toBe(false);
     expect(r.body.code).toBe('RECORD_LOCKED');
@@ -349,19 +376,19 @@ describe('BIL-3 — price changes', () => {
 
   it('staff sets a future price: history row + exactly one notice per family; INV-4 enforced', async () => {
     const ok = await staff.agent.post(`/api/classes/${cls.E}/price`).set(staff.auth)
-      .send({ session_credit_cost: 10, effective_from: '2026-08-01T00:00:00.000Z' });
+      .send({ session_credit_cost: 10, effective_from: bt('2026-08-01T00:00:00.000Z') });
     expect(ok.status).toBe(201);
     const { rows: notices } = await env.tenantDb.query(
       `SELECT recipient_user_id FROM notification_log WHERE event_type = 'price_change'`);
     expect(notices.length).toBe(1); // one enrolled student (4), no guardian
 
     const past = await staff.agent.post(`/api/classes/${cls.E}/price`).set(staff.auth)
-      .send({ session_credit_cost: 9, effective_from: '2026-06-01T00:00:00.000Z' });
+      .send({ session_credit_cost: 9, effective_from: bt('2026-06-01T00:00:00.000Z') });
     expect(past.status).toBe(400);
     expect(past.body.message).toContain('future');
 
     const dup = await staff.agent.post(`/api/classes/${cls.E}/price`).set(staff.auth)
-      .send({ session_credit_cost: 11, effective_from: '2026-08-01T00:00:00.000Z' });
+      .send({ session_credit_cost: 11, effective_from: bt('2026-08-01T00:00:00.000Z') });
     expect(dup.status).toBe(409);
   });
 
@@ -525,7 +552,7 @@ describe('low-balance scanner', () => {
     const rerun = await runLowBalanceScan(pool);
     expect(rerun.notified).toBe(0); // deduped
 
-    const nextWeek = await runLowBalanceScan(pool, '2026-07-25T12:00:00Z');
+    const nextWeek = await runLowBalanceScan(pool, bt('2026-07-25T12:00:00Z'));
     expect(nextWeek.notified).toBe(2); // re-armed after 7 days
   });
 });
