@@ -95,15 +95,21 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Instructor not found' });
         }
 
-        // SECURITY: students/guardians resolve instructor display names
-        // through this endpoint (StudentClasses/StudentSchedule use only
-        // `.name`) — pay, contact and demographic fields are staff-only.
-        if (req.user.role !== 'staff') {
-            const { instructor_id, name, college_attended, major, specialties } = result.rows[0];
-            return res.json({ instructor_id, name, college_attended, major, specialties });
+        // SECURITY: for non-staff callers, strip only the genuinely
+        // sensitive fields (contact, pay, demographics). Non-PII fields
+        // stay — students/guardians resolve the display name, and the
+        // instructor's own "My classes" page derives its class list from
+        // upcoming_sessions, so dropping those broke it. An instructor
+        // viewing their OWN record gets everything.
+        const row = result.rows[0];
+        const isSelf = req.user.role === 'instructor' && req.user.user_id === Number(id);
+        if (req.user.role !== 'staff' && !isSelf) {
+            const { email, phone, salary, hourly_rate, date_of_birth, gender,
+                    employment_type, ...safe } = row;
+            return res.json(safe);
         }
 
-        res.json(result.rows[0]);
+        res.json(row);
     } catch (error) {
         console.error('Error fetching instructor:', error);
         res.status(500).json({ error: 'Failed to fetch instructor' });
