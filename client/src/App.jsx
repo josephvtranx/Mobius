@@ -1,60 +1,66 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import SideNav from './components/SideNav';
 import Header from './components/Header';
-import Home from './pages/Home';
-import Messages from './pages/Messages';
-import Landing from './pages/auth/Landing';
-import Login from './pages/auth/login/Login';
-import PasswordReset from './pages/auth/PasswordReset';
-import InstitutionRegistration from './pages/auth/register/institution/InstitutionRegistration';
-import RoleSelect from './pages/auth/register/user/RoleSelect';
-import StudentRegistration from './pages/auth/register/user/StudentRegistration';
-import InstructorRegistration from './pages/auth/register/user/InstructorRegistration';
-import StaffRegistration from './pages/auth/register/user/StaffRegistration';
-import Profile from './pages/Profile';
 import ProtectedRoute from './components/ProtectedRoute';
-import Unauthorized from './pages/auth/Unauthorized';
 import authService from './services/authService';
 import { ROLE_THEME } from './config/shellNav';
 
+// Entry pages stay eager so the very first paint (landing/login) has no
+// Suspense flash. Everything else is code-split via React.lazy so a
+// student never downloads staff/finance code and vice versa — the whole
+// app used to ship as one ~800KB bundle regardless of role.
+import Landing from './pages/auth/Landing';
+import Login from './pages/auth/login/Login';
+
+const Home = lazy(() => import('./pages/Home'));
+const Messages = lazy(() => import('./pages/Messages'));
+const PasswordReset = lazy(() => import('./pages/auth/PasswordReset'));
+const InstitutionRegistration = lazy(() => import('./pages/auth/register/institution/InstitutionRegistration'));
+const RoleSelect = lazy(() => import('./pages/auth/register/user/RoleSelect'));
+const StudentRegistration = lazy(() => import('./pages/auth/register/user/StudentRegistration'));
+const InstructorRegistration = lazy(() => import('./pages/auth/register/user/InstructorRegistration'));
+const StaffRegistration = lazy(() => import('./pages/auth/register/user/StaffRegistration'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Unauthorized = lazy(() => import('./pages/auth/Unauthorized'));
+
 // Operations pages
-import Scheduling from './pages/operations/Scheduling';
-import Attendance from './pages/operations/Attendance';
-import Payroll from './pages/operations/Payroll';
-import ClassesList from './pages/operations/classes/ClassesList';
-import WalletView from './pages/operations/wallets/WalletView';
-import ReportsDashboard from './pages/operations/ReportsDashboard';
-import MembershipRequests from './pages/operations/MembershipRequests';
-import GuardianPortal from './pages/family/GuardianPortal';
-import GuardianBilling from './pages/family/GuardianBilling';
-import GuardianRequests from './pages/family/GuardianRequests';
-import StudentSchedule from './pages/family/StudentSchedule';
-import StudentRecord from './pages/family/StudentRecord';
-import Catalog from './pages/family/Catalog';
-import BookSession from './pages/family/BookSession';
-import StudentClasses from './pages/family/StudentClasses';
-import InstructorInbox from './pages/instructor/InstructorInbox';
-import InstructorAvailability from './pages/instructor/Availability';
-import MyClasses from './pages/instructor/MyClasses';
-import InstructorFeedback from './pages/instructor/Feedback';
-import InstructorPay from './pages/instructor/Pay';
-import CreateClass from './pages/operations/classes/CreateClass';
-import ClassDetail from './pages/operations/classes/ClassDetail';
-import SessionAttendance from './pages/operations/classes/SessionAttendance';
-import StudentRoster from './pages/operations/roster/StudentRoster';
-import InstructorRoster from './pages/operations/roster/InstructorRoster';
-import StaffRoster from './pages/operations/roster/StaffRoster';
-import ClassRoster from './pages/operations/roster/ClassRoster';
-import Schedule from './pages/operations/Schedule';
+const Scheduling = lazy(() => import('./pages/operations/Scheduling'));
+const Attendance = lazy(() => import('./pages/operations/Attendance'));
+const Payroll = lazy(() => import('./pages/operations/Payroll'));
+const ClassesList = lazy(() => import('./pages/operations/classes/ClassesList'));
+const WalletView = lazy(() => import('./pages/operations/wallets/WalletView'));
+const ReportsDashboard = lazy(() => import('./pages/operations/ReportsDashboard'));
+const MembershipRequests = lazy(() => import('./pages/operations/MembershipRequests'));
+const GuardianPortal = lazy(() => import('./pages/family/GuardianPortal'));
+const GuardianBilling = lazy(() => import('./pages/family/GuardianBilling'));
+const GuardianRequests = lazy(() => import('./pages/family/GuardianRequests'));
+const StudentSchedule = lazy(() => import('./pages/family/StudentSchedule'));
+const StudentRecord = lazy(() => import('./pages/family/StudentRecord'));
+const Catalog = lazy(() => import('./pages/family/Catalog'));
+const BookSession = lazy(() => import('./pages/family/BookSession'));
+const StudentClasses = lazy(() => import('./pages/family/StudentClasses'));
+const InstructorInbox = lazy(() => import('./pages/instructor/InstructorInbox'));
+const InstructorAvailability = lazy(() => import('./pages/instructor/Availability'));
+const MyClasses = lazy(() => import('./pages/instructor/MyClasses'));
+const InstructorFeedback = lazy(() => import('./pages/instructor/Feedback'));
+const InstructorPay = lazy(() => import('./pages/instructor/Pay'));
+const CreateClass = lazy(() => import('./pages/operations/classes/CreateClass'));
+const ClassDetail = lazy(() => import('./pages/operations/classes/ClassDetail'));
+const SessionAttendance = lazy(() => import('./pages/operations/classes/SessionAttendance'));
+const StudentRoster = lazy(() => import('./pages/operations/roster/StudentRoster'));
+const InstructorRoster = lazy(() => import('./pages/operations/roster/InstructorRoster'));
+const StaffRoster = lazy(() => import('./pages/operations/roster/StaffRoster'));
+const ClassRoster = lazy(() => import('./pages/operations/roster/ClassRoster'));
+const Schedule = lazy(() => import('./pages/operations/Schedule'));
 
 // Financial Dashboard pages
-import Overview from './pages/operations/Financial-Dashboard/Overview';
-import IncomeBreakdown from './pages/operations/Financial-Dashboard/Income-Breakdown';
-import CostBreakdown from './pages/operations/Financial-Dashboard/Cost-Breakdown';
-import Payments from './pages/operations/Financial-Dashboard/Payments';
+const Overview = lazy(() => import('./pages/operations/Financial-Dashboard/Overview'));
+const IncomeBreakdown = lazy(() => import('./pages/operations/Financial-Dashboard/Income-Breakdown'));
+const CostBreakdown = lazy(() => import('./pages/operations/Financial-Dashboard/Cost-Breakdown'));
+const Payments = lazy(() => import('./pages/operations/Financial-Dashboard/Payments'));
 
 import './css/index.css';
 import './css/login.css';
@@ -98,6 +104,7 @@ function AppContent() {
 
           {/* Routes */}
           <div className="content-area">
+          <Suspense fallback={<div className="hm-loading" style={{ padding: 40 }}>Loading…</div>}>
           <Routes>
             {/* Entry: interact-to-continue landing → login (the old
                 Toggle/Fork intermediaries are gone — registration links
@@ -340,6 +347,7 @@ function AppContent() {
                 hasn't built yet land here instead of a blank page. */}
             <Route path="*" element={<Navigate to="/home" replace />} />
           </Routes>
+          </Suspense>
           </div>
         </div>
       </div>
