@@ -56,17 +56,63 @@ api.interceptors.request.use(
     }
 );
 
-// Handle token expiration
+// Handle token expiration: on a 401, try ONE silent refresh-and-retry
+// using the stored refresh token before giving up and bouncing to /login.
+// Without this, the 120-minute access-token TTL logs users out abruptly
+// mid-work even though a valid refresh token is sitting in localStorage.
+//
+// A single shared refreshPromise coalesces concurrent 401s (a page firing
+// several requests at once) into one refresh call. The refresh endpoint
+// itself is exempted so a failed refresh doesn't recurse.
+let refreshPromise = null;
+
+function forceLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    // guard against redirect loops if we're already on the login page
+    if (!window.location.pathname.startsWith('/login') &&
+        !window.location.pathname.startsWith('/auth/login')) {
+        window.location.href = '/login';
+    }
+}
+
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+        const original = error.config;
+        const status = error.response?.status;
+        const isRefreshCall = original?.url?.includes('/auth/refresh-token');
+
+        if (status !== 401 || !original || original._retried || isRefreshCall) {
+            if (status === 401 && isRefreshCall) forceLogout();
+            return Promise.reject(error);
         }
-        return Promise.reject(error);
+
+        const refreshToken = localStorage.getItem('refreshToken');
+        if (!refreshToken) {
+            forceLogout();
+            return Promise.reject(error);
+        }
+
+        original._retried = true;
+        try {
+            // Coalesce concurrent 401s into a single refresh request.
+            refreshPromise = refreshPromise || api.post('/auth/refresh-token', { refreshToken })
+                .then((res) => {
+                    localStorage.setItem('token', res.data.accessToken);
+                    if (res.data.refreshToken) localStorage.setItem('refreshToken', res.data.refreshToken);
+                    return res.data.accessToken;
+                })
+                .finally(() => { refreshPromise = null; });
+
+            const newToken = await refreshPromise;
+            original.headers.Authorization = `Bearer ${newToken}`;
+            return api(original);
+        } catch (refreshErr) {
+            forceLogout();
+            return Promise.reject(refreshErr);
+        }
     }
 );
 
