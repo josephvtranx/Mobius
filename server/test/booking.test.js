@@ -242,3 +242,51 @@ describe('pending bookings list (slice-3 endpoint)', () => {
     expect(student.status).toBe(403);
   });
 });
+
+describe('open-slots subtracts intervals where every room is busy', () => {
+  it('a window with instructor 2 free but ALL rooms booked is NOT advertised', async () => {
+    // Occupy BOTH rooms during at(200)-at(201). The two concurrent sessions
+    // need DISTINCT instructors (the instructor-slot exclusion constraint
+    // forbids one teacher in two places), and NEITHER is instructor 2 — so
+    // instructor 2 is personally free, yet no room is. instructor 7 takes one
+    // room; a fresh instructor 8 takes the other.
+    await env.tenantDb.query(`
+      INSERT INTO users (password_hash, name, email, role)
+      VALUES ('h','Instructor 3','instr3@test.com','instructor')`);
+    const { rows: [i8] } = await env.tenantDb.query(
+      `SELECT user_id FROM users WHERE email='instr3@test.com'`);
+    await env.tenantDb.query(`INSERT INTO instructors (instructor_id) VALUES ($1)`, [i8.user_id]);
+
+    const mkClass = async (instrId) => {
+      const { rows: [c] } = await env.tenantDb.query(`
+        INSERT INTO classes (class_type, subject_id, instructor_id, student_limit,
+                             session_credit_cost, recurrence, starts_on, created_by)
+        VALUES ('group', 1, $1, 8, 5, 'weekly', CURRENT_DATE, 1)
+        RETURNING class_id`, [instrId]);
+      return c.class_id;
+    };
+    const clsA = await mkClass(7);
+    const clsB = await mkClass(i8.user_id);
+    await env.tenantDb.query(`
+      INSERT INTO class_sessions (class_id, instructor_id, starts_at, ends_at, room_id, status)
+      VALUES
+        ($1, 7,  $3, $4, (SELECT room_id FROM rooms WHERE name='Small'), 'scheduled'),
+        ($2, $5, $3, $4, (SELECT room_id FROM rooms WHERE name='Big'),   'scheduled')`,
+      [clsA, clsB, at(200), at(201), i8.user_id]);
+
+    const slots = await staff.agent.get('/api/instructors/2/open-slots')
+      .query({ from: at(196), to: at(204), tz: 'America/Los_Angeles' }).set(staff.auth);
+    expect(slots.status).toBe(200);
+
+    const s = DateTime.fromISO(at(200)), e = DateTime.fromISO(at(201));
+    const overlapsBlockedWindow = slots.body.slots.some(x =>
+      DateTime.fromISO(x.starts_at) < e && DateTime.fromISO(x.ends_at) > s);
+    expect(overlapsBlockedWindow).toBe(false);
+
+    // sanity: an adjacent window where a room IS free still shows as open
+    const s2 = DateTime.fromISO(at(202)), e2 = DateTime.fromISO(at(203));
+    const adjacentOpen = slots.body.slots.some(x =>
+      DateTime.fromISO(x.starts_at) < e2 && DateTime.fromISO(x.ends_at) > s2);
+    expect(adjacentOpen).toBe(true);
+  });
+});

@@ -1,8 +1,9 @@
 // Classes domain (schema v2) — spec 03: SCH-1 create, SCH-2 roster gates,
 // SCH-3 catalog + membership requests, SCH-5 series-level schedule edits,
 // SCH-6 end/terminate; plus BIL-3 price changes (spec 04).
-// Deferred to later slices: SCH-4 self-serve booking (needs holds, spec 07),
-// ranked instructor picker, part-time time requests, custom recurrence.
+// SCH-4 self-serve booking now lives in bookingRoutes.js (holds + accept flow,
+// gated by self_serve_booking_enabled). Still deferred: ranked instructor
+// picker, part-time time requests, custom recurrence.
 import express from 'express';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 import { getSettings } from '../helpers/institutionSettings.js';

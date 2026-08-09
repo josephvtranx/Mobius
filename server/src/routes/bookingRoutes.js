@@ -4,8 +4,10 @@
 // created only when the instructor accepts. Cost = the
 // default_one_on_one_credit_cost knob (per-instructor/subject rates arrive
 // with the Top-Up spec). The credit gate runs BEFORE the hold — never a hold
-// on unfunded requests. Room availability is validated here at booking time;
-// the render-side "all rooms busy" subtraction in open-slots is deferred.
+// on unfunded requests. Room availability is validated here at booking time,
+// AND open-slots now subtracts intervals where every fittable room is busy
+// (slotFinder.allRoomsBusyIntervals) so a slot with no free room is never
+// advertised — the booking-time check remains the backstop.
 import express from 'express';
 import { DateTime } from 'luxon';
 import { authenticateToken } from '../middleware/auth.js';

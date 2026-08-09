@@ -26,10 +26,55 @@ export async function busyIntervals(db, instructorId, fromIso, toIso) {
   return rows;
 }
 
+// Intervals in [fromIso, toIso) where EVERY room that could seat a booking of
+// `minCapacity` is already occupied by a live session — i.e. no room is free.
+// A room is never double-booked (exclusion constraint), so a simple +1/-1
+// sweep of session intervals gives the concurrent distinct-busy-room count;
+// where it reaches the fittable-room total, no room is free. Returns merged
+// {s,e} luxon intervals. If no room can ever fit minCapacity, the whole range
+// is blocked.
+export async function allRoomsBusyIntervals(db, fromIso, toIso, minCapacity = 1) {
+  const { rows: roomRows } = await db.query(
+    `SELECT COUNT(*)::int AS n FROM rooms WHERE capacity >= $1`, [minCapacity]);
+  const n = roomRows[0].n;
+  if (n === 0) return [{ s: DateTime.fromISO(fromIso), e: DateTime.fromISO(toIso) }];
+
+  const { rows: sessions } = await db.query(
+    `SELECT cs.starts_at, cs.ends_at FROM class_sessions cs
+       JOIN rooms r ON r.room_id = cs.room_id
+      WHERE cs.status IN ${LIVE_SESSION} AND r.capacity >= $3
+        AND cs.starts_at < $2 AND cs.ends_at > $1`,
+    [fromIso, toIso, minCapacity]);
+  if (!sessions.length) return [];
+
+  const events = [];
+  for (const s of sessions) {
+    events.push({ t: +DateTime.fromJSDate(s.starts_at), d: 1 });
+    events.push({ t: +DateTime.fromJSDate(s.ends_at), d: -1 });
+  }
+  events.sort((a, b) => a.t - b.t);
+
+  const segs = [];
+  let count = 0, i = 0;
+  while (i < events.length) {
+    const t = events[i].t;
+    while (i < events.length && events[i].t === t) { count += events[i].d; i++; }
+    const nextT = i < events.length ? events[i].t : null;
+    if (nextT !== null && count >= n) {
+      const last = segs[segs.length - 1];
+      if (last && last.e === t) last.e = nextT;   // merge adjacent
+      else segs.push({ s: t, e: nextT });
+    }
+  }
+  return segs.map(g => ({ s: DateTime.fromMillis(g.s), e: DateTime.fromMillis(g.e) }));
+}
+
 // Weekly availability windows materialized over [fromIso, toIso) in the
 // academy's wall-clock zone `tz`, minus everything busy. Returns open windows
 // [{ starts_at, ends_at }] (UTC ISO); the client discretizes into pickable slots.
-export async function openSlots(db, instructorId, fromIso, toIso, tz) {
+// `minCapacity` (default 1, i.e. self-serve 1:1 booking) gates which rooms count
+// toward the "all rooms busy" subtraction so a slot with no free room isn't offered.
+export async function openSlots(db, instructorId, fromIso, toIso, tz, minCapacity = 1) {
   const { rows: availability } = await db.query(
     `SELECT day_of_week, start_time, end_time, start_date, end_date
        FROM instructor_availability
@@ -58,9 +103,15 @@ export async function openSlots(db, instructorId, fromIso, toIso, tz) {
   }
   windows.sort((a, b) => a.s - b.s);
 
-  const busy = (await busyIntervals(db, instructorId, fromIso, toIso)).map(b => ({
+  // Subtract BOTH what occupies the instructor AND intervals where every
+  // fittable room is already booked — otherwise open-slots advertises a time
+  // that fails at booking with "No room available". Merge and sort by start;
+  // the sweep below tolerates overlapping intervals (cursor only moves forward).
+  const instrBusy = (await busyIntervals(db, instructorId, fromIso, toIso)).map(b => ({
     s: DateTime.fromJSDate(b.starts_at), e: DateTime.fromJSDate(b.ends_at)
   }));
+  const roomBusy = await allRoomsBusyIntervals(db, fromIso, toIso, minCapacity);
+  const busy = [...instrBusy, ...roomBusy].sort((a, b) => a.s - b.s);
 
   const open = [];
   for (const w of windows) {
