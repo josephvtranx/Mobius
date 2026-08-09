@@ -147,6 +147,11 @@ export async function startTestEnv() {
     `INSERT INTO user_directory (email, password_hash, code) VALUES ($1, $2, $3)`,
     [SEED_USER.email, hash, TEST_CODE]
   );
+  // seed a platform admin (Mobius employee) — registry-level, same password
+  await registry.db.query(
+    `INSERT INTO platform_admins (email, password_hash, name) VALUES ($1, $2, $3)`,
+    ['admin@mobius.com', hash, 'Mobius Admin']
+  );
 
   // Env must be set BEFORE the app (and thus registryPool) is imported.
   // dotenv.config() never overrides pre-set values, so server/.env stays inert here.
@@ -161,6 +166,17 @@ export async function startTestEnv() {
   const { default: app } = await import('../../src/app.js');
   const { getTenantPool } = await import('../../src/db/tenantPool.js');
   const { registryPool } = await import('../../src/db/registryPool.js');
+  const { setTenantProvisioner } = await import('../../src/lib/tenantProvisioner.js');
+
+  // Platform-admin provisioning against PGlite: each new academy is a fresh
+  // migrated PGlite tenant instance (mirrors production's CREATE DATABASE +
+  // migrate). Tracked so stop() tears them down.
+  const provisioned = [];
+  setTenantProvisioner(async ({ code }) => {
+    const t = await startPg('tenant', { citext, btree_gist });
+    provisioned.push({ ...t, code });
+    return t.url;
+  });
 
   return {
     app,
@@ -169,6 +185,14 @@ export async function startTestEnv() {
     registryDb: registry.db,
     async stop() {
       const pool = await getTenantPool(TEST_CODE).catch(() => null);
+      // Provisioned academies each have their own cached tenant pool; attach an
+      // error handler to each so the socket-close on teardown doesn't surface
+      // as an uncaught "Connection terminated unexpectedly".
+      const provPools = [];
+      for (const p of provisioned) {
+        const pp = await getTenantPool(p.code).catch(() => null);
+        if (pp) { pp.on('error', () => {}); provPools.push(pp); }
+      }
       // Stop the wire servers FIRST: pg's Terminate handshake races pglite-socket
       // and throws an uncaught protocol error; a plain socket close is handled
       // by the pools' idle-error path instead. Swallow those error events.
@@ -179,6 +203,11 @@ export async function startTestEnv() {
       await new Promise((r) => setTimeout(r, 150));
       await registry.server.stop().catch(() => {});
       await tenant.server.stop().catch(() => {});
+      for (const pp of provPools) await pp.end().catch(() => {});
+      for (const p of provisioned) {
+        await p.server.stop().catch(() => {});
+        await p.db.close().catch(() => {});
+      }
       await registryPool.end().catch(() => {});
       if (pool) await pool.end().catch(() => {});
       await registry.db.close().catch(() => {});

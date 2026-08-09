@@ -35,6 +35,7 @@ import invoiceRoutes from './routes/invoiceRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import staffTaskRoutes from './routes/staffTaskRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { getTenantPool } from './db/tenantPool.js';
 import { registryPool } from './db/registryPool.js';
 import { authLimiter, apiLimiter } from './middleware/auth.js';
@@ -205,6 +206,7 @@ app.use('/api/invoices', invoiceRoutes);                 // invoices/invoice_pay
 app.use('/api/messages', messageRoutes);                 // real two-way messaging — new schema, no v1 precedent
 app.use('/api/staff-tasks', staffTaskRoutes);            // staff task inbox — generic list/resolve over staff_tasks
 app.use('/api/notifications', notificationRoutes);       // in-app notification feed (notification_log channel='in_app')
+app.use('/api/admin', adminRoutes);                      // platform-admin (Mobius employees): provision/config tenants + cross-tenant finance (registry-backed, no req.db)
 app.use('/api/instructors', instructorCalendarRoutes);   // v2 open-slots read (spec 03/07)
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/subject-groups', subjectGroupsRouter);
