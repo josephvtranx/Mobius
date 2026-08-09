@@ -33,8 +33,10 @@ function StudentRecord() {
       )}
       {record.entries.map((e) => (
         <div key={e.session_id} style={{ borderBottom: '1px solid #ddd', padding: '10px 0' }}>
-          <b>{isoToLocal(e.starts_at).toFormat('ccc, LLL d · h:mm a')}</b> · {e.subject} · attendance: {e.attendance.status}
-          {e.attendance.auto_completed ? ' (auto)' : ''}
+          <b>{isoToLocal(e.starts_at).toFormat('ccc, LLL d · h:mm a')}</b> · {e.subject}
+          {e.attendance ? (
+            <> · attendance: {e.attendance.status}{e.attendance.auto_completed ? ' (auto)' : ''}</>
+          ) : ' · attendance not marked'}
           {e.note ? (
             <div style={{ marginTop: 4 }}>
               {e.note.performance && <p><b>Performance:</b> {e.note.performance}</p>}

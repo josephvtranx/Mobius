@@ -192,18 +192,29 @@ router.get('/:id/record', authenticateToken, async (req, res) => {
   }
   const limit = Math.min(Number(req.query.limit) || 50, 200);
 
+  // Drive off the UNION of attendance rows AND note rows: a note written for
+  // a session the student was never marked attended for (feedback can be
+  // written on active enrollment alone — sessionRoutes PUT /:id/notes/:sid)
+  // would otherwise be orphaned, since attendance and notes are separate
+  // tables. Anchoring on either surfaces attended-but-noteless,
+  // noted-but-unattended, and both. Both sa and n are LEFT JOINed back on.
   const { rows } = await req.db.query(
-    `SELECT cs.session_id, cs.starts_at, cs.ends_at, cs.status AS session_status,
+    `WITH student_sessions AS (
+       SELECT session_id FROM session_attendance WHERE student_id = $1
+       UNION
+       SELECT session_id FROM session_notes WHERE student_id = $1
+     )
+     SELECT cs.session_id, cs.starts_at, cs.ends_at, cs.status AS session_status,
             sub.name AS subject, c.class_id, c.class_type,
             sa.status AS attendance_status, sa.auto_completed, sa.marked_at,
             n.performance, n.improvements, n.free_notes, n.edited_at, n.versions,
             n.created_at AS note_created_at
-       FROM session_attendance sa
-       JOIN class_sessions cs ON cs.session_id = sa.session_id
+       FROM student_sessions ss
+       JOIN class_sessions cs ON cs.session_id = ss.session_id
        JOIN classes c ON c.class_id = cs.class_id
        JOIN subjects sub ON sub.subject_id = c.subject_id
-       LEFT JOIN session_notes n ON n.session_id = sa.session_id AND n.student_id = sa.student_id
-      WHERE sa.student_id = $1
+       LEFT JOIN session_attendance sa ON sa.session_id = ss.session_id AND sa.student_id = $1
+       LEFT JOIN session_notes n ON n.session_id = ss.session_id AND n.student_id = $1
       ORDER BY cs.starts_at DESC LIMIT $2`,
     [student.student_id, limit]);
 
@@ -212,7 +223,9 @@ router.get('/:id/record', authenticateToken, async (req, res) => {
     session_id: r.session_id, starts_at: r.starts_at, ends_at: r.ends_at,
     session_status: r.session_status, subject: r.subject,
     class_id: r.class_id, class_type: r.class_type,
-    attendance: { status: r.attendance_status, auto_completed: r.auto_completed, marked_at: r.marked_at },
+    attendance: r.attendance_status
+      ? { status: r.attendance_status, auto_completed: r.auto_completed, marked_at: r.marked_at }
+      : null,
     note: (r.performance || r.improvements || r.free_notes) ? {
       performance: r.performance, improvements: r.improvements, free_notes: r.free_notes,
       edited_at: r.edited_at,
