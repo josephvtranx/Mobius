@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -16,8 +16,9 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-// POST new subject group
-router.post('/', authenticateToken, async (req, res) => {
+// POST new subject group (staff-only — mirrors subjectRoutes' mutation gate;
+// this was authenticateToken-only, letting any logged-in user create groups)
+router.post('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
   console.log('Received request to create subject group:', req.body); // Debug log
   const { name, description } = req.body;
 

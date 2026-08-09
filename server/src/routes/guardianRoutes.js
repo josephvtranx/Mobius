@@ -1,11 +1,16 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Apply authentication middleware to all routes
-router.use(authenticateToken);
+// SECURITY FIX (2026-08-08): this legacy v1 guardian-CRUD router (superseded
+// by studentGuardianV2Routes/guardianPortalRoutes, but still mounted) had
+// baseline authenticateToken but NO role gate, so any logged-in user —
+// including a student — could dump every guardian's PII and create/update/
+// delete guardian records. It's pure staff-admin surface; gate the whole
+// router to staff.
+router.use(authenticateToken, authorizeRole('staff'));
 
 // Validation middleware
 const guardianValidation = [

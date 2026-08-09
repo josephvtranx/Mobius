@@ -12,8 +12,16 @@ const userValidation = [
     body('role').isIn(['student', 'staff', 'instructor']).withMessage('Invalid role'),
 ];
 
-// Get all users
-router.get('/', async (req, res) => {
+// SECURITY FIX (2026-08-08): the collection + /:id CRUD routes below had
+// ZERO auth middleware — anyone with a valid X-Institution-Code header could
+// enumerate every user's PII, create users, change any user's role
+// (privilege escalation), or hard-delete accounts at /api/users. They are
+// now staff-only. Self-service stays on the /profile routes (authenticateToken
+// only), which is why this is gated per-route rather than with a blanket
+// router.use — a global staff gate would lock users out of their own profile.
+
+// Get all users (staff-only)
+router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
     try {
         const result = await req.db.query(`
             SELECT user_id, name, email, phone, role, created_at 
@@ -80,8 +88,8 @@ router.get('/all', authenticateToken, authorizeRole('staff'), async (req, res) =
     }
 });
 
-// Get single user
-router.get('/:id', async (req, res) => {
+// Get single user (staff-only; users read their own record via GET /profile)
+router.get('/:id', authenticateToken, authorizeRole('staff'), async (req, res) => {
     try {
         const { id } = req.params;
         const result = await req.db.query(`
@@ -101,8 +109,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Create new user
-router.post('/', userValidation, async (req, res) => {
+// Create new user (staff-only)
+router.post('/', authenticateToken, authorizeRole('staff'), userValidation, async (req, res) => {
     try {
         const { name, email, phone, role } = req.body;
 
@@ -129,8 +137,8 @@ router.post('/', userValidation, async (req, res) => {
     }
 });
 
-// Update user
-router.put('/:id', userValidation, async (req, res) => {
+// Update user (staff-only — changing role here is a privilege operation)
+router.put('/:id', authenticateToken, authorizeRole('staff'), userValidation, async (req, res) => {
     try {
         const { id } = req.params;
         const { name, email, phone, role } = req.body;
@@ -163,8 +171,8 @@ router.put('/:id', userValidation, async (req, res) => {
     }
 });
 
-// Soft delete user
-router.delete('/:id', async (req, res) => {
+// Delete user (staff-only)
+router.delete('/:id', authenticateToken, authorizeRole('staff'), async (req, res) => {
     try {
         const { id } = req.params;
 
