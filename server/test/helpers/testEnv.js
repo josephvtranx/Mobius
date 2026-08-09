@@ -55,6 +55,77 @@ async function startPg(migrationsSubdir, extensions) {
   return { db, server, url: `postgres://test:test@127.0.0.1:${port}/postgres` };
 }
 
+// Two-tenant variant for the cross-tenant isolation test: one registry, two
+// fully separate tenant DBs (A and B), each with its own login-able staff user
+// and its own data. Proves a JWT minted for tenant A can never read/write
+// tenant B's rows — the pool resolves per-tenant from the token's tenantCode
+// claim, so req.db is physically a different database.
+export const TEST_CODE_A = 'TENA01';
+export const TEST_CODE_B = 'TENB01';
+
+export async function startTwoTenantEnv() {
+  const registry = await startPg('registry', { citext });
+  const tenantA = await startPg('tenant', { citext, btree_gist });
+  const tenantB = await startPg('tenant', { citext, btree_gist });
+
+  await registry.db.query(
+    `INSERT INTO institutions (code, name, conn_string) VALUES ($1,$2,$3),($4,$5,$6)`,
+    [TEST_CODE_A, 'Academy A', tenantA.url, TEST_CODE_B, 'Academy B', tenantB.url]
+  );
+
+  // Seed one staff user per tenant, with the SAME numeric user_id (1) in both —
+  // this is the key trap: if isolation were broken, tenant A's token (userId 1)
+  // could read tenant B's user 1. Distinct emails so the directory routes each.
+  async function seedStaff(t, email, code) {
+    const hash = await bcrypt.hash('Password123!', 10);
+    await t.db.query(
+      `INSERT INTO users (password_hash, name, email, role) VALUES ($1,$2,$3,'staff')`,
+      [hash, `Staff ${code}`, email]
+    );
+    await t.db.query(`INSERT INTO staff (staff_id, employment_status) VALUES (1, 'full_time')`);
+    await registry.db.query(
+      `INSERT INTO user_directory (email, password_hash, code) VALUES ($1,$2,$3)`,
+      [email, hash, code]
+    );
+  }
+  await seedStaff(tenantA, 'staff-a@test.com', TEST_CODE_A);
+  await seedStaff(tenantB, 'staff-b@test.com', TEST_CODE_B);
+
+  process.env.REGISTRY_URL = registry.url;
+  process.env.PGSSLMODE = 'disable';
+  process.env.RESEND_API_KEY = '';
+  process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
+  process.env.NODE_ENV = 'test';
+
+  const { default: app } = await import('../../src/app.js');
+  const { getTenantPool } = await import('../../src/db/tenantPool.js');
+  const { registryPool } = await import('../../src/db/registryPool.js');
+
+  return {
+    app,
+    getTenantPool,
+    tenantADb: tenantA.db,
+    tenantBDb: tenantB.db,
+    async stop() {
+      const pa = await getTenantPool(TEST_CODE_A).catch(() => null);
+      const pb = await getTenantPool(TEST_CODE_B).catch(() => null);
+      registryPool.on('error', () => {});
+      pa?.on('error', () => {});
+      pb?.on('error', () => {});
+      await new Promise((r) => setTimeout(r, 150));
+      await registry.server.stop().catch(() => {});
+      await tenantA.server.stop().catch(() => {});
+      await tenantB.server.stop().catch(() => {});
+      await registryPool.end().catch(() => {});
+      if (pa) await pa.end().catch(() => {});
+      if (pb) await pb.end().catch(() => {});
+      await registry.db.close().catch(() => {});
+      await tenantA.db.close().catch(() => {});
+      await tenantB.db.close().catch(() => {});
+    }
+  };
+}
+
 export async function startTestEnv() {
   const registry = await startPg('registry', { citext });
   const tenant = await startPg('tenant', { citext, btree_gist });
