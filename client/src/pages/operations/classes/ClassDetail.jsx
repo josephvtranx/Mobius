@@ -67,7 +67,7 @@ function ClassDetail() {
   return (
     <div className="at-page" style={{ maxWidth: 900 }}>
       <p><Link to="/operations/classes" className="hm-link">← Back to classes</Link></p>
-      <h1 className="at-title" style={{ textTransform: 'capitalize' }}>{cls.class_type} class</h1>
+      <h1 className="at-title" style={{ textTransform: 'capitalize' }}>{cls.subject ? `${cls.subject} ` : ''}{cls.class_type} class</h1>
       <p className="at-subtitle">
         {cls.status} · {cls.session_credit_cost} credits/session · {cls.recurrence} ·
         limit {cls.student_limit} · starts {fmtDate(cls.starts_on)} ·
