@@ -56,6 +56,8 @@ const InstructorRoster = lazy(() => import('./pages/operations/roster/Instructor
 const StaffRoster = lazy(() => import('./pages/operations/roster/StaffRoster'));
 const ClassRoster = lazy(() => import('./pages/operations/roster/ClassRoster'));
 const Schedule = lazy(() => import('./pages/operations/Schedule'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const AdminConsole = lazy(() => import('./pages/admin/AdminConsole'));
 
 // Financial Dashboard pages
 const Overview = lazy(() => import('./pages/operations/Financial-Dashboard/Overview'));
@@ -89,6 +91,7 @@ function AppContent() {
   const location = useLocation();
   const isAuthRoute = location.pathname.startsWith('/auth/');
   const isLandingPage = location.pathname === '/';
+  const isAdminRoute = location.pathname.startsWith('/admin');
   const role = authService.getCurrentUser()?.role;
   const variant = isAuthRoute ? 'auth' : (ROLE_THEME[role] || 'teal');
 
@@ -104,10 +107,10 @@ function AppContent() {
           column next to the sidebar, never the sidebar itself. */}
       <div className={`main-content ${isAuthRoute ? 'auth-layout' : 'app-layout'}`}>
         {/* Shared shell sidebar - only on authenticated, non-landing routes */}
-        {!isAuthRoute && !isLandingPage && <SideNav />}
+        {!isAuthRoute && !isLandingPage && !isAdminRoute && <SideNav />}
 
         <div className="app-main-column">
-          {!isLandingPage && <Header variant={variant} />}
+          {!isLandingPage && !isAdminRoute && <Header variant={variant} />}
 
           {/* Routes */}
           <div className="content-area">
@@ -124,6 +127,10 @@ function AppContent() {
             <Route path="/auth/register/user/student" element={<StudentRegistration />} />
             <Route path="/auth/register/user/instructor" element={<InstructorRegistration />} />
             <Route path="/auth/register/user/staff" element={<StaffRegistration />} />
+
+            {/* Platform admin (Mobius employees) — bare, registry-backed, no tenant shell */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<AdminConsole />} />
 
             {/* Redirect /login to /auth/login */}
             <Route
