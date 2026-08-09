@@ -74,6 +74,19 @@ const sessionServiceV2 = {
         }
     },
 
+    // RSC-3: instructor cancels their own session instance (unilateral;
+    // families are made whole automatically — never deducts, auto-refunds any
+    // prior deduction). Reason is required (free text).
+    instructorCancel: async (sessionId, reason) => {
+        try {
+            const response = await api.post(`/sessions/${sessionId}/instructor-cancel`, { reason });
+            return response.data;
+        } catch (error) {
+            console.error('Error cancelling session:', error);
+            throw error;
+        }
+    },
+
     // RSC-5: staff cancel — unbound by the Window; status defaults to the
     // never-deduct instructor_cancelled equivalent server-side
     staffCancel: async (sessionId, { status, reason } = {}) => {
