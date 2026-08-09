@@ -32,6 +32,34 @@ function StudentRoster() {
   const [expandedRows, setExpandedRows] = useState({});
   const [filter, setFilter] = useState('All');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+  // Per-student guardian-link form state (keyed by student id).
+  const [gForm, setGForm] = useState({});
+  const [gMsg, setGMsg] = useState({});
+  const [gBusy, setGBusy] = useState({});
+
+  const patchForm = (id, patch) => setGForm((p) => ({ ...p, [id]: { ...(p[id] || {}), ...patch } }));
+
+  const linkGuardian = async (s) => {
+    const f = gForm[s.id] || {};
+    if (!f.email?.trim()) return;
+    setGBusy((p) => ({ ...p, [s.id]: true }));
+    setGMsg((p) => ({ ...p, [s.id]: null }));
+    try {
+      await api.post(`/students/${s.id}/guardians`, {
+        email: f.email.trim(),
+        name: f.name?.trim() || undefined,
+        relationship: f.relationship?.trim() || undefined,
+      });
+      setStudents((prev) => prev.map((x) => x.id === s.id
+        ? { ...x, parentNames: [...x.parentNames, f.name?.trim() || f.email.trim()] } : x));
+      setGForm((p) => ({ ...p, [s.id]: {} }));
+      setGMsg((p) => ({ ...p, [s.id]: { text: 'Guardian linked.', ok: true } }));
+    } catch (err) {
+      setGMsg((p) => ({ ...p, [s.id]: { text: err.response?.data?.message || 'Could not link guardian', ok: false } }));
+    } finally {
+      setGBusy((p) => ({ ...p, [s.id]: false }));
+    }
+  };
 
   useEffect(() => {
     api.get('/students/roster')
@@ -126,13 +154,55 @@ function StudentRoster() {
                 </div>
               </div>
               {expandedRows[s.id] && (
-                <div className="rt-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', padding: '10px 16px' }}>
-                  {s.studentPhone && <span className="rt-cell">Student: {s.studentPhone}</span>}
-                  {s.parentNames.map((name, i) => (
-                    <span key={i} className="rt-cell">
-                      {name}{s.parentEmails[i] ? ` · ${s.parentEmails[i]}` : ''}{s.parentPhones[i] ? ` · ${s.parentPhones[i]}` : ''}
-                    </span>
-                  ))}
+                <div className="rt-row" style={{ display: 'block', padding: '10px 16px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 12 }}>
+                    {s.studentPhone && <span className="rt-cell">Student: {s.studentPhone}</span>}
+                    {s.parentNames.length === 0 && <span className="rt-cell">No guardian linked yet.</span>}
+                    {s.parentNames.map((name, i) => (
+                      <span key={i} className="rt-cell">
+                        {name}{s.parentEmails[i] ? ` · ${s.parentEmails[i]}` : ''}{s.parentPhones[i] ? ` · ${s.parentPhones[i]}` : ''}
+                      </span>
+                    ))}
+                  </div>
+                  {/* Staff guardian-linking (GRD-2): links an existing guardian by email,
+                      or creates + links a new one when a name is given. */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                    <span className="rt-sub" style={{ fontWeight: 600 }}>Link a guardian:</span>
+                    <input
+                      type="email"
+                      placeholder="guardian email (required)"
+                      value={gForm[s.id]?.email || ''}
+                      onChange={(e) => patchForm(s.id, { email: e.target.value })}
+                      style={{ minWidth: 200 }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="name (for a new guardian)"
+                      value={gForm[s.id]?.name || ''}
+                      onChange={(e) => patchForm(s.id, { name: e.target.value })}
+                      style={{ minWidth: 160 }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="relationship (e.g. parent)"
+                      value={gForm[s.id]?.relationship || ''}
+                      onChange={(e) => patchForm(s.id, { relationship: e.target.value })}
+                      style={{ minWidth: 150 }}
+                    />
+                    <button
+                      type="button"
+                      className="hm-btn"
+                      disabled={gBusy[s.id] || !gForm[s.id]?.email?.trim()}
+                      onClick={() => linkGuardian(s)}
+                    >
+                      {gBusy[s.id] ? 'Linking…' : 'Link'}
+                    </button>
+                    {gMsg[s.id] && (
+                      <span className="rt-sub" style={{ color: gMsg[s.id].ok ? 'var(--status-success)' : 'var(--status-error, #c0392b)' }}>
+                        {gMsg[s.id].text}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
