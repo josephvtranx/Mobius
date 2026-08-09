@@ -46,8 +46,12 @@ router.get('/roster', getInstructorRoster);
 // caller is the staff Scheduling page)
 router.get('/', authorizeRole('staff'), async (req, res) => {
     try {
+        // Paginated with a hard ceiling (see studentRoutes for rationale) —
+        // an unbounded list grows with staff headcount. Default/cap 500.
+        const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 500);
+        const offset = Math.max(Number(req.query.offset) || 0, 0);
         const result = await req.db.query(`
-            SELECT 
+            SELECT
                 i.*,
                 u.name,
                 u.email,
@@ -60,7 +64,8 @@ router.get('/', authorizeRole('staff'), async (req, res) => {
             WHERE u.is_active = true
             GROUP BY i.instructor_id, u.user_id
             ORDER BY u.name
-        `);
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching instructors:', error);

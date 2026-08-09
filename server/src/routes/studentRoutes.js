@@ -21,16 +21,22 @@ router.use(authenticateToken, authorizeRole('staff'));
 // Get student roster
 router.get('/roster', getStudentRoster);
 
-// Get all students
+// Get all students. Paginated with a hard ceiling: an academy can grow to
+// thousands of students, and an unbounded SELECT * would balloon the
+// response and DB load. Defaults to 500 (matches paymentRoutes' ceiling);
+// callers can page with ?limit / ?offset.
 router.get('/', async (req, res) => {
     try {
+        const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 500);
+        const offset = Math.max(Number(req.query.offset) || 0, 0);
         const result = await req.db.query(`
             SELECT s.*, u.name, u.email, u.phone
             FROM students s
             JOIN users u ON s.student_id = u.user_id
             WHERE u.is_active = true
             ORDER BY u.name
-        `);
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching students:', error);
