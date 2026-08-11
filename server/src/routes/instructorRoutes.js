@@ -1,5 +1,6 @@
 import express from 'express';
-import { body, validationResult } from 'express-validator';
+import { body } from 'express-validator';
+import { validateRequest } from '../middleware/validation.js';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
@@ -39,19 +40,9 @@ const availabilityValidation = [
     body('end_date').optional().isISO8601().withMessage('End date must be a valid date'),
     body('notes').optional().isString().withMessage('Notes must be a string')
 ];
-
-// The validation chains above collect errors; this actually enforces them
-// (previously nothing read validationResult, so the chain was decorative).
-function handleValidation(req, res, next) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            message: 'Validation failed',
-            errors: errors.array().map(e => ({ field: e.path, message: e.msg })),
-        });
-    }
-    next();
-}
+// NB: the chain above only collects errors — validateRequest (shared
+// middleware) is what enforces them; previously nothing read
+// validationResult here, so the chain was decorative.
 
 // Get instructor roster
 router.get('/roster', getInstructorRoster);
@@ -146,7 +137,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', authorizeRole('staff'), updateInstructor);
 
 // Add availability
-router.post('/:id/availability', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, handleValidation, async (req, res) => {
+router.post('/:id/availability', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, validateRequest, async (req, res) => {
     try {
         const { id } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
@@ -223,7 +214,7 @@ router.get('/:id/availability', async (req, res) => {
 
 // Update availability slot (same validation as the POST — this route
 // previously accepted anything)
-router.put('/:id/availability/:availabilityId', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, handleValidation, async (req, res) => {
+router.put('/:id/availability/:availabilityId', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, validateRequest, async (req, res) => {
     try {
         const { id, availabilityId } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
