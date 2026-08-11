@@ -64,6 +64,7 @@ function ChildCard({ child }) {
 
       <div className="hm-card-foot">
         <Link className="hm-btn primary" to={`${base}/schedule`}>Schedule</Link>
+        <Link className="hm-btn" to={`${base}/book`}>Book</Link>
         <Link className="hm-btn" to={`${base}/record`}>Progress</Link>
         <Link className="hm-btn" to={`${base}/billing`}>Billing</Link>
         <Link className="hm-btn" to={`${base}/requests`}>Requests</Link>
