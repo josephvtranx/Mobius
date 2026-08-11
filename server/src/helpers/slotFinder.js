@@ -35,14 +35,14 @@ export async function busyIntervals(db, instructorId, fromIso, toIso) {
 // is blocked.
 export async function allRoomsBusyIntervals(db, fromIso, toIso, minCapacity = 1) {
   const { rows: roomRows } = await db.query(
-    `SELECT COUNT(*)::int AS n FROM rooms WHERE capacity >= $1`, [minCapacity]);
+    `SELECT COUNT(*)::int AS n FROM rooms WHERE is_active AND capacity >= $1`, [minCapacity]);
   const n = roomRows[0].n;
   if (n === 0) return [{ s: DateTime.fromISO(fromIso), e: DateTime.fromISO(toIso) }];
 
   const { rows: sessions } = await db.query(
     `SELECT cs.starts_at, cs.ends_at FROM class_sessions cs
        JOIN rooms r ON r.room_id = cs.room_id
-      WHERE cs.status IN ${LIVE_SESSION} AND r.capacity >= $3
+      WHERE cs.status IN ${LIVE_SESSION} AND r.is_active AND r.capacity >= $3
         AND cs.starts_at < $2 AND cs.ends_at > $1`,
     [fromIso, toIso, minCapacity]);
   if (!sessions.length) return [];
@@ -151,7 +151,7 @@ export async function instructorFree(db, instructorId, startsAt, endsAt, exclude
 export async function bestFitRoom(db, startsAt, endsAt, minCapacity = 1) {
   const { rows } = await db.query(
     `SELECT room_id, name, capacity FROM rooms r
-      WHERE r.capacity >= $3
+      WHERE r.is_active AND r.capacity >= $3
         AND NOT EXISTS (SELECT 1 FROM class_sessions cs
                          WHERE cs.room_id = r.room_id AND cs.status IN ${LIVE_SESSION}
                            AND cs.starts_at < $2 AND cs.ends_at > $1)
