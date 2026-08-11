@@ -31,14 +31,17 @@ const KIND = {
     link: (t) => (t.details?.student_id ? `/operations/wallets?student=${t.details.student_id}` : '/operations/wallets'),
     text: (t) => `${t.student_name ?? 'A student'}'s balance went negative${t.details?.balance != null ? ` (${t.details.balance})` : ''}`,
   },
+  // Escalations deep-link to /inbox — the accept/reject surface for pending
+  // reschedules and bookings (staff see all of them there); Scheduling has
+  // no response affordance.
   reschedule_escalation: {
     icon: 'fa-regular fa-calendar-xmark', label: 'Reschedule escalation',
-    link: () => '/operations/scheduling',
+    link: () => '/inbox',
     text: (t) => `A reschedule request for ${t.student_name ?? 'a student'} went unanswered`,
   },
   booking_escalation: {
     icon: 'fa-regular fa-calendar-plus', label: 'Booking escalation',
-    link: () => '/operations/scheduling',
+    link: () => '/inbox',
     text: (t) => `A self-serve booking${t.subject ? ` for ${t.subject}` : ''} went unanswered`,
   },
   instructor_termination_request: {

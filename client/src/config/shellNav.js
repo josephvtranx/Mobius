@@ -140,6 +140,10 @@ export function getShellNav(role, user) {
             },
             { label: 'Classes', icon: 'fa-solid fa-chalkboard', path: '/operations/classes' },
             { label: 'Requests', icon: 'fa-solid fa-envelope-open-text', path: '/operations/requests' },
+            // /inbox is the accept/reject surface for pending reschedules +
+            // self-serve bookings (staff see all; instructors their own) —
+            // previously staff-allowed in App.jsx but unreachable from the nav.
+            { label: 'Reschedules & bookings', icon: 'fa-regular fa-calendar-check', path: '/inbox' },
           ],
         },
         {
