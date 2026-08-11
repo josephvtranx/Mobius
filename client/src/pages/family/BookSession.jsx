@@ -2,13 +2,14 @@
 // Class catalog / booking; spec 03 SCH-4): pick an instructor + subject,
 // browse open windows, request a slot. The credit gate runs BEFORE any
 // hold — shortfalls render verbatim with the top-up hint.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DateTime } from 'luxon';
 import { useParams } from 'react-router-dom';
 import bookingService from '@/services/bookingService';
 import instructorCalendarService from '@/services/instructorCalendarService';
 import instructorService from '@/services/instructorService';
 import subjectService from '@/services/subjectService';
+import { discretizeSlots } from '@/lib/slots';
 import { isoToLocal } from 'mobius-lms';
 import '@/css/schedule.css';
 
@@ -22,8 +23,13 @@ function BookSession() {
   const [instructorId, setInstructorId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [duration, setDuration] = useState(60);
-  const [slots, setSlots] = useState(null);
+  const [slots, setSlots] = useState(null); // raw open WINDOWS from the server
   const [chosen, setChosen] = useState(null);
+
+  // Windows -> concrete start times every 30 min that fit the duration
+  const pickable = useMemo(
+    () => (slots === null ? null : discretizeSlots(slots, duration)),
+    [slots, duration]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -113,20 +119,20 @@ function BookSession() {
         <label className="at-subtitle" style={{ display: 'block', marginBottom: 4 }}>Duration (minutes)</label>
         <input
           type="number" min="15" step="15" value={duration}
-          onChange={(e) => setDuration(e.target.value)}
+          onChange={(e) => { setDuration(e.target.value); setChosen(null); }}
           style={{ width: '100%', marginBottom: 14, padding: 8, borderRadius: 8, border: '1px solid var(--shell-border)' }}
         />
 
         {instructorId && (
           <>
             <p className="at-subtitle" style={{ marginTop: 0 }}>Open times in the next 14 days — pick one:</p>
-            {slots === null ? (
+            {pickable === null ? (
               <div className="hm-loading">Loading…</div>
             ) : (
               <div className="sc-slot-grid">
-                {slots.map((sl, i) => (
+                {pickable.map((sl) => (
                   <button
-                    key={i}
+                    key={sl.starts_at}
                     type="button"
                     className={`sc-slot ${chosen === sl ? 'active' : ''}`}
                     onClick={() => setChosen(sl)}
@@ -134,7 +140,13 @@ function BookSession() {
                     {fmt(sl.starts_at)}
                   </button>
                 ))}
-                {slots.length === 0 && <div className="hm-empty">No open windows in the next 14 days.</div>}
+                {pickable.length === 0 && (
+                  <div className="hm-empty">
+                    {slots.length === 0
+                      ? 'No open windows in the next 14 days.'
+                      : `No open times fit a ${duration}-minute session — try a shorter duration.`}
+                  </div>
+                )}
               </div>
             )}
           </>

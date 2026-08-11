@@ -11,6 +11,7 @@ import sessionServiceV2 from '@/services/sessionServiceV2';
 import instructorCalendarService from '@/services/instructorCalendarService';
 import instructorService from '@/services/instructorService';
 import Modal from '@/components/Modal';
+import { discretizeSlots } from '@/lib/slots';
 import { isoToLocal } from 'mobius-lms';
 import '@/css/schedule.css';
 
@@ -76,7 +77,10 @@ function StudentSchedule() {
         ),
         instructorService.getInstructorById(detailFor.instructor_id).catch(() => null),
       ]);
-      setSlots(openSlots);
+      // Windows -> concrete start times matching this session's own length
+      const durationMin = DateTime.fromISO(detailFor.ends_at)
+        .diff(DateTime.fromISO(detailFor.starts_at), 'minutes').minutes;
+      setSlots(discretizeSlots(openSlots, durationMin));
       setTutorName(instructor?.name ?? 'your tutor');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load open slots');
