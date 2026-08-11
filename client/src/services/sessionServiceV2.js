@@ -3,6 +3,25 @@
 import api from './api';
 
 const sessionServiceV2 = {
+    // Staff-only date-range query (max 62 days): sessions across all classes
+    // in [from, to), optionally filtered to one student's active enrollments
+    // or one instructor. Times must be UTC ISO-Z. Returns { from, to, sessions }.
+    listRange: async ({ from, to, student_id, instructor_id }) => {
+        try {
+            const response = await api.get('/sessions', {
+                params: {
+                    from, to,
+                    ...(student_id != null ? { student_id } : {}),
+                    ...(instructor_id != null ? { instructor_id } : {}),
+                },
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error listing sessions:', error);
+            throw error;
+        }
+    },
+
     // marks: [{ student_id, status, note?: {performance, improvements, free_notes} }]
     // status ∈ present | absent_unexcused | absent_excused |
     //          cancelled_in_window | cancelled_late | instructor_cancelled

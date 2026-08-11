@@ -1,14 +1,15 @@
 // Staff Attendance queue (design handoff README > Staff app > Attendance):
-// session list with To-mark/Marked tabs. There's no direct "sessions across
-// all classes in a date range" endpoint, so this fetches every class
-// (classService.getAllClasses, staff-only) then each class's full session
-// list and flattens them — the same N+1-by-class-count pattern used for
-// the instructor's My classes page. A session counts as "marked" once its
-// status leaves 'scheduled' (the attendance route flips it to 'completed'
-// once every roster student has a mark) — a real signal, not invented.
+// session list with To-mark/Marked tabs, backed by the staff date-range
+// session query (GET /api/sessions?from=&to=) in a single request — the
+// window is the last 4 weeks through the next 2 (a marking queue, not an
+// archive; older history lives on each class's detail page). A session
+// counts as "marked" once its status leaves 'scheduled' (the attendance
+// route flips it to 'completed' once every roster student has a mark) —
+// a real signal, not invented.
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import classService from '@/services/classService';
+import { DateTime } from 'luxon';
+import sessionServiceV2 from '@/services/sessionServiceV2';
 import { isoToLocal } from 'mobius-lms';
 import '@/css/attendance.css';
 import '@/css/table.css';
@@ -19,23 +20,12 @@ function Attendance() {
   const [tab, setTab] = useState('to-mark');
 
   useEffect(() => {
-    classService.getAllClasses()
-      .then(async (classes) => {
-        // getClass(id) (detail) doesn't return a subject name, only the list
-        // endpoint does — carry it over from the outer list instead.
-        const details = await Promise.all(classes.map((c) => classService.getClass(c.class_id)));
-        const flat = details.flatMap((cls, i) =>
-          cls.sessions.map((s) => ({
-            ...s,
-            class_id: cls.class_id,
-            subject: classes[i].subject,
-            class_type: cls.class_type,
-            rosterCount: cls.roster.filter((r) => r.status === 'active').length,
-          }))
-        );
-        flat.sort((a, b) => (a.starts_at < b.starts_at ? -1 : 1));
-        setSessions(flat);
-      })
+    const now = DateTime.now();
+    sessionServiceV2.listRange({
+      from: now.minus({ weeks: 4 }).startOf('day').toUTC().toISO(),
+      to: now.plus({ weeks: 2 }).endOf('day').toUTC().toISO(),
+    })
+      .then((res) => setSessions(res.sessions.map((s) => ({ ...s, rosterCount: s.roster_count }))))
       .catch((err) => setError(err.response?.data?.message || 'Failed to load sessions'));
   }, []);
 

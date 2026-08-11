@@ -1,25 +1,17 @@
 // Staff Scheduling (design handoff: Mobius Staff.dc.html "## Scheduling" —
 // person search (students + instructors) -> a real weekly time-grid
 // calendar; selecting a student reveals "Add subject", opening the
-// enrollment wizard in existing-student mode). Rebuilt on the same real
-// per-person calls used everywhere else: a student's week via
-// studentViewService.getSchedule, an instructor's week via
-// instructorService.getInstructorById's real upcoming_sessions
-// (cross-referenced against classService.getAllClasses for subject names).
-//
-// The mockup's week Prev/Today/Next controls are wired to `noop` even in
-// the design source itself — there's no real "browse an arbitrary past/
-// future week" data source (the schedule endpoints return the next N
-// upcoming sessions, not a date-range query), so those controls stay
-// visually present but inert here too rather than faking a working
-// week-browser. "This week" always means the real current week.
+// enrollment wizard in existing-student mode). Sessions come from the
+// staff date-range query (GET /api/sessions?from=&to= filtered by
+// student_id/instructor_id), so the week Prev/Today/Next controls really
+// browse arbitrary past/future weeks. Cancelled/moved rows are hidden —
+// this is a "what's on the calendar" surface, not an audit trail.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
 import EnrollmentWizard from './classes/EnrollmentWizard';
 import studentService from '@/services/studentService';
 import instructorService from '@/services/instructorService';
-import studentViewService from '@/services/studentViewService';
-import classService from '@/services/classService';
+import sessionServiceV2 from '@/services/sessionServiceV2';
 import { tintFor } from '@/lib/rosterColors';
 import '@/css/home.css';
 import '@/css/schedule.css';
@@ -39,13 +31,16 @@ function weekOf(dt) {
   return { start, end: start.plus({ days: 7 }) };
 }
 
+// Session statuses that should paint a block on the calendar.
+const VISIBLE_STATUS = new Set(['scheduled', 'reschedule_requested', 'completed']);
+
 function Scheduling() {
   const [students, setStudents] = useState([]);
   const [instructors, setInstructors] = useState([]);
-  const [classes, setClasses] = useState([]);
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState(null); // { type, id, name }
+  const [weekOffset, setWeekOffset] = useState(0); // whole weeks from the current one
   const [sessions, setSessions] = useState(null);
   const [error, setError] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -54,7 +49,6 @@ function Scheduling() {
   useEffect(() => {
     studentService.getAllStudents().then(setStudents).catch(() => {});
     instructorService.getAllInstructors().then(setInstructors).catch(() => {});
-    classService.getAllClasses().then(setClasses).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -82,27 +76,24 @@ function Scheduling() {
     setError('');
     setQuery('');
     setSearchOpen(false);
-    if (!person) return;
-    if (person.type === 'student') {
-      studentViewService.getSchedule(person.id)
-        .then((res) => setSessions(res.sessions))
-        .catch((err) => setError(err.response?.data?.message || 'Failed to load schedule'));
-    } else {
-      instructorService.getInstructorById(person.id)
-        .then((instructor) => {
-          const classById = new Map(classes.map((c) => [String(c.class_id), c]));
-          const rows = (instructor.upcoming_sessions || [])
-            .filter((s) => s && s.starts_at)
-            .map((s) => ({ ...s, subject: classById.get(String(s.class_id))?.subject ?? 'Unknown subject' }))
-            .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
-          setSessions(rows);
-        })
-        .catch((err) => setError(err.response?.data?.message || 'Failed to load schedule'));
-    }
   };
 
   const now = DateTime.now();
-  const { start: weekStart, end: weekEnd } = weekOf(now);
+  const { start: weekStart, end: weekEnd } = weekOf(now.plus({ weeks: weekOffset }));
+
+  const fetchSessions = () => {
+    if (!selected) return;
+    setSessions(null);
+    setError('');
+    sessionServiceV2.listRange({
+      from: weekStart.toUTC().toISO(),
+      to: weekEnd.toUTC().toISO(),
+      ...(selected.type === 'student' ? { student_id: selected.id } : { instructor_id: selected.id }),
+    })
+      .then((res) => setSessions(res.sessions.filter((s) => VISIBLE_STATUS.has(s.status))))
+      .catch((err) => setError(err.response?.data?.message || 'Failed to load schedule'));
+  };
+  useEffect(fetchSessions, [selected, weekOffset]);
   const weekLabel = weekStart.month === weekEnd.minus({ days: 1 }).month
     ? `${weekStart.toFormat('LLL d')} – ${weekEnd.minus({ days: 1 }).toFormat('d, yyyy')}`
     : `${weekStart.toFormat('LLL d')} – ${weekEnd.minus({ days: 1 }).toFormat('LLL d, yyyy')}`;
@@ -121,10 +112,10 @@ function Scheduling() {
     <div className="hm-page">
       <div className="sch-topbar">
         <h1>{weekLabel}</h1>
-        <div className="sch-nav" aria-hidden="true" title="This app doesn't support browsing other weeks yet — schedule data is fetched as upcoming sessions, not by date range.">
-          <button type="button" className="hm-btn" disabled>‹</button>
-          <button type="button" className="hm-btn" disabled>Today</button>
-          <button type="button" className="hm-btn" disabled>›</button>
+        <div className="sch-nav">
+          <button type="button" className="hm-btn" aria-label="Previous week" onClick={() => setWeekOffset((o) => o - 1)}>‹</button>
+          <button type="button" className="hm-btn" disabled={weekOffset === 0} onClick={() => setWeekOffset(0)}>Today</button>
+          <button type="button" className="hm-btn" aria-label="Next week" onClick={() => setWeekOffset((o) => o + 1)}>›</button>
         </div>
 
         <div className="sch-search" ref={searchRef}>
@@ -255,7 +246,7 @@ function Scheduling() {
           isOpen={wizardOpen}
           onClose={() => setWizardOpen(false)}
           initialStudentId={selected.id}
-          onDone={() => load(selected)}
+          onDone={fetchSessions}
         />
       )}
     </div>

@@ -47,6 +47,59 @@ const hasNoteContent = (note) =>
   note != null && typeof note === 'object' && NOTE_FIELDS.some(f => note[f]);
 
 // ---------------------------------------------------------------------------
+// GET / — staff date-range session query: ?from=&to= (UTC ISO-Z, required,
+// max 62 days) plus optional student_id / instructor_id filters. Backs the
+// Scheduling week browser and the Attendance queue — the first "sessions
+// across all classes in a date range" read; every other listing is
+// horizon-based ("next N upcoming"). All statuses are returned (past weeks
+// need completed/cancelled rows); callers filter for their surface.
+// ---------------------------------------------------------------------------
+router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const { from, to, student_id, instructor_id } = req.query;
+  if (!from || !to) {
+    return res.status(400).json({ message: 'from and to are required (UTC ISO with Z suffix)' });
+  }
+  try { assertUtcIso(from); assertUtcIso(to); } catch {
+    return res.status(400).json({ message: 'from/to must be UTC ISO timestamps with a Z suffix' });
+  }
+  const fromDt = DateTime.fromISO(from, { zone: 'utc' });
+  const toDt = DateTime.fromISO(to, { zone: 'utc' });
+  if (!fromDt.isValid || !toDt.isValid) {
+    return res.status(400).json({ message: 'from/to must be valid timestamps' });
+  }
+  if (toDt <= fromDt) return res.status(400).json({ message: 'to must be after from' });
+  if (toDt.diff(fromDt, 'days').days > 62) {
+    return res.status(400).json({ message: 'range too large (max 62 days)' });
+  }
+  const studentId = student_id != null ? Number(student_id) : null;
+  const instructorId = instructor_id != null ? Number(instructor_id) : null;
+  if ((student_id != null && !Number.isInteger(studentId)) ||
+      (instructor_id != null && !Number.isInteger(instructorId))) {
+    return res.status(400).json({ message: 'student_id/instructor_id must be integers' });
+  }
+
+  const { rows } = await req.db.query(
+    `SELECT cs.session_id, cs.class_id, cs.instructor_id, cs.room_id,
+            cs.starts_at, cs.ends_at, cs.status,
+            c.class_type, sub.name AS subject,
+            (SELECT count(*)::int FROM enrollments e
+              WHERE e.class_id = c.class_id AND e.status = 'active') AS roster_count
+       FROM class_sessions cs
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+      WHERE cs.starts_at < $2 AND cs.ends_at > $1
+        AND ($3::int IS NULL OR cs.instructor_id = $3)
+        AND ($4::int IS NULL OR EXISTS
+             (SELECT 1 FROM enrollments e2
+               WHERE e2.class_id = cs.class_id AND e2.student_id = $4
+                 AND e2.status = 'active'))
+      ORDER BY cs.starts_at
+      LIMIT 2000`,
+    [fromDt.toISO(), toDt.toISO(), instructorId, studentId]);
+  res.json({ from: fromDt.toISO(), to: toDt.toISO(), sessions: rows });
+});
+
+// ---------------------------------------------------------------------------
 // POST /:id/attendance — bulk mark/correct: { marks: [{ student_id, status }] }
 // ---------------------------------------------------------------------------
 router.post('/:id/attendance', authenticateToken, async (req, res) => {
