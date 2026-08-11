@@ -1,5 +1,5 @@
 import express from 'express';
-import { body } from 'express-validator';
+import { body, validationResult } from 'express-validator';
 import { getInstructorRoster, updateInstructor } from '../controllers/instructorController.js';
 import { requireUtcIso } from '../middleware/requireUtcIso.js';
 import { authenticateToken, authorizeRole } from '../middleware/auth.js';
@@ -26,9 +26,10 @@ function staffOrSelf(req, res, next) {
 const availabilityValidation = [
     body('day_of_week').isIn(['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'])
         .withMessage('Valid day of week is required'),
-    body('start_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
+    // HH:MM with optional :SS — DB TIME values round-trip as HH:MM:SS
+    body('start_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
         .withMessage('Start time must be in HH:MM format'),
-    body('end_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
+    body('end_time').matches(/^([0-1][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
         .withMessage('End time must be in HH:MM format'),
     body('type').optional().isIn(['default', 'preferred', 'emergency'])
         .withMessage('Type must be default, preferred, or emergency'),
@@ -38,6 +39,19 @@ const availabilityValidation = [
     body('end_date').optional().isISO8601().withMessage('End date must be a valid date'),
     body('notes').optional().isString().withMessage('Notes must be a string')
 ];
+
+// The validation chains above collect errors; this actually enforces them
+// (previously nothing read validationResult, so the chain was decorative).
+function handleValidation(req, res, next) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            message: 'Validation failed',
+            errors: errors.array().map(e => ({ field: e.path, message: e.msg })),
+        });
+    }
+    next();
+}
 
 // Get instructor roster
 router.get('/roster', getInstructorRoster);
@@ -132,7 +146,7 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', authorizeRole('staff'), updateInstructor);
 
 // Add availability
-router.post('/:id/availability', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, async (req, res) => {
+router.post('/:id/availability', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, handleValidation, async (req, res) => {
     try {
         const { id } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
@@ -200,7 +214,6 @@ router.get('/:id/availability', async (req, res) => {
                 start_time
         `, [id]);
 
-        console.log('[DEBUG] /api/instructors/' + id + '/availability result:', result.rows);
         res.json(result.rows);
     } catch (error) {
         console.error('Error fetching availability:', error);
@@ -208,8 +221,9 @@ router.get('/:id/availability', async (req, res) => {
     }
 });
 
-// Update availability slot
-router.put('/:id/availability/:availabilityId', staffOrSelf, async (req, res) => {
+// Update availability slot (same validation as the POST — this route
+// previously accepted anything)
+router.put('/:id/availability/:availabilityId', staffOrSelf, requireUtcIso(['start_date', 'end_date']), availabilityValidation, handleValidation, async (req, res) => {
     try {
         const { id, availabilityId } = req.params;
         const { day_of_week, start_time, end_time, type, status, start_date, end_date, notes } = req.body;
@@ -280,11 +294,16 @@ router.get('/:id/unavailability', async (req, res) => {
     }
 });
 
-// Add unavailability
-router.post('/:id/unavailability', staffOrSelf, async (req, res) => {
+// Add unavailability (time off) — datetimes cross the API boundary, so the
+// repo-wide UTC ISO-Z convention applies
+router.post('/:id/unavailability', staffOrSelf, requireUtcIso(['start_datetime', 'end_datetime']), async (req, res) => {
     try {
         const { id } = req.params;
         const { start_datetime, end_datetime, reason } = req.body;
+
+        if (!start_datetime || !end_datetime) {
+            return res.status(400).json({ error: 'start_datetime and end_datetime are required' });
+        }
 
         // Validate datetime range
         if (new Date(start_datetime) >= new Date(end_datetime)) {

@@ -121,6 +121,27 @@ const instructorService = {
             console.error(`Error fetching unavailability for instructor ${id}:`, error);
             throw error;
         }
+    },
+
+    // Add a time-off block: { start_datetime, end_datetime, reason? } (UTC ISO-Z)
+    addUnavailability: async (id, block) => {
+        try {
+            const response = await api.post(`/instructors/${id}/unavailability`, block);
+            return response.data;
+        } catch (error) {
+            console.error(`Error adding unavailability for instructor ${id}:`, error);
+            throw error;
+        }
+    },
+
+    deleteUnavailability: async (id, unavailabilityId) => {
+        try {
+            await api.delete(`/instructors/${id}/unavailability/${unavailabilityId}`);
+            return true;
+        } catch (error) {
+            console.error(`Error deleting unavailability ${unavailabilityId}:`, error);
+            throw error;
+        }
     }
 };
 
