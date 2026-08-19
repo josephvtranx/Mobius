@@ -17,34 +17,46 @@ export function getShellNav(role, user) {
 
   switch (role) {
     case 'student':
+      // Sections per the 2026-08 handoff (Mobius Student.dc.html sectionDefs):
+      // Overview(compass) / Learn(graduation-cap) / Inbox(comment-dots).
+      // "My wallet" left the nav — credits live on Home per the design; the
+      // /billing route stays reachable from there.
       return [
         {
-          label: 'Learn',
-          icon: 'fa-solid fa-book-open',
+          label: 'Overview',
+          icon: 'fa-solid fa-compass',
           items: [
             { label: 'Home', icon: 'fa-solid fa-house', path: '/home' },
-            { label: 'My schedule', icon: 'fa-regular fa-calendar', path: `/family/students/${uid}/schedule` },
-            { label: 'My classes', icon: 'fa-solid fa-chalkboard', path: `/family/students/${uid}/classes` },
-            { label: 'My wallet', icon: 'fa-solid fa-wallet', path: `/family/students/${uid}/billing` },
-            { label: 'Class catalog', icon: 'fa-solid fa-store', path: '/catalog' },
+            { label: 'Profile & settings', icon: 'fa-solid fa-gear', path: '/profile',
+              crumb: { eyebrow: 'Account', title: 'Profile & settings' } },
           ],
         },
         {
-          label: 'Stay in touch',
-          icon: 'fa-regular fa-comments',
+          label: 'Learn',
+          icon: 'fa-solid fa-graduation-cap',
           items: [
-            { label: 'Messages', icon: 'fa-regular fa-message', path: '/messages' },
+            // crumb = the design's per-view topbar pair (titles map in the
+            // .dc.html), which differs from the sidebar's section/item labels.
+            { label: 'My schedule', icon: 'fa-regular fa-calendar', path: `/family/students/${uid}/schedule`,
+              crumb: { eyebrow: 'My schedule', title: 'This week' } },
+            { label: 'My classes', icon: 'fa-solid fa-bookmark', path: `/family/students/${uid}/classes` },
+            { label: 'Class catalog', icon: 'fa-solid fa-book-open', path: '/catalog',
+              crumb: { eyebrow: 'Catalog', title: 'Class catalog' } },
             // No separate feedback data source exists — StudentRecord already
             // shows instructor notes inline with the record timeline, so
             // "Feedback" points at the same real page rather than a dead link.
-            { label: 'Feedback', icon: 'fa-regular fa-star', path: `/family/students/${uid}/record` },
+            { label: 'Feedback', icon: 'fa-solid fa-comment-medical', path: `/family/students/${uid}/record`,
+              crumb: { eyebrow: 'Progress', title: 'Instructor feedback' } },
           ],
         },
         {
-          label: 'Settings',
-          icon: 'fa-solid fa-gear',
+          label: 'Inbox',
+          icon: 'fa-solid fa-comment-dots',
+          // The rail tile + the Messages item already carry the comment-dots
+          // icon — a third copy beside the "Inbox" header read as a glitch.
+          headerIcon: false,
           items: [
-            { label: 'Settings', icon: 'fa-solid fa-gear', path: '/profile' },
+            { label: 'Messages', icon: 'fa-solid fa-comment-dots', path: '/messages', unreadBadge: true },
           ],
         },
       ];
@@ -177,7 +189,21 @@ export function sectionMatchesPath(section, pathname) {
   );
 }
 
+// An item may carry a `crumb: { eyebrow, title }` override — the design's
+// per-view topbar pair when it differs from the sidebar section/item labels
+// (e.g. My schedule renders as "MY SCHEDULE / This week").
+function crumbFor(role, user, pathname) {
+  for (const section of getShellNav(role, user)) {
+    for (const item of section.items) {
+      if (item.crumb && (pathname === item.path || pathname.startsWith(item.path + '/'))) return item.crumb;
+    }
+  }
+  return null;
+}
+
 export function getActiveSectionLabel(role, user, pathname) {
+  const crumb = crumbFor(role, user, pathname);
+  if (crumb) return crumb.eyebrow;
   const sections = getShellNav(role, user);
   const match = sections.find((s) => sectionMatchesPath(s, pathname));
   return match ? match.label : sections[0]?.label ?? '';
@@ -189,6 +215,8 @@ export function getActiveSectionLabel(role, user, pathname) {
 // to hardcode '/home' -> 'Home' for every role, which drifted from the
 // sidebar label as soon as a role used a different word for the same page.
 export function getActiveItemLabel(role, user, pathname) {
+  const crumb = crumbFor(role, user, pathname);
+  if (crumb) return crumb.title;
   const sections = getShellNav(role, user);
   for (const section of sections) {
     for (const item of section.items) {

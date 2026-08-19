@@ -3,9 +3,13 @@
 import api from './api';
 
 const studentViewService = {
-    getSchedule: async (studentId) => {
+    // Default: upcoming sessions only. Pass { from, to } (UTC-Z ISO) to get a
+    // window instead — includes past/completed sessions (weekly calendar).
+    getSchedule: async (studentId, range) => {
         try {
-            const response = await api.get(`/students/${studentId}/schedule`);
+            const response = await api.get(`/students/${studentId}/schedule`, {
+                params: range ? { from: range.from, to: range.to } : undefined,
+            });
             return response.data;
         } catch (error) {
             console.error('Error fetching schedule:', error);

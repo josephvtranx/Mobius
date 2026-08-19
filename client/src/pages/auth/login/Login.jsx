@@ -31,11 +31,13 @@ export default function Login() {
       const role = authService.getCurrentUser()?.role;
       navigate(role === 'guardian' ? '/portal' : '/home');
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        'Invalid email or password. Please try again.'
-      );
+      // The server's !req.db guard ("No institution selected or DB
+      // unavailable.") fires for any email with no directory row — from this
+      // single-step form that just means the credentials didn't match, so
+      // show the normal auth error instead of the internal guard message.
+      const raw = err.response?.data?.message || err.response?.data?.error;
+      const internal = err.response?.status === 400 && /no institution selected/i.test(raw || '');
+      setError(!raw || internal ? 'Invalid email or password. Please try again.' : raw);
     } finally {
       setIsLoading(false);
     }

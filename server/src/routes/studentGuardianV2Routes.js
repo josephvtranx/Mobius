@@ -13,6 +13,9 @@ import { withTransaction } from '../helpers/withTransaction.js';
 
 const router = express.Router();
 
+// Query-param variant of the UTC-Z convention (requireUtcIso covers bodies).
+const assertZ = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}T.*Z$/.test(s);
+
 async function loadStudent(db, id) {
   const studentId = Number(id);
   if (!studentId) return null;
@@ -163,18 +166,29 @@ router.get('/:id/schedule', authenticateToken, async (req, res) => {
     return res.status(403).json({ message: 'Not authorized' });
   }
   const limit = Math.min(Number(req.query.limit) || 50, 200);
+  // Optional ?from&to (UTC-Z ISO) switches to range mode for the weekly
+  // calendar: includes past/completed sessions inside the window so the grid
+  // can grey them out. Default (no range) stays upcoming-only — Home,
+  // StudentClasses, GuardianRequests and Scheduling all rely on that shape.
+  const { from, to } = req.query;
+  if ((from || to) && !(assertZ(from) && assertZ(to))) {
+    return res.status(400).json({ message: 'from/to must be UTC ISO strings with a Z suffix' });
+  }
+  const ranged = from && to;
   const { rows } = await req.db.query(
     `SELECT cs.session_id, cs.starts_at, cs.ends_at, cs.status,
-            c.class_id, c.class_type, c.instructor_id, sub.name AS subject
+            c.class_id, c.class_type, c.instructor_id, sub.name AS subject,
+            r.name AS room
        FROM enrollments e
        JOIN classes c ON c.class_id = e.class_id AND c.status = 'active'
        JOIN subjects sub ON sub.subject_id = c.subject_id
        JOIN class_sessions cs ON cs.class_id = c.class_id
+       LEFT JOIN rooms r ON r.room_id = cs.room_id
       WHERE e.student_id = $1 AND e.status = 'active'
-        AND cs.status IN ('scheduled','reschedule_requested')
-        AND cs.starts_at > CURRENT_TIMESTAMP
-      ORDER BY cs.starts_at LIMIT $2`,
-    [student.student_id, limit]);
+        AND cs.status IN ('scheduled','reschedule_requested','completed')
+        AND ${ranged ? 'cs.starts_at >= $2 AND cs.starts_at < $3' : 'cs.starts_at > CURRENT_TIMESTAMP'}
+      ORDER BY cs.starts_at LIMIT ${ranged ? '$4' : '$2'}`,
+    ranged ? [student.student_id, from, to, limit] : [student.student_id, limit]);
   res.json({ student_id: student.student_id, sessions: rows });
 });
 
@@ -205,7 +219,7 @@ router.get('/:id/record', authenticateToken, async (req, res) => {
        SELECT session_id FROM session_notes WHERE student_id = $1
      )
      SELECT cs.session_id, cs.starts_at, cs.ends_at, cs.status AS session_status,
-            sub.name AS subject, c.class_id, c.class_type,
+            sub.name AS subject, c.class_id, c.class_type, c.instructor_id,
             sa.status AS attendance_status, sa.auto_completed, sa.marked_at,
             n.performance, n.improvements, n.free_notes, n.edited_at, n.versions,
             n.created_at AS note_created_at
@@ -222,7 +236,7 @@ router.get('/:id/record', authenticateToken, async (req, res) => {
   const entries = rows.map(r => ({
     session_id: r.session_id, starts_at: r.starts_at, ends_at: r.ends_at,
     session_status: r.session_status, subject: r.subject,
-    class_id: r.class_id, class_type: r.class_type,
+    class_id: r.class_id, class_type: r.class_type, instructor_id: r.instructor_id,
     attendance: r.attendance_status
       ? { status: r.attendance_status, auto_completed: r.auto_completed, marked_at: r.marked_at }
       : null,

@@ -41,6 +41,11 @@
   --shell-tint: #e6f3f0;
   --shell-rail-gradient: linear-gradient(185deg, #2e9d8d, #1f8074 65%, #1a6b62);
   --shell-rail-pill-bg: rgba(255, 255, 255, 0.16);
+  /* 2026-08 handoff: student rail icons are dark ink on the teal, and the
+     active tile is pale mint with a soft white ring (ms-rail/railTile). */
+  --shell-rail-tile-fg: #16303a;
+  --shell-rail-tile-active-bg: #eafaf6;
+  --shell-rail-tile-active-fg: #1a6b62;
   --shell-hero-gradient: linear-gradient(150deg, #16303a, #234a52 55%, #2e9d8d 150%);
   --shell-page-bg: radial-gradient(1200px 640px at 82% -12%, #eaf6f3 0, #f4f9f8 55%);
   --shell-topbar-bg: rgba(244, 249, 248, 0.82);
@@ -136,7 +141,7 @@
   font-weight: 600;
   letter-spacing: -0.03em;
   color: #333;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .shell-wordmark-icon {
@@ -180,34 +185,55 @@
 }
 
 .shell-rail-tile {
-  width: 46px;
-  height: 46px;
-  border-radius: 15px;
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   background: transparent;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 17px;
+  color: var(--shell-rail-tile-fg, rgba(255, 255, 255, 0.82));
+  font-size: 19px;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .shell-rail-tile.active {
-  background: #fff;
-  color: var(--shell-primary);
+  background: var(--shell-rail-tile-active-bg, #fff);
+  color: var(--shell-rail-tile-active-fg, var(--shell-primary));
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6), 0 8px 16px -10px rgba(0, 0, 0, 0.4);
 }
 
 .shell-rail-tile:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Unread-count dot pinned to a rail tile (design: railMsgDot) */
+.shell-rail-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #d0483b;
   color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px var(--shell-primary);
 }
 
 .shell-menu {
   flex: 1;
   padding: 30px 16px 16px 18px;
   overflow-y: auto;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .shell-menu-header {
@@ -315,7 +341,7 @@
   background: #fff;
   border: 1px solid var(--shell-border, #e3eeec);
   box-shadow: 0 16px 34px -24px rgba(22, 48, 58, 0.45);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-sans);
 }
 
 .shell-sidebar .profile-header {
@@ -334,6 +360,19 @@
   border: none;
   box-shadow: none;
   background: var(--shell-rail-gradient);
+}
+
+/* Initials avatar (design: no raster images — initials on an accent
+   gradient, e.g. AP on teal for the student app). */
+.shell-sidebar .profile-pic--initials {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--shell-primary), var(--shell-accent));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .shell-sidebar .profile-info {
@@ -416,7 +455,7 @@
   backdrop-filter: blur(10px);
   background: var(--shell-topbar-bg, rgba(244, 249, 248, 0.82));
   border-bottom: 1px solid var(--shell-border, #e3eeec);
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* The auth pages (login/register/reset) own a single flat-color canvas of
@@ -503,7 +542,7 @@
   outline: none;
   background: transparent;
   font-size: 13.5px;
-  font-family: 'Poppins', sans-serif;
+  font-family: var(--font-sans);
   width: 160px;
 }
 

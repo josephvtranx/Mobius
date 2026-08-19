@@ -1,104 +1,68 @@
-// src/components/ProfileCard.jsx
-
+// Shared-shell profile card (pinned to the sidebar bottom): avatar + name +
+// "Role @ Academy" + Settings/Logout. Avatar is initials-on-gradient per the
+// design handoff ("no raster images"); a real uploaded profile picture, when
+// present, still wins.
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import uploadService from '../services/uploadService';
 
+const initialsOf = (name) =>
+  String(name || '').split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+
 function ProfileCard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(authService.getCurrentUser());
+  const [imgBroken, setImgBroken] = useState(false);
 
-  // Listen for changes in user data (e.g., when profile picture is updated)
+  // Re-read the stored user when the profile page announces an update or
+  // another tab writes it — no polling.
   useEffect(() => {
-    const checkUserUpdate = () => {
-      const currentUser = authService.getCurrentUser();
-      if (currentUser && (!user || currentUser.profile_pic_url !== user.profile_pic_url)) {
-        setUser(currentUser);
-      }
-    };
-
-    // Check for updates more frequently
-    const interval = setInterval(checkUserUpdate, 500);
-
-    // Listen for custom profile update events
-    const handleProfileUpdate = () => {
-      const updatedUser = authService.getCurrentUser();
-      setUser(updatedUser);
-    };
-
-    // Listen for storage events (when localStorage is updated from other tabs/windows)
+    const handleProfileUpdate = () => { setUser(authService.getCurrentUser()); setImgBroken(false); };
     const handleStorageChange = (e) => {
-      if (e.key === 'user') {
-        const updatedUser = JSON.parse(e.newValue);
-        setUser(updatedUser);
-      }
+      if (e.key === 'user') handleProfileUpdate();
     };
-
-    // Add event listeners
     window.addEventListener('profile-updated', handleProfileUpdate);
     window.addEventListener('storage', handleStorageChange);
-
     return () => {
-      clearInterval(interval);
       window.removeEventListener('profile-updated', handleProfileUpdate);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [user]);
+  }, []);
+
+  if (!user) return null;
 
   const handleLogout = () => {
     authService.logout();
     navigate('/login');
   };
 
-  const handleSettings = () => {
-    navigate('/profile');
-  };
-
-  if (!user) {
-    return null;
-  }
-
-  // Format role for display (e.g., "staff" -> "Staff @ Møbius Academy")
-  const formatRole = (role) => {
-    const formattedRole = role.charAt(0).toUpperCase() + role.slice(1);
-    return `${formattedRole} @ Møbius Academy`;
-  };
-
-  // Debug logging
-  console.log('ProfileCard user data:', user);
-  console.log('Profile picture URL:', user.profile_pic_url);
-
-  // Get the full URL for the profile picture
-  const profilePictureUrl = uploadService.getProfilePictureUrl(user.profile_pic_url) || '/me.jpg';
+  const roleLabel = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : '';
+  const subtitle = user.institution_name ? `${roleLabel} @ ${user.institution_name}` : roleLabel;
+  const photoUrl = user.profile_pic_url ? uploadService.getProfilePictureUrl(user.profile_pic_url) : null;
 
   return (
     <div className="profile-card">
       <div className="profile-header">
-        <img 
-          src={profilePictureUrl} 
-          alt={`${user.name}'s profile`} 
-          className="profile-pic" 
-        />
+        {photoUrl && !imgBroken ? (
+          <img src={photoUrl} alt={`${user.name}'s profile`} className="profile-pic"
+            onError={() => setImgBroken(true)} />
+        ) : (
+          <span className="profile-pic profile-pic--initials" aria-hidden="true">{initialsOf(user.name)}</span>
+        )}
         <div className="profile-info">
           <h2 className="profile-name">{user.name}</h2>
-          <p className="profile-role">{formatRole(user.role)}</p>
+          <p className="profile-role">{subtitle}</p>
         </div>
         <div className="online-indicator"></div>
       </div>
 
       <div className="profile-buttons">
-        <button 
-          className="btn setting-btn" 
-          onClick={handleSettings}
-        >
+        <button className="btn setting-btn" onClick={() => navigate('/profile')}>
           <i className="fa-solid fa-gear"></i>
           <span>Settings</span>
         </button>
-        <button 
-          className="btn logout-btn" 
-          onClick={handleLogout}
-        >
+        <button className="btn logout-btn" onClick={handleLogout}>
           <i className="fa-solid fa-arrow-right-from-bracket"></i>
           <span>Logout</span>
         </button>

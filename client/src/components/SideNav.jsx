@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import staffTaskService from '../services/staffTaskService';
+import messageService from '../services/messageService';
 import ProfileCard from './ProfileCard';
 import { getShellNav, sectionMatchesPath } from '../config/shellNav';
 
@@ -22,6 +23,7 @@ function SideNav() {
   const [activeIndex, setActiveIndex] = useState(initialSectionIndex === -1 ? 0 : initialSectionIndex);
   const [openChildren, setOpenChildren] = useState(null);
   const [taskCount, setTaskCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const matchIndex = sections.findIndex((s) => sectionMatchesPath(s, location.pathname));
@@ -40,9 +42,27 @@ function SideNav() {
     return () => window.removeEventListener('staff-tasks-changed', refresh);
   }, [role, location.pathname]);
 
+  // Unread-message count for nav items flagged unreadBadge (design: red count
+  // pill on the Inbox rail tile AND the Messages menu item). Polled at the
+  // same cadence Messages uses; opening a conversation clears unread
+  // server-side, so the badge catches up on the next poll or navigation.
+  const wantsUnread = sections.some((s) => s.items.some((it) => it.unreadBadge));
+  useEffect(() => {
+    if (!wantsUnread) return undefined;
+    const refresh = () =>
+      messageService.getConversations()
+        .then((convos) => setUnreadCount((convos || []).filter((c) => c.unread).length))
+        .catch(() => {});
+    refresh();
+    const t = setInterval(refresh, 15000);
+    return () => clearInterval(t);
+  }, [wantsUnread, location.pathname]);
+
   if (!role || sections.length === 0) return null;
 
   const activeSection = sections[activeIndex];
+  const railBadgeFor = (section) =>
+    section.items.some((it) => it.unreadBadge) && unreadCount > 0 ? unreadCount : 0;
 
   const handleRailClick = (index) => {
     setActiveIndex(index);
@@ -85,6 +105,7 @@ function SideNav() {
             <div className="shell-rail-pill">
               {sections.slice(1).map((section, i) => {
                 const index = i + 1;
+                const railBadge = railBadgeFor(section);
                 return (
                   <button
                     key={section.label}
@@ -96,6 +117,7 @@ function SideNav() {
                     onClick={() => handleRailClick(index)}
                   >
                     <i className={section.icon} aria-hidden="true"></i>
+                    {railBadge > 0 && <span className="shell-rail-badge">{railBadge}</span>}
                   </button>
                 );
               })}
@@ -104,7 +126,10 @@ function SideNav() {
         </nav>
 
         <div className="shell-menu">
-          <h3 className="shell-menu-header"><i className={activeSection.icon} aria-hidden="true"></i>{activeSection.label}</h3>
+          <h3 className="shell-menu-header">
+            {activeSection.headerIcon !== false && <i className={activeSection.icon} aria-hidden="true"></i>}
+            {activeSection.label}
+          </h3>
           <div className="shell-menu-items">
             {activeSection.items.map((item) => (
               <div key={item.path} className="shell-menu-group">
@@ -147,7 +172,9 @@ function SideNav() {
                     <i className={item.icon} aria-hidden="true"></i>
                     <span>{item.label}</span>
                     {(() => {
-                      const badge = item.path === '/operations/tasks' ? taskCount : item.badge;
+                      const badge = item.unreadBadge ? unreadCount
+                        : item.path === '/operations/tasks' ? taskCount
+                        : item.badge;
                       return typeof badge === 'number' && badge > 0
                         ? <span className="shell-menu-badge">{badge}</span>
                         : null;

@@ -27,7 +27,7 @@ class ErrorBoundary extends React.Component {
       <div style={{
         minHeight: '100vh', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 16,
-        padding: 24, textAlign: 'center', fontFamily: 'Poppins, sans-serif',
+        padding: 24, textAlign: 'center', fontFamily: "'Noto Sans KR', sans-serif",
         color: '#16303a', background: '#f4f9f8',
       }}>
         <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Something went wrong</h1>
