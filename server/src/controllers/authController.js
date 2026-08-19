@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 import { generateTokens, verifyAccessToken, verifyRefreshToken, hashPassword } from '../helpers/authHelpers.js';
 import { getTenantPool } from '../db/tenantPool.js';
-import { directoryLookup, directoryRegister, directoryUpdatePassword, directoryRemove } from '../db/userDirectory.js';
+import { directoryLookup, directoryRegister, directoryUpdatePassword, directoryRemove, institutionNameFor } from '../db/userDirectory.js';
 import { validatePasswordStrength } from '../helpers/passwordHelpers.js';
 import { checkPasswordHistory, addToPasswordHistory } from '../helpers/passwordHistoryHelpers.js';
 import { withTransaction } from '../helpers/withTransaction.js';
@@ -434,6 +434,13 @@ export const login = async (req, res) => {
             if (!await bcrypt.compare(req.body.password, dir.password_hash)) {
                 return res.status(401).json({ message: 'Invalid email or password' });
             }
+            // Suspension is enforced at the login boundary: existing access
+            // tokens (≤120 min) ride out, but no new session can start.
+            if (!dir.institution_active) {
+                return res.status(403).json({
+                    message: 'This academy is currently suspended. Please contact your academy or Mobius support.'
+                });
+            }
             let db;
             try {
                 db = await getTenantPool(dir.code);
@@ -457,7 +464,8 @@ export const login = async (req, res) => {
                     username: user.username,
                     name: user.name,
                     email: user.email,
-                    role: user.role
+                    role: user.role,
+                    institution_name: dir.institution_name
                 }
             });
         }
@@ -525,7 +533,8 @@ export const login = async (req, res) => {
                 username: user.username,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                institution_name: await institutionNameFor(req.tenantCode)
             }
         });
 

@@ -26,4 +26,13 @@ export async function getTenantPool(code) {
   });
   tenantPools.set(code, pool);
   return pool;
-} 
+}
+
+// Drop a cached pool (academy deletion): end its connections and forget it,
+// so a stale pool can never serve requests for a deregistered tenant.
+export async function evictTenantPool(code) {
+  const pool = tenantPools.get(code);
+  if (!pool) return;
+  tenantPools.delete(code);
+  await pool.end().catch(() => {});
+}

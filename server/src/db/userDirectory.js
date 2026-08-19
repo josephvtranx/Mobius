@@ -7,8 +7,20 @@ import { registryPool } from './registryPool.js';
 
 export async function directoryLookup(email) {
   const { rows } = await registryPool.query(
-    `SELECT email, password_hash, code FROM user_directory WHERE email = $1`, [email]);
+    `SELECT d.email, d.password_hash, d.code, i.name AS institution_name,
+            i.is_active AS institution_active
+       FROM user_directory d JOIN institutions i ON i.code = d.code
+      WHERE d.email = $1`, [email]);
   return rows[0] ?? null;
+}
+
+// Display name of an institution (for login payloads on the legacy
+// header-based path, where no directory row exists). Best-effort.
+export async function institutionNameFor(code) {
+  if (!code) return null;
+  const { rows } = await registryPool.query(
+    `SELECT name FROM institutions WHERE code = $1`, [code]).catch(() => ({ rows: [] }));
+  return rows[0]?.name ?? null;
 }
 
 // INSERT — a 23505 here means the email is taken somewhere globally; callers

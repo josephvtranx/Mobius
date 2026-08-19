@@ -79,6 +79,13 @@ describe('institutions list + provisioning', () => {
       code: 'no spaces!', name: 'x', admin_email: 'a@b.com', admin_name: 'x', admin_password: 'Password123!' });
     expect(bad.status).toBe(400);
   });
+
+  it('normalizes codes to uppercase and 409s a duplicate in any case', async () => {
+    const dup = await admin(request(env.app).post('/api/admin/institutions')).send({
+      code: 'newacad', name: 'x', admin_email: 'x2@y.com', admin_name: 'x', admin_password: 'Password123!' });
+    expect(dup.status).toBe(409);
+    expect(dup.body.message).toContain('NEWACAD');
+  });
 });
 
 describe('per-academy config', () => {
@@ -123,5 +130,72 @@ describe('cross-tenant finance aggregation', () => {
     // NEWACAD has no payments yet → 0, still listed
     const newacad = r.body.academies.find((a) => a.code.toUpperCase() === 'NEWACAD');
     expect(newacad.total).toBe(0);
+  });
+});
+
+describe('suspend + delete lifecycle (safeguard chain)', () => {
+  it('provisions a disposable academy and its staff can log in', async () => {
+    const r = await admin(request(env.app).post('/api/admin/institutions')).send({
+      code: 'DELACAD', name: 'Doomed Academy',
+      admin_email: 'head@delacad.com', admin_name: 'Head', admin_password: 'Password123!'
+    });
+    expect(r.status).toBe(201);
+    const login = await request(env.app).post('/api/auth/login')
+      .send({ email: 'head@delacad.com', password: 'Password123!' });
+    expect(login.status).toBe(200);
+  });
+
+  it('refuses to delete an ACTIVE academy (suspend-first safeguard)', async () => {
+    const r = await admin(request(env.app).delete('/api/admin/institutions/DELACAD'))
+      .send({ confirm_code: 'DELACAD' });
+    expect(r.status).toBe(409);
+  });
+
+  it('suspends: logins blocked, code validation 404s, data intact', async () => {
+    const s = await admin(request(env.app).patch('/api/admin/institutions/DELACAD/status'))
+      .send({ is_active: false });
+    expect(s.status).toBe(200);
+    expect(s.body.is_active).toBe(false);
+
+    const login = await request(env.app).post('/api/auth/login')
+      .send({ email: 'head@delacad.com', password: 'Password123!' });
+    expect(login.status).toBe(403);
+    expect(login.body.message).toMatch(/suspended/i);
+
+    const code = await request(env.app).post('/api/institution').send({ code: 'DELACAD' });
+    expect(code.status).toBe(404);
+
+    // still listed in the console (dimmed there, but present)
+    const list = await admin(request(env.app).get('/api/admin/institutions'));
+    expect(list.body.map((i) => i.code.toUpperCase())).toContain('DELACAD');
+  });
+
+  it('reactivating restores login', async () => {
+    await admin(request(env.app).patch('/api/admin/institutions/DELACAD/status')).send({ is_active: true });
+    const login = await request(env.app).post('/api/auth/login')
+      .send({ email: 'head@delacad.com', password: 'Password123!' });
+    expect(login.status).toBe(200);
+    // back to suspended for the deletion tests
+    await admin(request(env.app).patch('/api/admin/institutions/DELACAD/status')).send({ is_active: false });
+  });
+
+  it('requires confirm_code to match exactly', async () => {
+    const r = await admin(request(env.app).delete('/api/admin/institutions/DELACAD'))
+      .send({ confirm_code: 'DELACA' });
+    expect(r.status).toBe(400);
+  });
+
+  it('deletes a suspended academy: deregistered, all logins dead', async () => {
+    const r = await admin(request(env.app).delete('/api/admin/institutions/DELACAD'))
+      .send({ confirm_code: 'delacad' });   // case-insensitive match, like the code itself
+    expect(r.status).toBe(200);
+    expect(r.body.deleted.toUpperCase()).toBe('DELACAD');
+
+    const list = await admin(request(env.app).get('/api/admin/institutions'));
+    expect(list.body.map((i) => i.code.toUpperCase())).not.toContain('DELACAD');
+
+    const login = await request(env.app).post('/api/auth/login')
+      .send({ email: 'head@delacad.com', password: 'Password123!' });
+    expect(login.status).not.toBe(200);   // directory row gone → no tenant resolves
   });
 });

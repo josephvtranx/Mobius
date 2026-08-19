@@ -178,7 +178,10 @@ app.get('/health', async (_req, res) => {
 // after login, inside the JWT)
 app.post('/api/institution', async (req, res) => {
   try {
-    await getTenantPool(req.body.code);           // throws if invalid
+    // Suspended academies validate as unknown — no new registrations either.
+    const { rows } = await registryPool.query(
+      'SELECT is_active FROM institutions WHERE code = $1', [req.body.code]);
+    if (!rows.length || !rows[0].is_active) return res.status(404).send('Invalid institution code');
     res.sendStatus(200);
   } catch {
     res.status(404).send('Invalid institution code');

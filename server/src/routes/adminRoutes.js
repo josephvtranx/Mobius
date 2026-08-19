@@ -6,7 +6,8 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { registryPool } from '../db/registryPool.js';
-import { getTenantPool } from '../db/tenantPool.js';
+import { getTenantPool, evictTenantPool } from '../db/tenantPool.js';
+import { withTransaction } from '../helpers/withTransaction.js';
 import { authenticatePlatformAdmin } from '../middleware/adminAuth.js';
 import { provisionTenantDb } from '../lib/tenantProvisioner.js';
 import { hashPassword } from '../helpers/authHelpers.js';
@@ -97,7 +98,9 @@ router.get('/institutions', async (_req, res) => {
 // register it, and seed the first staff account (also its login-directory row).
 // ---------------------------------------------------------------------------
 router.post('/institutions', async (req, res) => {
-  const { code, name, admin_email, admin_name, admin_password } = req.body;
+  const { name, admin_email, admin_name, admin_password } = req.body;
+  // Codes are case-insensitive (CITEXT) — uppercase is the canonical stored form.
+  const code = String(req.body.code || '').trim().toUpperCase();
   if (!code || !CODE_RE.test(code)) return res.status(400).json({ message: 'code must be 3–32 chars: letters, digits, _ or -' });
   if (!name) return res.status(400).json({ message: 'name is required' });
   if (!admin_email || !admin_name || !admin_password) {
@@ -127,6 +130,66 @@ router.post('/institutions', async (req, res) => {
   } catch (error) {
     console.error('Admin provision error:', error);
     res.status(500).json({ message: `Provisioning failed: ${error.message}` });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /institutions/:code/status — suspend / reactivate. Suspension takes
+// effect at the login boundary (directory login + code validation both check
+// is_active); tokens already issued (≤120 min) ride out. Data is untouched,
+// and the academy stays visible in the console (dimmed, excluded from
+// finance totals).
+// ---------------------------------------------------------------------------
+router.patch('/institutions/:code/status', async (req, res) => {
+  const { is_active } = req.body ?? {};
+  if (typeof is_active !== 'boolean') {
+    return res.status(400).json({ message: 'is_active (boolean) is required' });
+  }
+  try {
+    const { rows } = await registryPool.query(
+      'UPDATE institutions SET is_active = $1 WHERE code = $2 RETURNING code, is_active',
+      [is_active, req.params.code]);
+    if (!rows.length) return res.status(404).json({ message: 'Academy not found' });
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Admin set status error:', error);
+    res.status(500).json({ message: 'Failed to update academy status' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /institutions/:code — deregister an academy. Safeguard chain:
+//   1. only allowed from the SUSPENDED state (suspend first, deliberately);
+//   2. the request must re-type the code (confirm_code) — the client asks
+//      the admin to type it, and the server re-verifies so no UI bug can
+//      delete silently;
+//   3. the physical tenant database is DETACHED, never dropped: this removes
+//      the registry row and every user_directory row (all logins die), but
+//      the tenant DB survives for manual recovery or a later deliberate
+//      purge — same environment seam as provisioning, no DROP DATABASE.
+// ---------------------------------------------------------------------------
+router.delete('/institutions/:code', async (req, res) => {
+  const code = req.params.code;
+  const confirm = String(req.body?.confirm_code ?? '');
+  try {
+    const { rows: [inst] } = await registryPool.query(
+      'SELECT code, is_active FROM institutions WHERE code = $1', [code]);
+    if (!inst) return res.status(404).json({ message: 'Academy not found' });
+    if (inst.is_active) {
+      return res.status(409).json({ message: 'Suspend the academy first — deletion is only allowed from the suspended state' });
+    }
+    if (confirm.trim().toUpperCase() !== inst.code.toUpperCase()) {
+      return res.status(400).json({ message: 'confirm_code must match the academy code exactly' });
+    }
+    await withTransaction(registryPool, async (client) => {
+      await client.query('DELETE FROM user_directory WHERE code = $1', [code]);
+      await client.query('DELETE FROM institutions WHERE code = $1', [code]);
+    });
+    await evictTenantPool(inst.code);
+    res.json({ deleted: inst.code, note: 'Registry entry and logins removed; the tenant database was detached, not destroyed.' });
+  } catch (error) {
+    console.error('Admin delete institution error:', error);
+    res.status(500).json({ message: 'Failed to delete academy' });
   }
 });
 
@@ -170,7 +233,9 @@ router.patch('/institutions/:code/config', async (req, res) => {
 // ---------------------------------------------------------------------------
 router.get('/finance', async (_req, res) => {
   try {
-    const { rows: insts } = await registryPool.query('SELECT code, name FROM institutions WHERE is_active ORDER BY name');
+    // Suspended academies are included (their history is still readable in the
+    // console) but ONLY active ones count toward the platform totals + trend.
+    const { rows: insts } = await registryPool.query('SELECT code, name, is_active FROM institutions ORDER BY name');
     const academies = [];
     let grandTotal = 0, thisMonth = 0;
     const monthly = {};
@@ -185,13 +250,16 @@ router.get('/finance', async (_req, res) => {
         const { rows: series } = await db.query(`
           SELECT to_char(date_trunc('month', payment_date), 'YYYY-MM') AS month, SUM(amount)::float AS total
             FROM payments
-           WHERE payment_date >= (date_trunc('month', CURRENT_DATE) - INTERVAL '5 months')
-           GROUP BY 1`);
-        academies.push({ code: inst.code, name: inst.name, total: agg.total, this_month: agg.this_month, payments: agg.payments });
-        grandTotal += agg.total; thisMonth += agg.this_month;
-        for (const s of series) monthly[s.month] = (monthly[s.month] || 0) + s.total;
+           GROUP BY 1 ORDER BY 1`);
+        academies.push({ code: inst.code, name: inst.name, is_active: inst.is_active,
+          total: agg.total, this_month: agg.this_month, payments: agg.payments, series });
+        if (inst.is_active) {
+          grandTotal += agg.total; thisMonth += agg.this_month;
+          for (const s of series) monthly[s.month] = (monthly[s.month] || 0) + s.total;
+        }
       } catch {
-        academies.push({ code: inst.code, name: inst.name, total: null, this_month: null, payments: null, unreachable: true });
+        academies.push({ code: inst.code, name: inst.name, is_active: inst.is_active,
+          total: null, this_month: null, payments: null, series: null, unreachable: true });
       }
     }
     const trend = Object.entries(monthly).sort(([a], [b]) => a.localeCompare(b)).map(([month, total]) => ({ month, total }));

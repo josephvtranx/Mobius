@@ -1,0 +1,51 @@
+/* Platform-admin console (light neutral theme, per design handoff
+   "Mobius Admin.dc.html") + the dark login input. Scoped with ad-/adl-
+   prefixes — this app renders bare, outside the tenant shell. */
+
+/* Dark login input */
+.adl-in {
+  width: 100%; height: 46px; border-radius: 11px; border: 1px solid #263049;
+  background: #0f1420; color: #e8ecf5; padding: 0 14px;
+  font: 400 14px 'Noto Sans KR', system-ui, sans-serif; outline: none;
+}
+.adl-in:focus { border-color: #5b8cff; box-shadow: 0 0 0 3px rgba(91, 140, 255, .18); }
+.adl-in::placeholder { color: #5c6d92; }
+
+/* Console (light) */
+.ad-in {
+  width: 100%; height: 42px; border-radius: 10px; border: 1px solid #e5e3de;
+  background: #fff; color: #1c1c1c; padding: 0 13px;
+  font: 400 13.5px 'Noto Sans KR', system-ui, sans-serif; outline: none;
+}
+.ad-in:focus { border-color: #1c1c1c; box-shadow: 0 0 0 3px rgba(28, 28, 28, .08); }
+.ad-in::placeholder { color: #b3aea4; }
+
+.ad-num {
+  width: 92px; height: 36px; border-radius: 9px; border: 1px solid #e5e3de;
+  background: #fff; color: #1c1c1c; padding: 0 10px;
+  font: 500 13px 'IBM Plex Mono', monospace; outline: none; text-align: right;
+}
+.ad-num:focus { border-color: #1c1c1c; }
+
+.ad-sel {
+  height: 36px; border-radius: 9px; border: 1px solid #e5e3de; background: #fff;
+  color: #1c1c1c; padding: 0 10px;
+  font: 500 12.5px 'Noto Sans KR', system-ui, sans-serif; outline: none;
+}
+
+.adm-row:hover { background: #faf9f7; }
+.ad-nav { transition: background .15s ease; }
+.ad-nav:hover { background: #eceae4; }
+.ad-btn:hover { opacity: .88; }
+
+/* Loading skeleton */
+.ad-skel {
+  background: linear-gradient(90deg, #f0eee8 25%, #f7f5f0 45%, #f0eee8 65%);
+  background-size: 200% 100%; border-radius: 10px;
+  animation: ad-shimmer 1.4s ease infinite;
+}
+@keyframes ad-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-nav, .ad-skel, .ad-knob { transition: none !important; animation: none !important; }
+}

@@ -21,7 +21,8 @@ adminApi.interceptors.response.use(
     if (err.response?.status === 401 && !location.pathname.endsWith('/admin/login')) {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('admin');
-      location.assign('/admin/login');
+      // ?expired=1 → the login page explains the 120-min token quietly ended
+      location.assign('/admin/login?expired=1');
     }
     return Promise.reject(err);
   }
@@ -41,6 +42,11 @@ const adminService = {
 
   listInstitutions: async () => (await adminApi.get('/admin/institutions')).data,
   provision: async (payload) => (await adminApi.post('/admin/institutions', payload)).data,
+  setStatus: async (code, isActive) =>
+    (await adminApi.patch(`/admin/institutions/${code}/status`, { is_active: isActive })).data,
+  // confirm must be re-typed by the admin; the server re-verifies it too.
+  deleteInstitution: async (code, confirmCode) =>
+    (await adminApi.delete(`/admin/institutions/${code}`, { data: { confirm_code: confirmCode } })).data,
   getConfig: async (code) => (await adminApi.get(`/admin/institutions/${code}/config`)).data,
   patchConfig: async (code, patch) => (await adminApi.patch(`/admin/institutions/${code}/config`, patch)).data,
   finance: async () => (await adminApi.get('/admin/finance')).data,

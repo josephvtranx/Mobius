@@ -89,7 +89,9 @@ describe('POST /api/auth/login', () => {
       user_id: 1,
       name: SEED_USER.name,
       email: SEED_USER.email,
-      role: SEED_USER.role
+      role: SEED_USER.role,
+      // institution_name: registry-joined display name (profile card subtitle)
+      institution_name: 'Test Academy'
       // NB: no `username` key — column doesn't exist, undefined is dropped from JSON
     });
 
