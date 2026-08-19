@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/fonts/fonts.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/styles.css">
+<script src="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.js"></script>
+<style>
+  *:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands){font-family:'Noto Sans KR',system-ui,sans-serif !important}
+  *{box-sizing:border-box}
+  body{margin:0}
+  a{color:#9c4f78;text-decoration:none}a:hover{color:#2b1b28}
+  .gd-root ::-webkit-scrollbar{width:9px;height:9px}
+  .gd-root ::-webkit-scrollbar-thumb{background:#ecd9e3;border-radius:8px}
+  .gd-root ::-webkit-scrollbar-track{background:transparent}
+  .gd-root .hm-btn{border-color:#f0e0e9;color:#6b4f5e}
+  .gd-root .hm-btn.primary{background:#9c4f78;border-color:#9c4f78;color:#fff}
+  .gd-root .hm-card{border-color:#f0e0e9}
+  .gd-root .hm-link{color:#9c4f78}
+  .gd-rail{transition:background .14s ease,color .14s ease}
+  .gd-rail:hover{background:rgba(255,255,255,.22);color:#fff}
+  .gd-menuitem{transition:background .13s ease,color .13s ease}
+  .gd-menuitem:hover{background:#fbeef4;color:#2b1b28}
+  .gd-row{transition:background .15s ease}
+  .gd-row:hover{background:#fdf7fa}
+  .gd-card{transition:box-shadow .18s ease,transform .15s ease}
+  .gd-card:hover{box-shadow:0 14px 34px -22px rgba(43,27,40,.45);transform:translateY(-2px)}
+  #modal-root .modal{max-width:720px;padding:26px 30px}
+  @keyframes gdFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .gd-fade{animation:gdFade .2s ease both}
+  @media (max-width:1120px){
+    .gd-hero{grid-template-columns:1fr !important}
+    .gd-lower{grid-template-columns:1fr !important}
+  }
+</style>
+</helmet>
+<div class="gd-root" style="display:flex;min-height:100vh;background:radial-gradient(1200px 620px at 82% -12%,#fbeef4 0,#fdf9fb 55%);font-family:'Noto Sans KR',system-ui,sans-serif;color:#2b1b28">
+  <div id="modal-root"></div>
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside style="position:sticky;top:0;align-self:flex-start;height:100vh;width:320px;flex-shrink:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:center;gap:2px;font-weight:600;font-size:26px;letter-spacing:-.03em;color:#333;padding:22px 20px 8px">
+      <span style="font-family:'Noto Sans KR',sans-serif">möb</span>
+      <i class="fa-solid fa-pen-ruler" style="color:#9c4f78;font-size:17px;transform:translateY(-1px);margin:0 2px"></i>
+      <span style="font-family:'Noto Sans KR',sans-serif">us</span>
+    </div>
+    <div style="flex:1;display:flex;min-height:0">
+      <div style="margin-top:8px;width:76px;flex-shrink:0;background:linear-gradient(185deg,#9c4f78 0%,#843f63 65%,#6f3352 100%);border-radius:0 28px 28px 0;padding:22px 0;display:flex;flex-direction:column;align-items:center;gap:18px;box-shadow:0 24px 50px -30px rgba(43,27,40,.55);min-height:0">
+        <div style="display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-radius:24px;background:rgba(255,255,255,.16)">
+          <button class="gd-rail" onClick="{{ goOverview }}" title="Overview" style="{{ railOverview }}"><i class="fa-solid fa-compass"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px;border-radius:24px;background:rgba(255,255,255,.16)">
+          <button class="gd-rail" onClick="{{ goFamily }}" title="My kids" style="{{ railFamily }}"><i class="fa-solid fa-graduation-cap"></i></button>
+          <button class="gd-rail" onClick="{{ goInbox }}" title="Inbox" style="{{ railInbox }}"><i class="fa-solid fa-comment-dots"></i><span style="{{ railMsgDot }}">{{ unreadCount }}</span></button>
+        </div>
+      </div>
+      <div style="flex:1;min-width:0;padding:30px 16px 16px 18px;overflow:auto">
+        <div style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:600;color:#9c4f78;padding:0 8px 14px"><i class="{{ menuIcon }}" style="font-size:13px"></i>{{ menuTitle }}</div>
+        <nav style="display:flex;flex-direction:column;gap:3px">
+          <sc-for list="{{ menuItems }}" as="it" hint-placeholder-count="3">
+            <button class="gd-menuitem" onClick="{{ it.onClick }}" style="{{ it.rowStyle }}"><i class="{{ it.icon }}" style="width:18px;text-align:center;font-size:14px"></i>{{ it.label }}<sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="{{ it.badgeStyle }}">{{ it.badge }}</span></sc-if></button>
+          </sc-for>
+        </nav>
+      </div>
+    </div>
+
+    <div style="margin:0 16px 20px;padding:14px;border-radius:18px;background:#fff;border:1px solid #f0e0e9;box-shadow:0 16px 34px -24px rgba(43,27,40,.45)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span style="position:relative;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#9c4f78,#c583a3);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:15px;flex-shrink:0">PJ<span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#39c07a;border:2px solid #fff"></span></span>
+        <div style="line-height:1.3;min-width:0">
+          <div style="font-size:15px;font-weight:600;color:#2b1b28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Park Jiyoung</div>
+          <div style="font-size:12px;color:#b99faf;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Guardian · {{ childCountLabel }}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px">
+        <button onClick="{{ goSettings }}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:500;padding:10px;border-radius:11px;border:none;cursor:pointer;font-family:inherit;background:#f6eff3;color:#6b4f5e"><i class="fa-solid fa-gear" style="flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Settings</span></button>
+        <button onClick="{{ noop }}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:500;padding:10px;border-radius:11px;border:none;cursor:pointer;font-family:inherit;background:#fbe6e6;color:#d0483b"><i class="fa-solid fa-arrow-right-from-bracket" style="flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Logout</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="position:sticky;top:0;z-index:15;backdrop-filter:blur(10px);background:rgba(253,249,251,.85);border-bottom:1px solid #f0e0e9;padding:14px 30px;display:flex;align-items:center;gap:20px">
+      <div style="line-height:1.15">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#9c4f78">{{ crumb }}</div>
+        <div style="font-size:18px;font-weight:600;letter-spacing:-.01em">{{ pageTitle }}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        <!-- child switcher -->
+        <div style="display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #f0e0e9;border-radius:12px;padding:4px">
+          <sc-for list="{{ childTabs }}" as="c" hint-placeholder-count="2">
+            <button onClick="{{ c.pick }}" style="{{ c.style }}"><span style="{{ c.dotStyle }}">{{ c.initials }}</span>{{ c.first }}</button>
+          </sc-for>
+        </div>
+        <button onClick="{{ noop }}" style="position:relative;width:40px;height:40px;border-radius:11px;background:#fff;border:1px solid #f0e0e9;color:#6b4f5e;cursor:pointer;flex-shrink:0"><i class="fa-regular fa-bell"></i><span style="position:absolute;top:7px;right:8px;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:#c0654f;color:#fff;font-size:9px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #fff">{{ unreadCount }}</span></button>
+      </div>
+    </header>
+
+    <main style="flex:1;min-height:0;overflow:auto;padding:28px 30px 40px">
+
+      <!-- ============ HOME ============ -->
+      <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+      <div class="gd-fade" style="max-width:1400px;margin:0 auto">
+        <section style="background:#fff;border:1px solid #f0e0e9;border-radius:20px;overflow:hidden;margin-bottom:20px">
+          <div class="gd-hero" style="display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);gap:24px;align-items:center;padding:24px 26px">
+            <div>
+              <div style="font-size:12.5px;font-weight:600;color:#9c4f78;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">{{ todayLabel }}</div>
+              <h1 style="margin:0;font-size:29px;font-weight:600;letter-spacing:-.02em">Good afternoon, Jiyoung</h1>
+              <p style="margin:10px 0 0;font-size:14.5px;line-height:1.55;color:#7d6474;max-width:52ch;text-wrap:pretty">{{ heroCopy }}</p>
+            </div>
+            <div style="position:relative;overflow:hidden;border-radius:17px;background:linear-gradient(150deg,#2b1b28 0%,#5c2f4a 55%,#9c4f78 155%);color:#fff;padding:20px 22px">
+              <div style="position:absolute;right:-28px;top:-28px;width:140px;height:140px;border-radius:50%;background:rgba(230,182,207,.16)"></div>
+              <div style="position:relative">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                  <span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#e0bcd0">{{ nextKick }}</span>
+                  <span style="width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.14);display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:#e6b6cf"><i class="{{ nextIcon }}"></i></span>
+                </div>
+                <div style="font-size:20px;font-weight:600;letter-spacing:-.01em">{{ nextName }}</div>
+                <div style="display:flex;gap:16px;margin-top:9px;font-size:12.5px;color:#f0dce7;flex-wrap:wrap">
+                  <span><i class="fa-regular fa-clock" style="margin-right:6px;color:#e6b6cf"></i>{{ nextTime }}</span>
+                  <span><i class="fa-solid fa-location-dot" style="margin-right:6px;color:#e6b6cf"></i>{{ nextRoom }}</span>
+                </div>
+                <div style="display:flex;gap:9px;margin-top:18px">
+                  <button onClick="{{ goSchedule }}" style="flex:1;min-width:0;height:40px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;background:#fff;color:#2b1b28;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px"><i class="fa-regular fa-calendar" style="color:#9c4f78;flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Schedule</span></button>
+                  <button onClick="{{ openAbsence }}" style="flex:1;min-width:0;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.28);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px"><i class="fa-solid fa-user-clock" style="flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Report absence</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;padding:18px 4px;background:#fdf9fb;border-top:1px solid #f6eaf1;flex-wrap:wrap">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div style="flex:1;min-width:130px;text-align:center;padding:0 14px;border-right:{{ k.divider }}">
+                <div style="font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#b99faf">{{ k.label }}</div>
+                <div style="font-size:25px;font-weight:600;letter-spacing:-.02em;margin:5px 0 3px;color:{{ k.fg }}">{{ k.value }}</div>
+                <div style="font-size:11.5px;color:#7d6474">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:20px">
+          <sc-for list="{{ familyCards }}" as="c" hint-placeholder-count="2">
+            <section class="hm-card gd-card" onClick="{{ c.pick }}" style="padding:16px 18px;cursor:pointer;border:1.5px solid {{ c.bd }}">
+              <div style="display:flex;align-items:center;gap:11px;margin-bottom:13px;flex-wrap:wrap">
+                <span style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:{{ c.tintBg }};color:{{ c.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600">{{ c.initials }}</span>
+                <div style="min-width:0;flex:1;line-height:1.3">
+                  <div style="font-size:14px;font-weight:600">{{ c.name }}</div>
+                  <div style="font-size:11.5px;color:#b99faf">{{ c.grade }}</div>
+                </div>
+                <sc-if value="{{ c.low }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:#fff4e0;color:#9c6a1d;flex-shrink:0"><i class="fa-solid fa-triangle-exclamation" style="margin-right:5px"></i>{{ c.lowLabel }}</span>
+                </sc-if>
+              </div>
+              <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:3px">
+                <span style="font-size:24px;font-weight:600;letter-spacing:-.02em;color:{{ c.availFg }}">{{ c.available }}</span>
+                <span style="font-size:11.5px;color:#b99faf">available</span>
+              </div>
+              <div style="font-size:11.5px;color:#7d6474;margin-bottom:12px">{{ c.committedNote }}</div>
+              <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#6b4f5e;margin-bottom:14px">
+                <span><i class="fa-regular fa-calendar" style="width:17px;color:#b99faf"></i>{{ c.nextLabel }}</span>
+                <span><i class="fa-regular fa-comment" style="width:17px;color:#b99faf"></i>{{ c.noteLabel }}</span>
+              </div>
+              <div style="display:flex;gap:9px">
+                <button onClick="{{ c.view }}" class="hm-btn" style="flex:1;justify-content:center;height:34px;font-size:12.5px">Schedule</button>
+                <button onClick="{{ c.topUp }}" class="hm-btn primary" style="flex:1;justify-content:center;height:34px;font-size:12.5px">Top up</button>
+              </div>
+            </section>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasAlerts }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+          <sc-for list="{{ alerts }}" as="a" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:13px;padding:14px 17px;border-radius:14px;background:{{ a.bg }};border:1px solid {{ a.bd }};flex-wrap:wrap">
+              <span style="width:34px;height:34px;border-radius:10px;flex-shrink:0;background:#fff;color:{{ a.fg }};display:inline-flex;align-items:center;justify-content:center;font-size:13px"><i class="{{ a.icon }}"></i></span>
+              <div style="flex:1;min-width:180px;font-size:13px;line-height:1.5;color:{{ a.textFg }}">{{ a.text }}</div>
+              <button onClick="{{ a.act }}" class="hm-btn {{ a.btnCls }}" style="height:34px;font-size:12.5px;flex-shrink:0">{{ a.cta }}</button>
+            </div>
+          </sc-for>
+        </div>
+        </sc-if>
+
+        <div class="gd-lower" style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+          <section class="hm-card" style="padding:0;overflow:hidden">
+            <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #f6eaf1;margin:0"><h2>This week's activity</h2><span style="font-size:12px;color:#b99faf">{{ childFirst }}</span></div>
+            <sc-if value="{{ noActivity }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;padding:36px 20px">
+                <i class="fa-regular fa-newspaper" style="font-size:20px;color:#b99faf"></i>
+                <div style="font-size:13.5px;font-weight:600;margin-top:10px">Nothing yet this week</div>
+                <div style="font-size:12.5px;color:#7d6474;margin-top:4px">Sessions, attendance and tutor notes will show up here as they happen.</div>
+              </div>
+            </sc-if>
+            <div style="padding:6px 0">
+              <sc-for list="{{ activity }}" as="a" hint-placeholder-count="4">
+                <div class="gd-row" style="display:flex;align-items:flex-start;gap:13px;padding:12px 20px">
+                  <span style="width:32px;height:32px;border-radius:10px;flex-shrink:0;background:{{ a.tintBg }};color:{{ a.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;margin-top:1px"><i class="{{ a.icon }}"></i></span>
+                  <div style="flex:1;min-width:0;line-height:1.45">
+                    <div style="font-size:13px;color:#2b1b28">{{ a.text }}</div>
+                    <div style="font-size:11px;color:#b99faf;margin-top:2px">{{ a.when }}</div>
+                  </div>
+                  <a class="hm-link" onClick="{{ a.act }}" style="cursor:pointer;font-size:12px;flex-shrink:0;margin-top:2px">{{ a.cta }}</a>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+          <section class="hm-card" style="padding:0;overflow:hidden">
+            <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #f6eaf1;margin:0"><h2>{{ childFirst }}'s week</h2><a class="hm-link" onClick="{{ goSchedule }}" style="cursor:pointer">Full schedule</a></div>
+            <sc-if value="{{ noSessions }}" hint-placeholder-val="{{ false }}">
+              <div style="text-align:center;padding:44px 20px">
+                <i class="fa-regular fa-calendar" style="font-size:22px;color:#b99faf"></i>
+                <div style="font-size:14.5px;font-weight:600;margin-top:12px">No sessions this week</div>
+                <div style="font-size:13px;color:#7d6474;margin-top:5px">{{ childFirst }}'s sessions will appear here once the academy schedules them.</div>
+              </div>
+            </sc-if>
+            <sc-for list="{{ weekSessions }}" as="s" hint-placeholder-count="3">
+              <div class="gd-row" style="display:flex;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid #f6eaf1;flex-wrap:wrap">
+                <span style="width:44px;height:44px;border-radius:12px;flex-shrink:0;background:{{ s.tintBg }};color:{{ s.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:16px"><i class="{{ s.icon }}"></i></span>
+                <div style="min-width:100px;line-height:1.3">
+                  <div style="font-size:13px;font-weight:600">{{ s.day }}</div>
+                  <div style="font-size:12px;color:#7d6474;margin-top:2px">{{ s.time }}</div>
+                </div>
+                <div style="min-width:150px;flex:1;line-height:1.3">
+                  <div style="font-size:14px;font-weight:600">{{ s.name }}</div>
+                  <div style="font-size:12px;color:#7d6474;margin-top:2px">{{ s.tutor }} · {{ s.room }}</div>
+                </div>
+                <span style="flex-shrink:0;font-size:11px;font-weight:600;padding:5px 11px;border-radius:999px;background:{{ s.stBg }};color:{{ s.stFg }}">{{ s.status }}</span>
+                <button onClick="{{ s.report }}" class="hm-btn" style="height:34px;font-size:12.5px;flex-shrink:0">Can't attend</button>
+              </div>
+            </sc-for>
+            <div style="padding:14px 20px;font-size:12px;line-height:1.5;color:#8c7280;background:#fdf9fb"><i class="fa-solid fa-circle-info" style="margin-right:8px;color:#9c4f78"></i>The academy sets the timetable. Report an absence at least 24 hours ahead and the credit is returned.</div>
+          </section>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>Latest feedback</h2><a class="hm-link" onClick="{{ goProgress }}" style="cursor:pointer">View all</a></div>
+              <sc-if value="{{ noFeedback }}" hint-placeholder-val="{{ false }}">
+                <div style="text-align:center;padding:26px 14px">
+                  <i class="fa-regular fa-comment" style="font-size:20px;color:#b99faf"></i>
+                  <div style="font-size:13.5px;font-weight:600;margin-top:10px">No feedback yet</div>
+                  <div style="font-size:12.5px;color:#7d6474;margin-top:4px">Tutors post notes after each session.</div>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ feedbackPeek }}" as="f" hint-placeholder-count="2">
+                  <div style="padding:13px 14px;border:1px solid #f6eaf1;border-radius:13px;background:#fdf9fb">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+                      <span style="width:30px;height:30px;border-radius:9px;flex-shrink:0;background:{{ f.tintBg }};color:{{ f.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">{{ f.initials }}</span>
+                      <div style="line-height:1.25;min-width:0">
+                        <div style="font-size:12.5px;font-weight:600">{{ f.tutor }}</div>
+                        <div style="font-size:11px;color:#b99faf">{{ f.klass }} · {{ f.date }}</div>
+                      </div>
+                      <span style="margin-left:auto;font-size:12px;color:#e0a83e;flex-shrink:0">{{ f.stars }}</span>
+                    </div>
+                    <p style="margin:0;font-size:12.5px;line-height:1.55;color:#6b4f5e">{{ f.note }}</p>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>Account</h2><a class="hm-link" onClick="{{ goBillingView }}" style="cursor:pointer">Billing</a></div>
+              <div style="display:flex;flex-direction:column;gap:1px;background:#f6eaf1;border:1px solid #f6eaf1;border-radius:13px;overflow:hidden">
+                <sc-for list="{{ acctRows }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:12px;background:#fff;padding:12px 15px">
+                    <span style="font-size:12.5px;color:#7d6474;flex:1;min-width:0">{{ r.label }}</span>
+                    <span style="font-size:13px;font-weight:600;color:{{ r.fg }};flex-shrink:0">{{ r.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <button onClick="{{ openTopUp }}" class="hm-btn primary" style="width:100%;justify-content:center;height:40px;margin-top:14px"><i class="fa-solid fa-plus" style="margin-right:8px"></i>Top up wallet</button>
+            </section>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ SCHEDULE ============ -->
+      <sc-if value="{{ isSchedule }}" hint-placeholder-val="{{ false }}">
+      <div class="gd-fade" style="max-width:1240px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+          <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em">Jul 20 – 26, 2026</h1>
+          <div style="display:flex;gap:6px">
+            <button onClick="{{ noop }}" class="hm-btn" style="width:36px;height:36px;padding:0;justify-content:center"><i class="fa-solid fa-chevron-left"></i></button>
+            <button onClick="{{ noop }}" class="hm-btn" style="height:36px">Today</button>
+            <button onClick="{{ noop }}" class="hm-btn" style="width:36px;height:36px;padding:0;justify-content:center"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:16px;font-size:12.5px;color:#7d6474;flex-wrap:wrap">
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#9c4f78"></span>Confirmed</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#e0a83e"></span>Absence requested</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#d8c8d0"></span>Past</span>
+          </div>
+        </div>
+        <section class="hm-card" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:56px repeat(7,1fr);border-bottom:1px solid #f0e0e9">
+            <div></div>
+            <sc-for list="{{ weekHeads }}" as="d" hint-placeholder-count="7">
+              <div style="padding:12px 8px;text-align:center;border-left:1px solid #f6eaf1;background:{{ d.headBg }}">
+                <div style="font-size:11px;font-weight:600;letter-spacing:.05em;color:#b99faf;text-transform:uppercase">{{ d.dow }}</div>
+                <div style="margin-top:3px;font-size:16px;font-weight:600;color:{{ d.numFg }}">{{ d.num }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:relative;display:grid;grid-template-columns:56px repeat(7,1fr);height:640px">
+            <div style="position:relative">
+              <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
+                <div style="position:absolute;left:0;right:0;top:{{ h.top }};height:1px"><span style="position:absolute;right:8px;top:-7px;font-size:10.5px;color:#b99faf">{{ h.label }}</span></div>
+              </sc-for>
+            </div>
+            <sc-for list="{{ weekCols }}" as="c" hint-placeholder-count="7">
+              <div style="position:relative;border-left:1px solid #f6eaf1;background-image:repeating-linear-gradient(#fbf3f7 0 1px,transparent 1px 64px)">
+                <sc-for list="{{ c.blocks }}" as="b" hint-placeholder-count="0">
+                  <button onClick="{{ b.open }}" style="position:absolute;left:5px;right:5px;top:{{ b.top }};height:{{ b.height }};border:1px solid {{ b.bd }};border-left:3px solid {{ b.accent }};background:{{ b.bg }};border-radius:9px;padding:7px 9px;text-align:left;cursor:pointer;overflow:hidden;font-family:inherit">
+                    <div style="font-size:12px;font-weight:600;color:{{ b.fg }};line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.subject }}</div>
+                    <div style="font-size:10.5px;color:{{ b.metaFg }};margin-top:2px">{{ b.time }}</div>
+                    <div style="font-size:10.5px;color:{{ b.metaFg }};margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.room }}</div>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+      </sc-if>
+
+      <!-- ============ PROGRESS ============ -->
+      <sc-if value="{{ isProgress }}" hint-placeholder-val="{{ false }}">
+      <div class="gd-fade" style="max-width:1060px;margin:0 auto">
+        <p style="margin:0 0 20px;font-size:14px;color:#7d6474">Attendance and tutor notes for {{ childFirst }}. Posted by instructors after each session — you can reply in Messages.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:22px">
+          <sc-for list="{{ progStats }}" as="p" hint-placeholder-count="3">
+            <div class="hm-card gd-card" style="padding:16px 18px">
+              <div style="font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#b99faf">{{ p.label }}</div>
+              <div style="font-size:24px;font-weight:600;letter-spacing:-.02em;margin-top:5px;color:{{ p.fg }}">{{ p.value }}</div>
+              <div style="font-size:11.5px;color:#7d6474;margin-top:3px">{{ p.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <section class="hm-card" style="padding:0;overflow:hidden;margin-bottom:20px">
+          <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #f6eaf1;margin:0"><h2>Attendance by class</h2></div>
+          <sc-for list="{{ attByClass }}" as="a" hint-placeholder-count="2">
+            <div style="padding:15px 20px;border-bottom:1px solid #f6eaf1">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:12px;flex-wrap:wrap">
+                <span style="font-size:14px;font-weight:600">{{ a.name }} <span style="font-weight:400;color:#7d6474;font-size:12.5px">· {{ a.tutor }}</span></span>
+                <span style="font-size:12.5px;color:#7d6474">{{ a.label }}</span>
+              </div>
+              <div style="height:8px;border-radius:999px;background:#f6eaf1;overflow:hidden">
+                <div style="height:100%;border-radius:999px;width:{{ a.pct }};background:{{ a.color }}"></div>
+              </div>
+            </div>
+          </sc-for>
+        </section>
+        <div style="display:flex;flex-direction:column;gap:13px">
+          <sc-for list="{{ feedbackAll }}" as="f" hint-placeholder-count="3">
+            <section class="hm-card" style="padding:17px 19px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:11px;flex-wrap:wrap">
+                <span style="width:40px;height:40px;border-radius:12px;flex-shrink:0;background:{{ f.tintBg }};color:{{ f.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">{{ f.initials }}</span>
+                <div style="min-width:0;line-height:1.3">
+                  <div style="font-size:14.5px;font-weight:600">{{ f.klass }} <span style="font-weight:400;color:#7d6474;font-size:13px">· {{ f.tutor }}</span></div>
+                  <div style="font-size:12px;color:#b99faf;margin-top:2px">{{ f.date }} · {{ f.mode }}</div>
+                </div>
+                <span style="margin-left:auto;font-size:14px;color:#e0a83e;letter-spacing:1px;flex-shrink:0">{{ f.stars }}</span>
+              </div>
+              <p style="margin:0;font-size:13.5px;line-height:1.6;color:#6b4f5e">{{ f.note }}</p>
+              <sc-if value="{{ f.hasTags }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+                  <sc-for list="{{ f.tags }}" as="t" hint-placeholder-count="0">
+                    <span style="font-size:11.5px;font-weight:500;color:#9c4f78;background:#fbeef4;padding:4px 11px;border-radius:999px">{{ t.label }}</span>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </section>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ BILLING ============ -->
+      <sc-if value="{{ isBilling }}" hint-placeholder-val="{{ false }}">
+      <div class="gd-fade" style="max-width:1060px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px">
+          <sc-for list="{{ billStats }}" as="b" hint-placeholder-count="4">
+            <div class="hm-card gd-card" style="padding:16px 18px">
+              <div style="font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#b99faf">{{ b.label }}</div>
+              <div style="font-size:23px;font-weight:600;letter-spacing:-.02em;margin-top:5px;color:{{ b.fg }}">{{ b.value }}</div>
+              <div style="font-size:11.5px;color:#7d6474;margin-top:3px">{{ b.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <section class="hm-card" style="padding:0;overflow:hidden;margin-bottom:20px">
+          <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #f6eaf1;margin:0"><h2>Payments</h2><button onClick="{{ noop }}" class="hm-btn" style="height:32px;font-size:12.5px"><i class="fa-solid fa-download" style="margin-right:7px"></i>Export</button></div>
+          <div style="display:grid;grid-template-columns:minmax(140px,1.3fr) minmax(100px,1fr) 100px 110px 110px;gap:12px;padding:12px 20px;border-bottom:1px solid #f6eaf1;background:#fdf9fb;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#b99faf">
+            <span>Invoice</span><span>For</span><span>Issued</span><span style="text-align:center">Status</span><span style="text-align:right">Amount</span>
+          </div>
+          <sc-for list="{{ invoices }}" as="i" hint-placeholder-count="4">
+            <div class="gd-row" style="display:grid;grid-template-columns:minmax(140px,1.3fr) minmax(100px,1fr) 100px 110px 110px;gap:12px;padding:13px 20px;border-bottom:1px solid #f6eaf1;align-items:center">
+              <div style="min-width:0;line-height:1.3">
+                <div style="font-size:13px;font-weight:600">{{ i.id }}</div>
+                <div style="font-size:11.5px;color:#b99faf">{{ i.desc }}</div>
+              </div>
+              <span style="font-size:12.5px;color:#6b4f5e;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ i.child }}</span>
+              <span style="font-size:12.5px;color:#7d6474">{{ i.issued }}</span>
+              <span style="justify-self:center;font-size:11px;font-weight:600;padding:5px 11px;border-radius:999px;background:{{ i.stBg }};color:{{ i.stFg }}">{{ i.status }}</span>
+              <div style="text-align:right;min-width:0">
+                <div style="font-size:13.5px;font-weight:600">{{ i.amount }}</div>
+                <sc-if value="{{ i.payable }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ i.pay }}" class="hm-btn primary" style="height:28px;font-size:11.5px;margin-top:5px;padding:0 12px">Pay</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section class="hm-card" style="padding:0;overflow:hidden;margin-bottom:20px">
+          <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #f6eaf1;margin:0"><h2>Wallet activity — {{ childFirst }}</h2><span style="font-size:12px;color:#b99faf">{{ runwayNote }}</span></div>
+          <sc-if value="{{ noLedger }}" hint-placeholder-val="{{ false }}">
+            <div style="text-align:center;padding:36px 20px">
+              <i class="fa-solid fa-receipt" style="font-size:20px;color:#b99faf"></i>
+              <div style="font-size:13.5px;font-weight:600;margin-top:10px">No activity yet</div>
+              <div style="font-size:12.5px;color:#7d6474;margin-top:4px">Each attended session, absence and top-up shows here as a line.</div>
+            </div>
+          </sc-if>
+          <sc-for list="{{ ledger }}" as="l" hint-placeholder-count="5">
+            <div class="gd-row" style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #f6eaf1;flex-wrap:wrap">
+              <span style="font-size:10.5px;font-weight:600;padding:4px 10px;border-radius:999px;flex-shrink:0;background:{{ l.tBg }};color:{{ l.tFg }}">{{ l.type }}</span>
+              <div style="flex:1;min-width:160px;line-height:1.3">
+                <div style="font-size:13px;color:#2b1b28">{{ l.note }}</div>
+                <div style="font-size:11px;color:#b99faf;margin-top:2px">{{ l.date }}</div>
+              </div>
+              <span style="font-size:13px;font-weight:600;flex-shrink:0;width:84px;text-align:right;color:{{ l.amtFg }}">{{ l.amtText }}</span>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;gap:12px;padding:13px 20px;background:#fdf9fb;flex-wrap:wrap">
+            <i class="fa-solid fa-gauge-high" style="color:#9c4f78;font-size:12.5px"></i>
+            <span style="font-size:12.5px;line-height:1.5;color:#6b4f5e;flex:1;min-width:200px">{{ runwayLine }}</span>
+            <button onClick="{{ openTopUp }}" class="hm-btn primary" style="height:32px;font-size:12px;flex-shrink:0">Add credits</button>
+          </div>
+        </section>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start">
+          <section class="hm-card">
+            <div class="hm-card-head"><h2>Wallets</h2><span style="font-size:12px;color:#b99faf">per child — never pooled</span></div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ wallets }}" as="w" hint-placeholder-count="2">
+                <div style="padding:14px 15px;border:1px solid #f6eaf1;border-radius:13px;background:#fdf9fb">
+                  <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px;flex-wrap:wrap">
+                    <span style="width:32px;height:32px;border-radius:50%;flex-shrink:0;background:{{ w.tintBg }};color:{{ w.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ w.initials }}</span>
+                    <span style="font-size:13.5px;font-weight:600;flex:1;min-width:0">{{ w.name }}</span>
+                    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:{{ w.stBg }};color:{{ w.stFg }};flex-shrink:0">{{ w.status }}</span>
+                  </div>
+                  <div style="display:flex;gap:18px;flex-wrap:wrap">
+                    <div><div style="font-size:11px;color:#b99faf">Available</div><div style="font-size:16px;font-weight:600;color:{{ w.availFg }}">{{ w.available }}</div></div>
+                    <div><div style="font-size:11px;color:#b99faf">Committed</div><div style="font-size:16px;font-weight:600">{{ w.committed }}</div></div>
+                    <div><div style="font-size:11px;color:#b99faf">Balance</div><div style="font-size:16px;font-weight:600">{{ w.balance }}</div></div>
+                    <button onClick="{{ w.topUp }}" class="hm-btn" style="margin-left:auto;align-self:flex-end;height:32px;font-size:12px">Top up</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+          <section class="hm-card">
+            <div class="hm-card-head"><h2>Payment method</h2><a class="hm-link" onClick="{{ noop }}" style="cursor:pointer">Change</a></div>
+            <div style="display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid #f6eaf1;border-radius:13px;background:#fdf9fb;margin-bottom:14px">
+              <span style="width:40px;height:40px;border-radius:10px;background:#fbeef4;color:#9c4f78;display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0"><i class="fa-solid fa-credit-card"></i></span>
+              <div style="line-height:1.3;min-width:0">
+                <div style="font-size:13.5px;font-weight:600">Visa ···· 4417</div>
+                <div style="font-size:11.5px;color:#b99faf">Expires 09 / 2028</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:1px;background:#f6eaf1;border:1px solid #f6eaf1;border-radius:13px;overflow:hidden">
+              <sc-for list="{{ billPrefs }}" as="p" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:13px;background:#fff;padding:13px 15px">
+                  <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:500">{{ p.label }}</div><div style="font-size:11.5px;color:#7d6474">{{ p.desc }}</div></div>
+                  <span onClick="{{ p.toggle }}" style="width:42px;height:24px;border-radius:999px;background:{{ p.trackBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:2px;left:{{ p.knobLeft }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s ease"></span></span>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ REQUESTS ============ -->
+      <sc-if value="{{ isRequests }}" hint-placeholder-val="{{ false }}">
+      <div class="gd-fade" style="max-width:940px;margin:0 auto">
+        <p style="margin:0 0 20px;font-size:14px;color:#7d6474">Everything in flight for your family — {{ childFirst }}'s own requests and the absences you've reported. The academy resolves each one.</p>
+        <div style="display:flex;flex-direction:column;gap:13px">
+          <sc-if value="{{ noRequests }}" hint-placeholder-val="{{ false }}">
+            <div class="hm-empty" style="text-align:center;padding:56px 20px;background:#fff;border:1px solid #f0e0e9;border-radius:16px">
+              <i class="fa-solid fa-check-double" style="font-size:26px;color:#2c8a5b"></i>
+              <div style="font-size:15.5px;font-weight:600;margin-top:14px">Nothing pending</div>
+              <div style="font-size:13.5px;color:#7d6474;margin-top:6px">Requests and absence reports will appear here with their status.</div>
+            </div>
+          </sc-if>
+          <sc-for list="{{ requests }}" as="r" hint-placeholder-count="3">
+            <section class="hm-card" style="padding:17px 19px">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <span style="width:40px;height:40px;border-radius:12px;flex-shrink:0;background:{{ r.tintBg }};color:{{ r.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:14px"><i class="{{ r.icon }}"></i></span>
+                <div style="min-width:0;flex:1;line-height:1.35">
+                  <div style="font-size:14px;font-weight:600">{{ r.title }}</div>
+                  <div style="font-size:12px;color:#7d6474;margin-top:2px">{{ r.detail }}</div>
+                </div>
+                <span style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};flex-shrink:0">{{ r.status }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:0;margin-top:14px;padding-top:13px;border-top:1px solid #f6eaf1;flex-wrap:wrap">
+                <sc-for list="{{ r.steps }}" as="s" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center">
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <span style="width:22px;height:22px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;background:{{ s.bg }};color:{{ s.fg }};border:1.5px solid {{ s.bd }}"><i class="{{ s.icon }}"></i></span>
+                      <span style="font-size:11.5px;font-weight:{{ s.weight }};color:{{ s.labelFg }}">{{ s.label }}</span>
+                    </div>
+                    <sc-if value="{{ s.hasArrow }}" hint-placeholder-val="{{ true }}">
+                      <span style="width:28px;height:1.5px;background:#eddde6;margin:0 9px"></span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <span style="margin-left:auto;font-size:11.5px;color:#b99faf">{{ r.when }}</span>
+              </div>
+            </section>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ MESSAGES ============ -->
+      <sc-if value="{{ isMessages }}" hint-placeholder-val="{{ false }}">
+      <div class="gd-fade" style="max-width:1160px;margin:0 auto">
+        <div class="hm-card" style="padding:0;overflow:hidden;display:grid;grid-template-columns:310px 1fr;min-height:540px">
+          <div style="border-right:1px solid #f0e0e9;display:flex;flex-direction:column">
+            <div style="padding:12px;border-bottom:1px solid #f6eaf1">
+              <button onClick="{{ noop }}" class="hm-btn primary" style="width:100%;height:38px;justify-content:center"><i class="fa-solid fa-pen" style="margin-right:8px"></i>New message</button>
+            </div>
+            <div style="overflow:auto;flex:1">
+              <sc-for list="{{ threads }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.pick }}" class="gd-row" style="width:100%;text-align:left;border:none;background:{{ t.bg }};border-bottom:1px solid #f6eaf1;padding:14px 16px;cursor:pointer;display:flex;gap:12px;font-family:inherit">
+                  <span style="width:38px;height:38px;border-radius:11px;flex-shrink:0;background:{{ t.tintBg }};color:{{ t.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ t.initials }}</span>
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</span><span style="margin-left:auto;font-size:11px;color:#b99faf;flex-shrink:0">{{ t.time }}</span></div>
+                    <div style="font-size:12px;color:#b99faf;margin-top:2px">{{ t.role }}</div>
+                    <div style="font-size:12.5px;color:#7d6474;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.preview }}</div>
+                  </div>
+                  <sc-if value="{{ t.unread }}" hint-placeholder-val="{{ false }}"><span style="width:8px;height:8px;border-radius:50%;background:#9c4f78;flex-shrink:0;margin-top:6px"></span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;min-width:0">
+            <div style="padding:16px 20px;border-bottom:1px solid #f6eaf1;display:flex;align-items:center;gap:12px">
+              <span style="width:38px;height:38px;border-radius:11px;background:#fdeedd;color:#c26a24;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">KS</span>
+              <div><div style="font-size:14.5px;font-weight:600">Kim Soyeon</div><div style="font-size:12px;color:#7d6474">Algebra II tutor · Alice's class</div></div>
+            </div>
+            <div style="flex:1;overflow:auto;padding:22px 20px;display:flex;flex-direction:column;gap:14px;background:#fdf9fb">
+              <sc-for list="{{ chat }}" as="m" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:{{ m.justify }}">
+                  <div style="max-width:70%;padding:11px 14px;border-radius:14px;font-size:13.5px;line-height:1.5;background:{{ m.bubbleBg }};color:{{ m.bubbleFg }};border:{{ m.bubbleBd }}">{{ m.text }}<div style="font-size:10px;margin-top:5px;color:{{ m.timeFg }}">{{ m.time }}</div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 18px;border-top:1px solid #f6eaf1;display:flex;gap:10px;align-items:center">
+              <label style="flex:1;display:flex;align-items:center;gap:9px;background:#fdf9fb;border:1px solid #f0e0e9;border-radius:11px;padding:0 14px;height:44px"><input placeholder="Write a message…" style="border:none;outline:none;background:none;font-family:inherit;font-size:13.5px;width:100%"></label>
+              <button onClick="{{ noop }}" class="hm-btn primary" style="width:44px;height:44px;padding:0;justify-content:center"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ SETTINGS ============ -->
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div class="gd-fade" style="max-width:940px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start">
+          <section class="hm-card" style="text-align:center">
+            <span style="width:96px;height:96px;border-radius:50%;margin:6px auto 14px;background:linear-gradient(135deg,#9c4f78,#c583a3);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:32px">PJ</span>
+            <div style="font-size:17px;font-weight:600">Park Jiyoung</div>
+            <div style="font-size:12.5px;color:#7d6474;margin-top:2px">Guardian · Möbius Academy</div>
+            <button onClick="{{ noop }}" class="hm-btn" style="margin:16px auto 0"><i class="fa-solid fa-camera" style="margin-right:8px"></i>Change photo</button>
+          </section>
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>Contact details</h2><button onClick="{{ noop }}" class="hm-btn primary" style="height:34px;font-size:12.5px"><i class="fa-solid fa-pen" style="margin-right:7px"></i>Edit</button></div>
+              <div style="display:flex;flex-direction:column;gap:1px;background:#f6eaf1;border:1px solid #f6eaf1;border-radius:13px;overflow:hidden">
+                <sc-for list="{{ profileRows }}" as="r" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;background:#fff;padding:14px 16px">
+                    <i class="{{ r.icon }}" style="width:18px;color:#9c4f78"></i>
+                    <span style="font-size:13px;color:#7d6474;width:120px;flex-shrink:0">{{ r.label }}</span>
+                    <span style="font-size:13.5px;font-weight:500;color:{{ r.valFg }};min-width:0">{{ r.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>Linked children</h2></div>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <sc-for list="{{ linkedChildren }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid #f6eaf1;border-radius:13px;background:#fdf9fb;flex-wrap:wrap">
+                    <span style="width:38px;height:38px;border-radius:50%;flex-shrink:0;background:{{ c.tintBg }};color:{{ c.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600">{{ c.initials }}</span>
+                    <div style="min-width:0;flex:1;line-height:1.3">
+                      <div style="font-size:13.5px;font-weight:600">{{ c.name }}</div>
+                      <div style="font-size:11.5px;color:#7d6474">{{ c.detail }}</div>
+                    </div>
+                    <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;background:#e9f5ee;color:#2c8a5b;flex-shrink:0">{{ c.link }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <p style="margin:13px 0 0;font-size:12px;line-height:1.5;color:#8c7280">Contact the academy to link another child or transfer guardianship.</p>
+            </section>
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>Notifications</h2><span style="font-size:12px;color:#b99faf">set per child</span></div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <sc-for list="{{ childPrefs }}" as="c" hint-placeholder-count="2">
+                  <div style="border:1px solid #f6eaf1;border-radius:13px;background:#fdf9fb;padding:14px 15px">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                      <span style="width:30px;height:30px;border-radius:50%;flex-shrink:0;background:{{ c.tintBg }};color:{{ c.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600">{{ c.initials }}</span>
+                      <span style="font-size:13.5px;font-weight:600">{{ c.name }}</span>
+                    </div>
+                    <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">
+                      <sc-for list="{{ c.modes }}" as="m" hint-placeholder-count="3">
+                        <button onClick="{{ m.pick }}" style="padding:7px 14px;border-radius:999px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;border:1px solid {{ m.bd }};background:{{ m.bg }};color:{{ m.fg }}">{{ m.label }}</button>
+                      </sc-for>
+                    </div>
+                    <div style="font-size:11.5px;color:#7d6474;margin-bottom:12px">{{ c.modeDesc }}</div>
+                    <div style="display:flex;align-items:center;gap:12px;padding-top:11px;border-top:1px solid #f6eaf1">
+                      <i class="fa-solid fa-envelope" style="width:16px;color:#9c4f78;font-size:12px"></i>
+                      <span style="font-size:12.5px;flex:1">Also send by email</span>
+                      <span onClick="{{ c.toggleEmail }}" style="width:42px;height:24px;border-radius:999px;background:{{ c.trackBg }};position:relative;flex-shrink:0;cursor:pointer"><span style="position:absolute;top:2px;left:{{ c.knobLeft }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s ease"></span></span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <p style="margin:13px 0 0;font-size:12px;line-height:1.55;color:#8c7280"><i class="fa-solid fa-bell" style="margin-right:7px;color:#9c4f78"></i>Urgent alerts — a negative balance, a cancelled session, an expiring payment link — always come through and can't be muted.</p>
+            </section>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+    </main>
+  </div>
+
+  <!-- ===================== REPORT ABSENCE MODAL ===================== -->
+  <x-import component-from-global-scope="Mobius.Modal" is-open="{{ absOpen }}" on-close="{{ closeAbsence }}" hint-size="0,0">
+    <sc-if value="{{ absDone }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:14px 6px 6px">
+        <span style="width:60px;height:60px;border-radius:50%;background:#fbeef4;color:#9c4f78;display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px"><i class="fa-solid fa-paper-plane"></i></span>
+        <h2 style="margin:0;font-size:19px;font-weight:600">Absence reported</h2>
+        <p style="margin:10px auto 0;font-size:13.5px;color:#7d6474;line-height:1.6;max-width:380px">{{ absSavedNote }}</p>
+        <button class="hm-btn primary" onClick="{{ closeAbsence }}" style="margin:20px auto 0;justify-content:center;padding:0 26px">Done</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ absForm }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <h2 style="margin:0 0 3px;font-size:19px;font-weight:600">Report an absence</h2>
+        <p style="margin:0 0 18px;font-size:12.5px;color:#b99faf">Let the academy know {{ childFirst }} will miss a session</p>
+
+        <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#b99faf;margin-bottom:9px">Which session?</div>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px;max-height:220px;overflow-y:auto;padding:2px">
+          <sc-for list="{{ absSessions }}" as="s" hint-placeholder-count="3">
+            <button onClick="{{ s.pick }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:12px;cursor:pointer;font-family:inherit;border:1px solid {{ s.bd }};background:{{ s.bg }}">
+              <span style="width:34px;height:34px;border-radius:10px;flex-shrink:0;background:{{ s.tintBg }};color:{{ s.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:13px"><i class="{{ s.icon }}"></i></span>
+              <div style="flex:1;min-width:0;line-height:1.3">
+                <div style="font-size:13px;font-weight:600">{{ s.name }}</div>
+                <div style="font-size:11.5px;color:#7d6474">{{ s.day }} · {{ s.time }} · {{ s.room }}</div>
+              </div>
+              <span style="font-size:11px;font-weight:600;color:{{ s.noticeFg }};flex-shrink:0">{{ s.notice }}</span>
+            </button>
+          </sc-for>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#b99faf;margin-bottom:9px">Reason</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px">
+          <sc-for list="{{ absReasons }}" as="r" hint-placeholder-count="4">
+            <button onClick="{{ r.pick }}" style="padding:8px 15px;border-radius:999px;font-family:inherit;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid {{ r.bd }};background:{{ r.bg }};color:{{ r.fg }}">{{ r.label }}</button>
+          </sc-for>
+        </div>
+
+        <div class="login-saas-input-group"><label class="login-saas-input-label">Note for the tutor (optional)</label>
+          <textarea class="login-saas-input" rows="3" style="resize:vertical;font-family:inherit;line-height:1.55" placeholder="Anything the tutor should know…"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border-radius:12px;background:{{ absNoticeBg }};border:1px solid {{ absNoticeBd }};margin:6px 0 18px">
+          <i class="{{ absNoticeIcon }}" style="color:{{ absNoticeFg }};font-size:12.5px;margin-top:2px;flex-shrink:0"></i>
+          <div style="font-size:12.5px;line-height:1.55;color:#5c4050">{{ absNotice }}</div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="hm-btn" onClick="{{ closeAbsence }}" style="justify-content:center;padding:0 22px">Cancel</button>
+          <button class="hm-btn primary" onClick="{{ submitAbsence }}" style="flex:1;justify-content:center;opacity:{{ absSubmitOpacity }};pointer-events:{{ absSubmitPe }}">{{ absSubmitLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+  </x-import>
+
+  <!-- ===================== TOP UP / PAY MODAL ===================== -->
+  <x-import component-from-global-scope="Mobius.Modal" is-open="{{ payOpen }}" on-close="{{ closePay }}" hint-size="0,0">
+    <sc-if value="{{ payDone }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:14px 6px 6px">
+        <span style="width:60px;height:60px;border-radius:50%;background:#e9f5ee;color:#2c8a5b;display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px"><i class="fa-solid fa-check"></i></span>
+        <h2 style="margin:0;font-size:19px;font-weight:600">Payment complete</h2>
+        <p style="margin:10px auto 0;font-size:13.5px;color:#7d6474;line-height:1.6;max-width:380px">{{ paySavedNote }}</p>
+        <button class="hm-btn primary" onClick="{{ closePay }}" style="margin:20px auto 0;justify-content:center;padding:0 26px">Done</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ payForm }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <h2 style="margin:0 0 3px;font-size:19px;font-weight:600">{{ payTitle }}</h2>
+        <p style="margin:0 0 18px;font-size:12.5px;color:#b99faf">{{ paySubtitle }}</p>
+        <sc-if value="{{ payIsTopUp }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#b99faf;margin-bottom:9px">Choose a package</div>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:18px">
+              <sc-for list="{{ packages }}" as="p" hint-placeholder-count="3">
+                <button onClick="{{ p.pick }}" style="display:flex;align-items:center;gap:13px;text-align:left;padding:14px 15px;border-radius:13px;cursor:pointer;font-family:inherit;border:1px solid {{ p.bd }};background:{{ p.bg }}">
+                  <span style="width:20px;height:20px;border-radius:50%;flex-shrink:0;border:2px solid {{ p.radioBd }};background:{{ p.radioBg }};display:inline-flex;align-items:center;justify-content:center"><span style="width:8px;height:8px;border-radius:50%;background:{{ p.radioDot }}"></span></span>
+                  <div style="flex:1;min-width:0;line-height:1.35">
+                    <div style="font-size:14px;font-weight:600">{{ p.name }}</div>
+                    <div style="font-size:11.5px;color:#7d6474">{{ p.detail }}</div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0">
+                    <div style="font-size:14.5px;font-weight:600">{{ p.price }}</div>
+                    <div style="font-size:11px;color:#2c8a5b">{{ p.perSession }}</div>
+                  </div>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ payIsInvoice }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:1px;background:#f6eaf1;border:1px solid #f6eaf1;border-radius:13px;overflow:hidden;margin-bottom:18px">
+            <sc-for list="{{ payLines }}" as="l" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:12px;background:#fff;padding:13px 15px">
+                <span style="font-size:12.5px;color:#7d6474;flex:1;min-width:0">{{ l.label }}</span>
+                <span style="font-size:13.5px;font-weight:600;flex-shrink:0">{{ l.value }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid #f6eaf1;border-radius:13px;background:#fdf9fb;margin-bottom:18px">
+          <span style="width:38px;height:38px;border-radius:10px;background:#fbeef4;color:#9c4f78;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0"><i class="fa-solid fa-credit-card"></i></span>
+          <div style="line-height:1.3;min-width:0;flex:1">
+            <div style="font-size:13px;font-weight:600">Visa ···· 4417</div>
+            <div style="font-size:11.5px;color:#b99faf">Expires 09 / 2028</div>
+          </div>
+          <a class="hm-link" onClick="{{ noop }}" style="cursor:pointer;font-size:12.5px;flex-shrink:0">Change</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:13px;background:#fbeef4;border:1px solid #f2dbe7;margin-bottom:18px">
+          <span style="font-size:13px;font-weight:600;flex:1">Total due today</span>
+          <span style="font-size:19px;font-weight:600;color:#9c4f78">{{ payTotal }}</span>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="hm-btn" onClick="{{ closePay }}" style="justify-content:center;padding:0 22px">Cancel</button>
+          <button class="hm-btn primary" onClick="{{ submitPay }}" style="flex:1;justify-content:center;opacity:{{ paySubmitOpacity }};pointer-events:{{ paySubmitPe }}"><i class="fa-solid fa-lock" style="margin-right:8px"></i>Pay {{ payTotal }}</button>
+        </div>
+      </div>
+    </sc-if>
+  </x-import>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+/* ---- canonical shared records (same source of truth as the other three apps) ---- */
+const CODE_INFO={
+  M01:['Algebra II','4:00 – 5:00 PM',16,17,'Room 305','Kim Soyeon','Mon & Wed'],
+  M03:['Pre-Calculus','3:00 – 4:00 PM',15,16,'Room 302','Kim Soyeon','Tue & Thu'],
+  W05:['Physics Fundamentals','4:00 – 5:00 PM',16,17,'Room 208','Marco Rossi','Fri'],
+  T04:['SAT Math Bootcamp','10:00 – 12:00',10,12,'Room 305','Marco Rossi','Sat'],
+};
+const SUBJ_TINT={ M01:['#fdeedd','#c26a24','fa-solid fa-square-root-variable'], M03:['#fdeedd','#c26a24','fa-solid fa-square-root-variable'],
+  W05:['#eef1fb','#5b6bc0','fa-solid fa-atom'], T04:['#fff4e0','#9c6a1d','fa-solid fa-bullseye'] };
+const DAY_IDX={ Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6 };
+const DAY_NUM={ Sun:19, Mon:20, Tue:21, Wed:22, Thu:23, Fri:24, Sat:25 };
+const SESSION_FEE=60;
+
+/* one money ledger per child — the single source every surface sums (mirrors computeWallet's inputs) */
+const LEDGER_SEED={
+  0:[ { type:'Session', note:'Algebra II · attended', date:'Wed, Jul 22', amount:-60 },
+      { type:'Session', note:'Physics Fundamentals · attended', date:'Fri, Jul 17', amount:-60 },
+      { type:'Session', note:'Algebra II · attended', date:'Wed, Jul 15', amount:-60 },
+      { type:'Top-up', note:'20-session package · paid by card', date:'Tue, Jul 14', amount:1040 },
+      { type:'Opening', note:'Balance carried from June', date:'Wed, Jul 1', amount:420 } ],
+  1:[ { type:'Session', note:'Pre-Calculus · attended', date:'Tue, Jul 21', amount:-60 },
+      { type:'No-show', note:'SAT Math Bootcamp · missed, billed', date:'Sat, Jul 18', amount:-60 },
+      { type:'Session', note:'Pre-Calculus · attended', date:'Thu, Jul 16', amount:-60 },
+      { type:'Opening', note:'Registration deposit', date:'Mon, Jun 1', amount:300 } ],
+};
+
+const CHILDREN=[
+  { name:'Alice Park', grade:'Grade 11', codes:['M01','W05'], tintBg:'#fdeedd', tintFg:'#c26a24',
+    priorAtt:{ M01:[23,24], W05:[11,13] },
+    feedback:[
+      { code:'M01', date:'Jul 22, 2026', mode:'Group session', rating:5, note:'Alice worked through the quadratic factoring drills without a hint today and helped a classmate through a tricky step. Ready for completing the square next week.', tags:['On track','Great participation'] },
+      { code:'W05', date:'Jul 17, 2026', mode:'1:1 session', rating:4, note:'Kinematics is solid. We should revisit free-body diagrams — a couple of sign errors crept in. Very common at this stage, no concern.', tags:['Review: free-body diagrams'] },
+      { code:'M01', date:'Jul 15, 2026', mode:'Group session', rating:4, note:'Good session. Alice is quick on the mechanics but rushes the setup — we are working on writing the equation before solving.', tags:[] },
+    ] },
+  { name:'Minjun Kim', grade:'Grade 9', codes:['M03','T04'], tintBg:'#eef1fb', tintFg:'#5b6bc0',
+    priorAtt:{ M03:[7,8] },
+    feedback:[
+      { code:'M03', date:'Jul 21, 2026', mode:'Group session', rating:4, note:'A strong first month. Minjun is still building confidence with function notation, but asked two excellent questions today.', tags:['Settling in well'] },
+    ] },
+];
+
+class Component extends DCLogic {
+  state = {
+    view:'home', section:null, childIdx:0,
+    absOpen:false, absDone:false, absCode:null, absReason:null,
+    payOpen:false, payDone:false, payMode:'topup', payPkg:1, payInvoice:null,
+    absences:{},                    // "childIdx|code" -> reason
+    paidInvoices:{},                // invoice id -> true
+    topUps:{},                      // childIdx -> [{credits, amount}]
+    autoPay:true, lowBalanceAlert:true,
+    prefs:{ 0:{ mode:'all', email:true }, 1:{ mode:'billing_only', email:false } },
+  };
+  noop=()=>{};
+  go(v){ return ()=>this.setState({ view:v, section:this.secOf(v) }); }
+  secOf(v){ return (v==='schedule'||v==='progress'||v==='requests'||v==='billing')?'family':(v==='messages')?'inbox':'overview'; }
+
+  openAbsence=()=>this.setState({ absOpen:true, absDone:false, absCode:null, absReason:null });
+  closeAbsence=()=>this.setState({ absOpen:false, absDone:false, absCode:null, absReason:null });
+  submitAbsence=()=>{ const { absCode, absReason, childIdx }=this.state; if(!absCode||!absReason) return;
+    this.setState(s=>({ absDone:true, absences:{ ...s.absences, [childIdx+'|'+absCode]:absReason } })); };
+
+  openTopUp=(idx)=>this.setState({ payOpen:true, payDone:false, payMode:'topup', payPkg:1, childIdx:(idx==null?this.state.childIdx:idx) });
+  openInvoice=(inv)=>this.setState({ payOpen:true, payDone:false, payMode:'invoice', payInvoice:inv });
+  closePay=()=>this.setState({ payOpen:false, payDone:false, payInvoice:null });
+  submitPay=()=>this.setState(s=>{
+    if(s.payMode==='invoice') return { payDone:true, paidInvoices:{ ...s.paidInvoices, [s.payInvoice.id]:true } };
+    const pk=this.packageData[s.payPkg];
+    const list=(s.topUps[s.childIdx]||[]).concat([{ sessions:pk.sessions+pk.bonus, amount:pk.amount }]);
+    return { payDone:true, topUps:{ ...s.topUps, [s.childIdx]:list } };
+  });
+
+  get packageData(){ return [
+    { name:'10 sessions', sessions:10, amount:540, bonus:0 },
+    { name:'20 sessions', sessions:20, amount:1040, bonus:2 },
+    { name:'30 sessions', sessions:30, amount:1500, bonus:4 },
+  ]; }
+
+  // full ledger for a child = seed + live top-ups + live absence reports (newest first)
+  ledgerFor(idx){
+    const rows=(LEDGER_SEED[idx]||[]).slice();
+    (this.state.topUps[idx]||[]).forEach(u=>rows.unshift({ type:'Top-up', note:u.sessions+'-session package · paid by card', date:'Today', amount:u.amount }));
+    Object.keys(this.state.absences).filter(k=>+k.split('|')[0]===idx).forEach(k=>{
+      const ci=CODE_INFO[k.split('|')[1]];
+      rows.unshift({ type:'Excused', note:ci[0]+' · absence reported, $60 hold released', date:'Today', amount:0 });
+    });
+    return rows;
+  }
+  // computeWallet: balance = Σ ledger; committed = fees held for this week's scheduled sessions;
+  // available = balance − committed. Strictly per student — never pooled across children.
+  walletFor(idx){
+    const rows=this.ledgerFor(idx);
+    const balance=rows.reduce((a,l)=>a+l.amount,0);
+    const c=CHILDREN[idx];
+    const excused=c.codes.filter(code=>this.state.absences[idx+'|'+code]).length;
+    const committed=(c.codes.length-excused)*SESSION_FEE;
+    const available=balance-committed;
+    // low-balance flag: same predicate as the daily billing scanner
+    const status=available<0?'Negative':available<SESSION_FEE?'Low':'Healthy';
+    return { balance, committed, available, status };
+  }
+
+  attendanceFor(idx){
+    const c=CHILDREN[idx];
+    let att=0, tot=0;
+    c.codes.forEach(code=>{
+      const p=c.priorAtt[code]||[0,0];
+      att+=p[0]; tot+=p[1];
+      // a reported absence is excused → excluded from the rate entirely
+    });
+    return { att, tot, pct:tot?Math.round(att/tot*100):0 };
+  }
+
+  renderVals(){
+    const usd=(n)=>(n<0?'-$':'$')+Math.abs(n).toLocaleString();
+    const v=this.state.view;
+    const idx=this.state.childIdx;
+    const child=CHILDREN[idx];
+    const childFirst=child.name.split(' ')[0];
+    const wallet=this.walletFor(idx);
+    const attend=this.attendanceFor(idx);
+
+    /* ---- shell ---- */
+    const curSec=this.state.section||this.secOf(v);
+    const unread=2;
+    const invoiceData=[
+      { id:'INV-2026-0714', desc:'20-session package', child:'Alice Park', issued:'Jul 14', amount:1040, status:'Paid' },
+      { id:'INV-2026-0701', desc:'July tuition · SAT Bootcamp', child:'Minjun Kim', issued:'Jul 1', amount:480, status:'Due', expires:'Aug 1' },
+      { id:'INV-2026-0612', desc:'June tuition', child:'Alice Park', issued:'Jun 12', amount:540, status:'Paid' },
+      { id:'INV-2026-0601', desc:'Registration fee', child:'Minjun Kim', issued:'Jun 1', amount:120, status:'Paid' },
+    ];
+    const invoices=invoiceData.map(i=>{
+      const paid=i.status==='Paid'||this.state.paidInvoices[i.id];
+      const st=paid?'Paid':'Link sent';
+      return { ...i, status:st, payable:!paid, desc:paid?i.desc:i.desc+' · expires '+(i.expires||'soon'),
+        stBg:paid?'#e9f5ee':'#fff4e0', stFg:paid?'#2c8a5b':'#9c6a1d',
+        amount:'$'+i.amount.toLocaleString(), pay:()=>this.openInvoice({ ...i }) };
+    });
+    const dueCount=invoices.filter(i=>i.payable).length;
+    const dueTotal=invoiceData.filter(i=>!(i.status==='Paid'||this.state.paidInvoices[i.id])).reduce((a,i)=>a+i.amount,0);
+
+    /* ---- requests: the child's own + this guardian's absence reports ---- */
+    const CHILD_REQUESTS=[
+      { childIdx:0, kind:'reschedule', title:'Reschedule Algebra II', detail:'Alice asked to move Mon, Jul 27 · 4:00 PM → Thu, Jul 30 · 4:00 PM — clashes with a school exam.', when:'Requested Jul 22', stage:1,
+        icon:'fa-solid fa-arrows-rotate', tintBg:'#fdeedd', tintFg:'#c26a24' },
+      { childIdx:0, kind:'join', title:'Join Essay Workshop', detail:'Alice requested a seat · Wed 6:00 PM with Amara Ndiaye.', when:'Requested Jul 18', stage:2, outcome:'approved',
+        icon:'fa-solid fa-book-open', tintBg:'#fbeef1', tintFg:'#b95a76' },
+    ];
+    const absReqs=Object.keys(this.state.absences).filter(k=>+k.split('|')[0]===idx).map(k=>{
+      const code=k.split('|')[1], ci=CODE_INFO[code], tint=SUBJ_TINT[code];
+      return { kind:'absence', title:'Absence — '+ci[0], detail:this.state.absences[k]+' · reported by you. The session fee is waived once a tutor marks it excused.',
+        when:'Reported today', stage:1, icon:'fa-solid fa-user-clock', tintBg:tint[0], tintFg:tint[1] };
+    });
+    const reqList=CHILD_REQUESTS.filter(r=>r.childIdx===idx).concat(absReqs);
+    const pendingReqCount=reqList.filter(r=>r.stage<2).length;
+    const mkSteps=(labels,stage,outcome)=>{
+      const eff=outcome?labels.length:stage;   // any outcome = fully walked
+      return labels.map((label,i)=>{
+        const declined=outcome==='declined'&&i===labels.length-1;
+        const done=!declined&&i<eff, cur=!outcome&&i===eff;
+        return { label, hasArrow:i<labels.length-1,
+          icon:declined?'fa-solid fa-xmark':done?'fa-solid fa-check':cur?'fa-solid fa-hourglass-half':'fa-solid fa-minus',
+          bg:declined?'#fdf1ef':done?'#e9f5ee':cur?'#fff4e0':'#fff', fg:declined?'#9c3a31':done?'#2c8a5b':cur?'#9c6a1d':'#d8c8d0',
+          bd:declined?'#eec7c2':done?'#cfe8da':cur?'#f0dcae':'#eddde6',
+          weight:cur?600:500, labelFg:declined?'#9c3a31':done?'#2b1b28':cur?'#9c6a1d':'#b99faf' };
+      });
+    };
+    const requests=reqList.map(r=>{
+      const labels=r.kind==='absence'?['Sent','Academy review','Excused']:r.kind==='reschedule'?['Requested','Tutor review','Confirmed']:['Requested','Academy review','Enrolled'];
+      const resolved=!!r.outcome;
+      return { ...r, steps:mkSteps(labels,r.stage,r.outcome),
+        status:resolved?(r.outcome==='declined'?'Declined':'Resolved'):'Pending',
+        stBg:resolved?(r.outcome==='declined'?'#fdf1ef':'#e9f5ee'):'#fff4e0',
+        stFg:resolved?(r.outcome==='declined'?'#9c3a31':'#2c8a5b'):'#9c6a1d' };
+    });
+
+    /* ---- credit ledger: same rows the wallet sums ---- */
+    const ledgerRows=this.ledgerFor(idx);
+    const ledger=ledgerRows.map(l=>({ ...l,
+      tBg:l.type==='No-show'?'#fdf1ef':l.type==='Top-up'?'#e9f5ee':l.type==='Excused'?'#fff4e0':l.type==='Opening'?'#f6eff3':'#fbeef4',
+      tFg:l.type==='No-show'?'#9c3a31':l.type==='Top-up'?'#2c8a5b':l.type==='Excused'?'#9c6a1d':l.type==='Opening'?'#7d6474':'#9c4f78',
+      amtText:l.amount===0?'—':(l.amount<0?'-$'+Math.abs(l.amount).toLocaleString():'+$'+l.amount.toLocaleString()),
+      amtFg:l.amount<0?'#9c3a31':'#2c8a5b' }));
+    const perWeek=child.codes.length;
+    const weekCost=perWeek*SESSION_FEE;
+    const runwayWeeks=weekCost>0?Math.max(0,Math.floor(wallet.available/weekCost)):0;
+    const runwayDate=new Date(2026,6,23+runwayWeeks*7);
+    const runwayLine='At '+perWeek+' session'+(perWeek===1?'':'s')+' a week ('+usd(weekCost)+'), '+childFirst+"'s available balance covers about "+runwayWeeks+' more week'+(runwayWeeks===1?'':'s')+' — until around '+runwayDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'.';
+
+    /* ---- activity feed (derived from ledger + feedback + requests) ---- */
+    const activity=[];
+    ledgerRows.slice(0,3).forEach(l=>{
+      const isMiss=l.type==='No-show';
+      activity.push({ icon:isMiss?'fa-solid fa-user-xmark':l.type==='Top-up'?'fa-solid fa-plus':l.type==='Excused'?'fa-solid fa-user-clock':'fa-solid fa-check',
+        tintBg:isMiss?'#fdf1ef':l.type==='Top-up'?'#e9f5ee':l.type==='Excused'?'#fff4e0':'#fbeef4',
+        tintFg:isMiss?'#9c3a31':l.type==='Top-up'?'#2c8a5b':l.type==='Excused'?'#9c6a1d':'#9c4f78',
+        text:childFirst+(isMiss?' missed ':l.type==='Top-up'?"'s wallet was topped up ":l.type==='Excused'?"'s absence was sent for ":' attended ')+(l.type==='Top-up'?usd(l.amount):l.note.split(' · ')[0]),
+        when:l.date+(isMiss?' · billed $'+Math.abs(l.amount):''),
+        cta:isMiss?'Message tutor':l.type==='Top-up'?'Receipt':'Details',
+        act:isMiss?this.go('messages'):l.type==='Top-up'?this.go('billing'):this.go('progress') });
+    });
+    child.feedback.slice(0,2).forEach(f=>{ const ci=CODE_INFO[f.code];
+      activity.push({ icon:'fa-solid fa-comment-medical', tintBg:'#fbeef4', tintFg:'#9c4f78',
+        text:ci[5]+' posted a '+f.rating+'-star note on '+ci[0], when:f.date.replace(', 2026',''),
+        cta:'Read', act:this.go('progress') });
+    });
+    reqList.filter(r=>r.stage<2).slice(0,1).forEach(r=>{
+      activity.push({ icon:r.icon, tintBg:r.tintBg, tintFg:r.tintFg,
+        text:r.title+' is awaiting review', when:r.when, cta:'Track', act:this.go('requests') });
+    });
+
+    const sectionDefs={
+      overview:{ title:'Overview', icon:'fa-solid fa-compass', items:[
+        { view:'home', icon:'fa-solid fa-house', label:'Home' },
+      ]},
+      family:{ title:'My kids', icon:'fa-solid fa-graduation-cap', items:[
+        { view:'schedule', icon:'fa-regular fa-calendar', label:'Schedule' },
+        { view:'progress', icon:'fa-solid fa-chart-line', label:'Progress & feedback' },
+        { view:'requests', icon:'fa-solid fa-arrows-rotate', label:'Requests', badge:pendingReqCount },
+        { view:'billing', icon:'fa-solid fa-file-invoice-dollar', label:'Payments', badge:dueCount },
+      ]},
+      inbox:{ title:'Inbox', icon:'fa-solid fa-comment-dots', items:[
+        { view:'messages', icon:'fa-regular fa-comment-dots', label:'Messages', badge:unread },
+      ]},
+    };
+    const secDef=sectionDefs[curSec]||sectionDefs.overview;
+    const itemStyle=(on)=>`display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:${on?600:500};padding:11px 12px;border-radius:12px;background:${on?'#fbeef4':'transparent'};color:${on?'#9c4f78':'#6b4f5e'}`;
+    const menuItems=secDef.items.map(it=>({ label:it.label, icon:it.icon, rowStyle:itemStyle(v===it.view),
+      onClick:()=>this.setState({ view:it.view, section:this.secOf(it.view) }),
+      hasBadge:!!it.badge, badge:it.badge,
+      badgeStyle:'margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#9c4f78;color:#fff;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center' }));
+    const railTile=(on)=>`position:relative;width:46px;height:46px;border-radius:15px;border:none;cursor:pointer;font-size:17px;display:inline-flex;align-items:center;justify-content:center;background:${on?'#fff':'transparent'};color:${on?'#843f63':'rgba(255,255,255,.82)'}`;
+
+    const titles={ home:['Overview','Home'], schedule:['My kids',childFirst+"'s schedule"], progress:['My kids',childFirst+"'s progress"], requests:['My kids','Requests'],
+      billing:['My kids','Payments'], messages:['Inbox','Messages'], settings:['Account','Profile & settings'] };
+    const t=titles[v]||titles.home;
+
+    const childTabs=CHILDREN.map((c,i)=>{ const on=i===idx;
+      return { first:c.name.split(' ')[0], initials:c.name.split(' ').map(w=>w[0]).join(''),
+        pick:()=>this.setState({ childIdx:i }),
+        style:`display:inline-flex;align-items:center;gap:8px;padding:6px 13px 6px 7px;border-radius:9px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:${on?600:500};background:${on?'#fbeef4':'transparent'};color:${on?'#9c4f78':'#7d6474'}`,
+        dotStyle:`width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;background:${c.tintBg};color:${c.tintFg}` };
+    });
+
+    /* ---- this child's sessions this week (derived from codes) ---- */
+    const weekSessions=child.codes.map(code=>{
+      const ci=CODE_INFO[code], tint=SUBJ_TINT[code];
+      const firstDay=ci[6].split(' & ')[0];
+      const reported=this.state.absences[idx+'|'+code];
+      return { code, name:ci[0], time:ci[1], room:ci[4], tutor:ci[5], day:firstDay+', Jul '+DAY_NUM[firstDay],
+        icon:tint[2], tintBg:tint[0], tintFg:tint[1],
+        status:reported?'Absence requested':'Confirmed',
+        stBg:reported?'#fff4e0':'#e9f5ee', stFg:reported?'#9c6a1d':'#2c8a5b',
+        report:()=>this.setState({ absOpen:true, absDone:false, absCode:code, absReason:null }) };
+    });
+    const next=weekSessions.find(s=>s.status==='Confirmed')||weekSessions[0];
+
+    /* ---- calendar grid ---- */
+    const y=(h)=>((h-8)*64)+'px', span=(a,b)=>((b-a)*64-6)+'px';
+    const cols=[[],[],[],[],[],[],[]];
+    child.codes.forEach(code=>{
+      const ci=CODE_INFO[code], reported=this.state.absences[idx+'|'+code];
+      ci[6].split(' & ').forEach(d=>{
+        const style=reported
+          ? { bg:'#fff6e6', bd:'#f0dcae', accent:'#e0a83e', fg:'#7a5a16', metaFg:'#9c6a1d' }
+          : { bg:'#fbeef4', bd:'#f2dbe7', accent:'#9c4f78', fg:'#2b1b28', metaFg:'#9c4f78' };
+        cols[DAY_IDX[d]].push({ subject:ci[0], time:ci[1], room:ci[4], top:y(ci[2]), height:span(ci[2],ci[3]),
+          ...style, open:()=>this.setState({ absOpen:true, absDone:false, absCode:code, absReason:null }) });
+      });
+    });
+    const weekCols=cols.map(blocks=>({ blocks }));
+    const hours=[8,9,10,11,12,13,14,15,16,17].map(h=>({ top:y(h), label:h===12?'12 PM':(h<12?h+' AM':(h-12)+' PM') }));
+    const weekHeads=['SUN','MON','TUE','WED','THU','FRI','SAT'].map((dow,i)=>({ dow, num:19+i, headBg:i===4?'#fdf9fb':'#fff', numFg:i===4?'#9c4f78':'#2b1b28' }));
+
+    /* ---- feedback ---- */
+    const fbAll=child.feedback.map(f=>{ const ci=CODE_INFO[f.code], tint=SUBJ_TINT[f.code];
+      return { klass:ci[0], tutor:ci[5], initials:ci[5].split(' ').map(w=>w[0]).join(''),
+        tintBg:tint[0], tintFg:tint[1], date:f.date, mode:f.mode,
+        stars:'★'.repeat(f.rating)+'☆'.repeat(5-f.rating), note:f.note,
+        hasTags:f.tags.length>0, tags:f.tags.map(label=>({ label })) };
+    });
+    const avgRating=child.feedback.length?(child.feedback.reduce((a,f)=>a+f.rating,0)/child.feedback.length):0;
+
+    /* ---- alerts (derived) ---- */
+    const alerts=[];
+    if(dueCount) alerts.push({ icon:'fa-solid fa-file-invoice-dollar', bg:'#fff8ec', bd:'#f5e2c0', fg:'#9c6a1d', textFg:'#6b4f2a',
+      text:dueCount+' payment link'+(dueCount>1?'s':'')+' pending — $'+dueTotal.toLocaleString()+' · expires Aug 1.', cta:'Review', btnCls:'primary', act:this.go('billing') });
+    CHILDREN.forEach((c,i)=>{ const w=this.walletFor(i);
+      if(w.status!=='Healthy') alerts.push({ icon:'fa-solid fa-triangle-exclamation', bg:'#fdf3f6', bd:'#f2dbe7', fg:'#9c4f78', textFg:'#5c4050',
+        text:c.name.split(' ')[0]+"'s available balance is "+usd(w.available)+" — not enough to cover next week's "+c.codes.length+' session'+(c.codes.length===1?'':'s')+'.',
+        cta:'Top up', btnCls:'', act:()=>this.openTopUp(i) }); });
+
+    const heroCopy=dueCount
+      ? childFirst+' has '+weekSessions.length+' session'+(weekSessions.length===1?'':'s')+' this week. '+dueCount+' payment link'+(dueCount>1?'s':'')+' needs attention — everything else is on track.'
+      : childFirst+' has '+weekSessions.length+' session'+(weekSessions.length===1?'':'s')+' this week and attendance is at '+attend.pct+'%. Nothing needs your attention.';
+
+    /* ---- absence modal ---- */
+    const absList=child.codes.map(code=>{
+      const ci=CODE_INFO[code], tint=SUBJ_TINT[code], on=this.state.absCode===code;
+      const firstDay=ci[6].split(' & ')[0];
+      const soon=firstDay==='Mon';   // Mon Jul 20 is inside 24h of Thu Jul 23's next week cycle
+      return { name:ci[0], time:ci[1], room:ci[4], day:firstDay+', Jul '+DAY_NUM[firstDay],
+        icon:tint[2], tintBg:tint[0], tintFg:tint[1],
+        notice:soon?'< 24 h':'No charge', noticeFg:soon?'#9c6a1d':'#2c8a5b',
+        bd:on?'#9c4f78':'#f0e0e9', bg:on?'#fbeef4':'#fff',
+        pick:()=>this.setState({ absCode:code }) };
+    });
+    const REASONS=['Illness','Family commitment','School exam','Travel'];
+    const absReady=!!this.state.absCode&&!!this.state.absReason;
+    const absSoon=this.state.absCode?CODE_INFO[this.state.absCode][6].split(' & ')[0]==='Mon':false;
+
+    /* ---- pay modal ---- */
+    const pkgs=this.packageData.map((p,i)=>{ const on=this.state.payPkg===i;
+      return { name:p.name, price:'$'+p.amount.toLocaleString(),
+        detail:p.bonus?(p.sessions+' sessions + '+p.bonus+' bonus'):(p.sessions+' sessions'),
+        perSession:'$'+Math.round(p.amount/(p.sessions+p.bonus))+' / session',
+        pick:()=>this.setState({ payPkg:i }),
+        bd:on?'#9c4f78':'#f0e0e9', bg:on?'#fbeef4':'#fff',
+        radioBd:on?'#9c4f78':'#e0cbd8', radioBg:'#fff', radioDot:on?'#9c4f78':'transparent' }; });
+    const inv=this.state.payInvoice;
+    const isTopUp=this.state.payMode==='topup';
+    const chosenPkg=this.packageData[this.state.payPkg];
+    const payTotal=isTopUp?'$'+chosenPkg.amount.toLocaleString():(inv?'$'+inv.amount.toLocaleString():'$0');
+
+    const tog=(k)=>()=>this.setState(s=>({ [k]:!s[k] }));
+    const sw=(on)=>({ trackBg:on?'#9c4f78':'#e0cbd8', knobLeft:on?'20px':'2px' });
+
+    return {
+      noop:this.noop, crumb:t[0], pageTitle:t[1],
+      menuTitle:secDef.title, menuIcon:secDef.icon, menuItems,
+      goOverview:()=>this.setState({ section:'overview', view:'home' }),
+      goFamily:()=>this.setState({ section:'family', view:'schedule' }),
+      goInbox:()=>this.setState({ section:'inbox', view:'messages' }),
+      railOverview:railTile(curSec==='overview'), railFamily:railTile(curSec==='family'), railInbox:railTile(curSec==='inbox'),
+      dueCount,
+      railMsgDot:'position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#c0654f;color:#fff;font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;border:2px solid #843f63',
+      unreadCount:unread, childCountLabel:CHILDREN.length+' children',
+      goSettings:this.go('settings'), goSchedule:this.go('schedule'), goProgress:this.go('progress'), goBillingView:this.go('billing'),
+      childTabs, childFirst,
+
+      isHome:v==='home', isSchedule:v==='schedule', isProgress:v==='progress', isRequests:v==='requests',
+      isBilling:v==='billing', isMessages:v==='messages', isSettings:v==='settings',
+      activity, noActivity:activity.length===0,
+      requests, noRequests:requests.length===0,
+      ledger, noLedger:ledger.length===0, runwayLine,
+      runwayNote:'~'+runwayWeeks+' week'+(runwayWeeks===1?'':'s')+' of runway',
+
+      todayLabel:'Thursday, July 23', heroCopy,
+      nextKick:next?('Next up · '+next.day.split(',')[0]):'Nothing scheduled',
+      nextName:next?next.name:'—', nextTime:next?next.time:'', nextRoom:next?next.room:'',
+      nextIcon:next?next.icon:'fa-regular fa-calendar',
+      kpis:[
+        { label:'Sessions this week', value:String(weekSessions.length), sub:'set by the academy', fg:'#2b1b28' },
+        { label:'Attendance', value:attend.pct+'%', sub:attend.att+' of '+attend.tot+' attended', fg:attend.pct>=90?'#2c8a5b':'#9c6a1d' },
+        { label:'Available', value:usd(wallet.available), sub:'after '+usd(wallet.committed)+' committed', fg:wallet.status==='Healthy'?'#2b1b28':wallet.status==='Low'?'#9c6a1d':'#9c3a31' },
+        { label:'Avg. rating', value:avgRating?avgRating.toFixed(1):'—', sub:'from tutor notes', fg:'#9c4f78' },
+      ].map((k,i,a)=>({ ...k, divider:i===a.length-1?'none':'1px solid #f6eaf1' })),
+      hasAlerts:alerts.length>0, alerts,
+      weekSessions, noSessions:weekSessions.length===0,
+      feedbackPeek:fbAll.slice(0,2), noFeedback:fbAll.length===0, feedbackAll:fbAll,
+      acctRows:[
+        { label:'Available', value:usd(wallet.available), fg:wallet.status==='Healthy'?'#2b1b28':wallet.status==='Low'?'#9c6a1d':'#9c3a31' },
+        { label:'Committed', value:usd(wallet.committed)+' · '+perWeek+' session'+(perWeek===1?'':'s')+' held', fg:'#2b1b28' },
+        { label:'Outstanding', value:dueTotal?usd(dueTotal):'None', fg:dueTotal?'#9c6a1d':'#2c8a5b' },
+      ],
+
+      hours, weekHeads, weekCols,
+
+      progStats:[
+        { label:'Attendance', value:attend.pct+'%', sub:attend.att+' of '+attend.tot+' sessions', fg:attend.pct>=90?'#2c8a5b':'#9c6a1d' },
+        { label:'Avg. rating', value:avgRating?avgRating.toFixed(1)+' / 5':'—', sub:child.feedback.length+' tutor notes', fg:'#9c4f78' },
+        { label:'Classes', value:String(child.codes.length), sub:'this term', fg:'#2b1b28' },
+      ],
+      attByClass:child.codes.map(code=>{ const ci=CODE_INFO[code], p=child.priorAtt[code]||[0,0];
+        const pct=p[1]?Math.round(p[0]/p[1]*100):0;
+        return { name:ci[0], tutor:ci[5], label:pct+'% · '+p[0]+' of '+p[1], pct:pct+'%',
+          color:pct>=90?'#2c8a5b':pct>=75?'#9c4f78':'#9c6a1d' }; }),
+
+      billStats:[
+        { label:'Outstanding', value:dueTotal?'$'+dueTotal.toLocaleString():'$0', sub:dueCount+' payment link'+(dueCount===1?'':'s')+' pending', fg:dueTotal?'#9c6a1d':'#2c8a5b' },
+        { label:'Paid this term', value:'$'+invoiceData.filter(i=>i.status==='Paid'||this.state.paidInvoices[i.id]).reduce((a,i)=>a+i.amount,0).toLocaleString(), sub:'since June', fg:'#2b1b28' },
+        { label:'Wallets low', value:String(CHILDREN.filter((c,i)=>this.walletFor(i).status!=='Healthy').length), sub:'of '+CHILDREN.length+' — never pooled', fg:CHILDREN.some((c,i)=>this.walletFor(i).status!=='Healthy')?'#9c6a1d':'#2c8a5b' },
+        { label:'Next charge', value:'Aug 1', sub:this.state.autoPay?'auto-pay on':'manual', fg:'#9c4f78' },
+      ],
+      invoices,
+      wallets:CHILDREN.map((c,i)=>{ const w=this.walletFor(i);
+        const wc={ Healthy:['#e9f5ee','#2c8a5b'], Low:['#fff4e0','#9c6a1d'], Negative:['#fdf1ef','#9c3a31'] }[w.status];
+        return { name:c.name, initials:c.name.split(' ').map(x=>x[0]).join(''), tintBg:c.tintBg, tintFg:c.tintFg,
+          available:usd(w.available), committed:usd(w.committed), balance:usd(w.balance), status:w.status,
+          stBg:wc[0], stFg:wc[1], availFg:w.available<0?'#9c3a31':w.status==='Low'?'#9c6a1d':'#2b1b28', topUp:()=>this.openTopUp(i) }; }),
+      billPrefs:[
+        { label:'Auto-pay invoices', desc:'Charge Visa ···· 4417 on the due date', ...sw(this.state.autoPay), toggle:tog('autoPay') },
+        { label:'Low-credit reminders', desc:'Email me when a child drops below 3 credits', ...sw(this.state.lowBalanceAlert), toggle:tog('lowBalanceAlert') },
+      ],
+
+      threads:[
+        { name:'Kim Soyeon', role:"Alice's Algebra II tutor", initials:'KS', tintBg:'#fdeedd', tintFg:'#c26a24', preview:'Alice did really well today — no concerns.', time:'2h', unread:true },
+        { name:'Möbius Academy', role:'Operations', initials:'MA', tintBg:'#fbeef4', tintFg:'#9c4f78', preview:'Invoice INV-2026-0701 is due Aug 1', time:'1d', unread:true },
+        { name:'Marco Rossi', role:"Minjun's SAT tutor", initials:'MR', tintBg:'#eef1fb', tintFg:'#5b6bc0', preview:'Happy to add a practice session Saturday', time:'3d', unread:false },
+        { name:'Amara Ndiaye', role:'Academic coordinator', initials:'AN', tintBg:'#fbeef1', tintFg:'#b95a76', preview:'Term break runs Aug 4 – 11', time:'1w', unread:false },
+      ].map((th,i)=>({ ...th, pick:this.noop, bg:i===0?'#fdf7fa':'#fff' })),
+      chat:[
+        { text:'Good afternoon — just letting you know Alice worked through the factoring set without any hints today. Real progress this month.', mine:false, time:'4:52 PM' },
+        { text:'That is wonderful to hear, thank you. She has been practising at home most evenings.', mine:true, time:'5:10 PM' },
+        { text:'It shows. I have added the next unit to her folder so she can look ahead if she wants to.', mine:false, time:'5:14 PM' },
+      ].map(m=>({ text:m.text, time:m.time, justify:m.mine?'flex-end':'flex-start',
+        bubbleBg:m.mine?'#9c4f78':'#fff', bubbleFg:m.mine?'#fff':'#2b1b28',
+        bubbleBd:m.mine?'none':'1px solid #f0e0e9', timeFg:m.mine?'rgba(255,255,255,.7)':'#b99faf' })),
+
+      profileRows:[
+        { icon:'fa-solid fa-user', label:'Full name', value:'Park Jiyoung', valFg:'#2b1b28' },
+        { icon:'fa-solid fa-envelope', label:'Email', value:'jypark@gmail.com', valFg:'#2b1b28' },
+        { icon:'fa-solid fa-phone', label:'Phone', value:'(555) 018-2245', valFg:'#2b1b28' },
+        { icon:'fa-solid fa-file-invoice', label:'Invoices to', value:'jypark@gmail.com', valFg:'#2b1b28' },
+      ],
+      linkedChildren:CHILDREN.map(c=>({ name:c.name, initials:c.name.split(' ').map(x=>x[0]).join(''),
+        tintBg:c.tintBg, tintFg:c.tintFg, detail:c.grade+' · '+c.codes.length+' classes', link:'Primary guardian' })),
+      childPrefs:CHILDREN.map((c,i)=>{ const p=this.state.prefs[i]||{ mode:'all', email:true };
+        const setP=(patch)=>this.setState(s=>({ prefs:{ ...s.prefs, [i]:{ ...(s.prefs[i]||{mode:'all',email:true}), ...patch } } }));
+        return { name:c.name, initials:c.name.split(' ').map(x=>x[0]).join(''), tintBg:c.tintBg, tintFg:c.tintFg,
+          modes:[['all','All'],['digest','Digest'],['billing_only','Billing only']].map(([val,label])=>{ const on=p.mode===val;
+            return { label, pick:()=>setP({ mode:val }), bd:on?'#9c4f78':'#f0e0e9', bg:on?'#9c4f78':'#fff', fg:on?'#fff':'#6b4f5e' }; }),
+          modeDesc:p.mode==='billing_only'?'Only billing and urgent alerts for '+c.name.split(' ')[0]+' — everything else is muted.':p.mode==='digest'?'Everything, batched into a daily digest.':'Everything, as it happens.',
+          ...sw(p.email), toggleEmail:()=>setP({ email:!p.email }) };
+      }),
+      familyCards:CHILDREN.map((c,i)=>{ const w=this.walletFor(i);
+        const ci=CODE_INFO[c.codes[0]];
+        const lastNote=c.feedback.length?c.feedback[0].date.replace(', 2026',''):null;
+        const on=i===idx;
+        return { name:c.name, grade:c.grade, initials:c.name.split(' ').map(x=>x[0]).join(''), tintBg:c.tintBg, tintFg:c.tintFg,
+          available:usd(w.available), availFg:w.available<0?'#9c3a31':w.status==='Low'?'#9c6a1d':'#2b1b28',
+          committedNote:usd(w.committed)+' committed to this week\u2019s sessions',
+          nextLabel:'Next: '+ci[0]+' · '+ci[6].split(' & ')[0]+' '+ci[1].split(' \u2013 ')[0],
+          noteLabel:lastNote?('Last tutor note · '+lastNote):'No tutor notes yet',
+          low:w.status!=='Healthy', lowLabel:w.status==='Negative'?'Balance negative':'Low balance',
+          bd:on?'#9c4f78':'#f0e0e9', pick:()=>this.setState({ childIdx:i }),
+          view:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.setState({ childIdx:i, view:'schedule', section:'family' }); },
+          topUp:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.openTopUp(i); } };
+      }),
+
+      /* absence modal */
+      absOpen:this.state.absOpen, absForm:!this.state.absDone, absDone:this.state.absDone,
+      openAbsence:this.openAbsence, closeAbsence:this.closeAbsence, submitAbsence:this.submitAbsence,
+      absSessions:absList,
+      absReasons:REASONS.map(label=>{ const on=this.state.absReason===label;
+        return { label, pick:()=>this.setState({ absReason:label }),
+          bd:on?'#9c4f78':'#f0e0e9', bg:on?'#9c4f78':'#fff', fg:on?'#fff':'#6b4f5e' }; }),
+      absNotice:absSoon
+        ? 'This session is less than 24 hours away, so the $60 fee is still billed. The tutor will still be notified.'
+        : 'Reported more than 24 hours ahead — the $60 hold is released back to '+childFirst+"'s available balance once a tutor marks it excused.",
+      absNoticeBg:absSoon?'#fff8ec':'#f3faf5', absNoticeBd:absSoon?'#f5e2c0':'#d9ecdf',
+      absNoticeFg:absSoon?'#9c6a1d':'#2c8a5b',
+      absNoticeIcon:absSoon?'fa-solid fa-triangle-exclamation':'fa-solid fa-circle-check',
+      absSubmitLabel:this.state.absCode?(this.state.absReason?'Send to academy':'Pick a reason'):'Pick a session',
+      absSubmitOpacity:absReady?'1':'.5', absSubmitPe:absReady?'auto':'none',
+      absSavedNote:this.state.absCode
+        ? CODE_INFO[this.state.absCode][5]+' and the academy have been told '+childFirst+' will miss '+CODE_INFO[this.state.absCode][0]+'. '+(absSoon?'Because it is within 24 hours the $60 fee is still billed.':'The $60 hold is released once it is marked excused.')
+        : '',
+
+      /* pay modal */
+      payOpen:this.state.payOpen, payForm:!this.state.payDone, payDone:this.state.payDone,
+      openTopUp:()=>this.openTopUp(idx), closePay:this.closePay, submitPay:this.submitPay,
+      payIsTopUp:isTopUp, payIsInvoice:!isTopUp,
+      payTitle:isTopUp?('Top up '+childFirst+"'s wallet"):('Pay '+(inv?inv.id:'')),
+      paySubtitle:isTopUp?'The wallet pays for sessions as they are attended — per child, never pooled':(inv?inv.desc+' · '+inv.child:''),
+      packages:pkgs,
+      payLines:inv?[
+        { label:'Invoice', value:inv.id },
+        { label:'For', value:inv.child },
+        { label:'Description', value:inv.desc },
+        { label:'Issued', value:inv.issued },
+      ]:[],
+      payTotal, paySubmitOpacity:'1', paySubmitPe:'auto',
+      paySavedNote:isTopUp
+        ? usd(chosenPkg.amount)+' added to '+childFirst+"'s wallet — covers "+(chosenPkg.sessions+chosenPkg.bonus)+' sessions. A receipt is on its way to jypark@gmail.com.'
+        : (inv?inv.id+' is settled. A receipt is on its way to jypark@gmail.com.':''),
+    };
+  }
+}
+</script>
+</body>
+</html>

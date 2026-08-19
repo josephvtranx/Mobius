@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/fonts/fonts.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.css">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#faf9f7}
+  a{color:#1c1c1c;text-decoration:none}a:hover{color:#6f6a60}
+  .ad-in{width:100%;height:42px;border-radius:10px;border:1px solid #e5e3de;background:#fff;color:#1c1c1c;padding:0 13px;font:400 13.5px 'Noto Sans KR',system-ui,sans-serif;outline:none}
+  .ad-in:focus{border-color:#1c1c1c;box-shadow:0 0 0 3px rgba(28,28,28,.08)}
+  .ad-in::placeholder{color:#b3aea4}
+  .ad-num{width:92px;height:36px;border-radius:9px;border:1px solid #e5e3de;background:#fff;color:#1c1c1c;padding:0 10px;font:500 13px 'IBM Plex Mono',monospace;outline:none;text-align:right}
+  .ad-num:focus{border-color:#1c1c1c}
+  .ad-sel{height:36px;border-radius:9px;border:1px solid #e5e3de;background:#fff;color:#1c1c1c;padding:0 10px;font:500 12.5px 'Noto Sans KR',system-ui,sans-serif;outline:none}
+  .adm-row:hover{background:#faf9f7}
+  .ad-nav{transition:background .15s ease}
+  .ad-nav:hover{background:#eceae4}
+  .ad-btn:hover{opacity:.88}
+  .ad-cell{width:12px;height:12px;border-radius:3px}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+</style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:#faf9f7;font-family:'Noto Sans KR',system-ui,sans-serif;color:#1c1c1c">
+
+  <!-- Sidebar -->
+  <aside style="position:sticky;top:0;align-self:flex-start;height:100vh;width:248px;flex-shrink:0;background:#f3f2ee;border-right:1px solid #e5e3de;display:flex;flex-direction:column;padding:16px 14px">
+    <div style="display:flex;align-items:center;gap:11px;background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:11px 12px;margin-bottom:22px">
+      <span style="width:34px;height:34px;border-radius:9px;background:#1c1c1c;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0"><i class="fa-solid fa-infinity"></i></span>
+      <span style="line-height:1.25;min-width:0">
+        <span style="display:block;font-size:10.5px;font-weight:500;color:#8a8577;letter-spacing:.04em">Platform</span>
+        <span style="display:block;font-size:13.5px;font-weight:600">Mobius Admin</span>
+      </span>
+    </div>
+
+    <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;color:#b3aea4;text-transform:uppercase;padding:0 10px 9px">Main menu</div>
+    <nav style="display:flex;flex-direction:column;gap:3px">
+      <button class="ad-nav" onClick="{{ goOverview }}" style="{{ navOverview }}"><i class="fa-solid fa-house" style="width:19px;text-align:center"></i>Dashboard</button>
+      <button class="ad-nav" onClick="{{ goAcademies }}" style="{{ navAcademies }}"><i class="fa-solid fa-building-columns" style="width:19px;text-align:center"></i>Academies</button>
+    </nav>
+    <div style="font-size:10.5px;font-weight:600;letter-spacing:.1em;color:#b3aea4;text-transform:uppercase;padding:20px 10px 9px">Management</div>
+    <nav style="display:flex;flex-direction:column;gap:3px">
+      <button class="ad-nav" onClick="{{ goProvision }}" style="{{ navProvision }}"><i class="fa-solid fa-plus" style="width:19px;text-align:center"></i>Provision academy</button>
+    </nav>
+
+    <div style="margin-top:auto;background:#fff;border:1px solid #e5e3de;border-radius:12px;padding:11px 12px;display:flex;align-items:center;gap:10px">
+      <span style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#6f6a60,#1c1c1c);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;flex-shrink:0">JT</span>
+      <span style="line-height:1.25;min-width:0">
+        <span style="display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Joseph Tran</span>
+        <span style="display:block;font-size:11px;color:#8a8577">Platform admin</span>
+      </span>
+      <a href="Mobius Admin Login.dc.html" title="Log out" style="margin-left:auto;width:30px;height:30px;border-radius:8px;border:1px solid #e5e3de;display:inline-flex;align-items:center;justify-content:center;color:#8a8577;flex-shrink:0"><i class="fa-solid fa-arrow-right-from-bracket" style="font-size:12px"></i></a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="position:sticky;top:0;z-index:10;background:rgba(250,249,247,.9);backdrop-filter:blur(8px);border-bottom:1px solid #e5e3de;padding:14px 32px;display:flex;align-items:center;gap:16px">
+      <div style="font-size:13.5px;color:#8a8577">Console <span style="margin:0 6px;color:#d5d2c9">›</span> <strong style="color:#1c1c1c;font-weight:600">{{ crumb }}</strong></div>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e5e3de;border-radius:10px;padding:0 13px;height:38px;width:min(280px,30vw)">
+        <i class="fa-solid fa-magnifying-glass" style="color:#b3aea4;font-size:12px"></i>
+        <input placeholder="Search academies…" style="border:none;outline:none;background:none;font-family:inherit;font-size:13px;color:#1c1c1c;width:100%">
+      </label>
+    </header>
+
+    <main style="flex:1;padding:30px 32px 64px;width:100%">
+
+      <!-- ============ OVERVIEW ============ -->
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <h1 style="margin: 0 0 22px; font-size: 40px; font-weight: 600; letter-spacing: -.02em">Welcome back, Joseph</h1>
+
+        <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px">
+          <sc-for list="{{ stats }}" as="s" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #e5e3de;border-radius:14px;overflow:hidden">
+              <div style="padding:18px 20px 14px;display:flex;align-items:flex-start;gap:14px">
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8a8577">{{ s.label }}</div>
+                  <div style="font:600 27px 'IBM Plex Mono',monospace;letter-spacing:-.02em;margin-top:8px">{{ s.value }}</div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:3px;height:44px;padding-top:4px">
+                  <sc-for list="{{ s.spark }}" as="b" hint-placeholder-count="6">
+                    <span style="width:4px;border-radius:2px;height:{{ b.h }};background:{{ b.c }}"></span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:9px 20px;background:#faf9f7;border-top:1px solid #f0eee8;font-size:12px;color:#8a8577;display:flex;align-items:center;gap:8px">
+                <sc-if value="{{ s.up }}" hint-placeholder-val="{{ true }}"><span style="color:#1f8a4c"><i class="fa-solid fa-circle-arrow-up"></i></span></sc-if>
+                {{ s.sub }}
+              </div>
+            </div>
+          </sc-for>
+        </section>
+
+        <section style="background:#fff;border:1px solid #e5e3de;border-radius:14px;padding:22px 24px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+            <span style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#8a8577">Revenue trend</span>
+            <span title="Summed across all active, reachable academies" style="color:#b3aea4;font-size:12px"><i class="fa-solid fa-circle-info"></i></span>
+            <div style="margin-left:auto;display:flex;gap:6px">
+              <button onClick="{{ trendPrev }}" aria-label="Earlier months" style="width:34px;height:34px;border-radius:10px;border:1px solid #e5e3de;background:#fff;color:#8a8577;cursor:{{ prevCur }};opacity:{{ prevOp }}"><i class="fa-solid fa-chevron-left" style="font-size:11px"></i></button>
+              <button onClick="{{ trendNext }}" aria-label="Later months" style="width:34px;height:34px;border-radius:10px;border:1px solid #e5e3de;background:#fff;color:#8a8577;cursor:{{ nextCur }};opacity:{{ nextOp }}"><i class="fa-solid fa-chevron-right" style="font-size:11px"></i></button>
+            </div>
+            <div style="position:relative">
+              <button onClick="{{ trendMenuToggle }}" style="display:inline-flex;align-items:center;gap:9px;height:34px;padding:0 14px;border-radius:10px;border:1px solid #e5e3de;background:#fff;color:#1c1c1c;font:600 12.5px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">
+                <i class="fa-solid fa-building-columns" style="color:#8a8577;font-size:11px"></i>{{ trendSelLabel }}<i class="fa-solid fa-chevron-down" style="color:#b3aea4;font-size:10px"></i>
+              </button>
+              <sc-if value="{{ trendMenuOpen }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ trendMenuToggle }}" style="position:fixed;inset:0;z-index:30"></div>
+                <div style="position:absolute;right:0;top:40px;z-index:31;width:250px;background:#fff;border:1px solid #e5e3de;border-radius:12px;box-shadow:0 14px 36px -18px rgba(28,28,28,.3);padding:6px;">
+                  <button onClick="{{ trendPickAll }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;border-radius:8px;padding:9px 10px;cursor:pointer;font:600 12.5px 'Noto Sans KR',system-ui,sans-serif;background:{{ allBg }};color:#1c1c1c">
+                    <i class="{{ allIcon }}" style="color:{{ allIconFg }};font-size:14px;width:16px"></i>All academies<span style="margin-left:auto;font-size:10.5px;font-weight:500;color:#b3aea4">active only</span>
+                  </button>
+                  <div style="height:1px;background:#f0eee8;margin:5px 4px"></div>
+                  <sc-for list="{{ trendOptions }}" as="o" hint-placeholder-count="4">
+                    <button onClick="{{ o.toggle }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;border-radius:8px;padding:9px 10px;cursor:pointer;background:{{ o.bg }};font-family:inherit">
+                      <i class="{{ o.icon }}" style="color:{{ o.iconFg }};font-size:14px;width:16px"></i>
+                      <span style="font:600 12px 'IBM Plex Mono',monospace">{{ o.code }}</span>
+                      <span style="font-size:11.5px;color:#8a8577;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.name }}</span>
+                      <span style="margin-left:auto;font-size:10px;font-weight:600;color:{{ o.tagFg }}">{{ o.tag }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:20px">
+            <span style="font-size:13px;color:#8a8577">{{ trendTotalLabel }} :</span>
+            <span style="font:600 22px 'IBM Plex Mono',monospace">{{ trendTotal }}</span>
+            <sc-if value="{{ trendFootnote }}" hint-placeholder-val="{{ true }}">
+              <span style="margin-left:auto;font-size:12px;color:#8a8577"><i class="fa-solid fa-triangle-exclamation" style="color:#9c6a1d;margin-right:7px"></i>Excludes SEOUL22 — its database is unreachable</span>
+            </sc-if>
+            <sc-if value="{{ trendSuspendedNote }}" hint-placeholder-val="{{ false }}">
+              <span style="margin-left:auto;font-size:12px;color:#b23a2f"><i class="fa-solid fa-circle-pause" style="margin-right:7px"></i>Suspended — history shown, excluded from platform totals</span>
+            </sc-if>
+          </div>
+          <sc-if value="{{ trendReady }}" hint-placeholder-val="{{ true }}">
+            <div style="position:relative">
+            <svg viewBox="0 0 760 250" style="width:100%;height:auto;display:block" role="img" aria-label="Monthly revenue, March through August 2026">
+              <defs><linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(28,28,28,.18)"></stop><stop offset="1" stop-color="rgba(28,28,28,0)"></stop></linearGradient></defs>
+              <sc-for list="{{ grid }}" as="gl" hint-placeholder-count="5">
+                <line x1="8" x2="752" y1="{{ gl.y }}" y2="{{ gl.y }}" stroke="#f0eee8" stroke-width="1"></line>
+              </sc-for>
+              <path d="{{ areaPath }}" fill="url(#trendGrad)"></path>
+              <path d="{{ linePath }}" fill="none" stroke="#1c1c1c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              <path d="{{ partialPath }}" fill="none" stroke="#8a8577" stroke-width="2.5" stroke-dasharray="5 6" stroke-linecap="round"></path>
+              <sc-for list="{{ pts }}" as="p" hint-placeholder-count="6">
+                <line x1="{{ p.x }}" x2="{{ p.x }}" y1="26" y2="210" stroke="#d5d2c9" stroke-width="1" stroke-dasharray="3 4" opacity="{{ p.guideOp }}"></line>
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ p.r }}" fill="{{ p.dot }}" stroke="#fff" stroke-width="2"></circle>
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="18" fill="transparent" onMouseEnter="{{ p.enter }}" onMouseLeave="{{ p.leave }}" style="cursor:pointer"></circle>
+              </sc-for>
+            </svg>
+            <sc-for list="{{ pts }}" as="p" hint-placeholder-count="6">
+              <span style="position:absolute;left:{{ p.leftPct }};top:{{ p.topPct }};transform:{{ p.valTx }};font:600 11.5px 'IBM Plex Mono',monospace;color:{{ p.valFg }};pointer-events:none;white-space:nowrap">{{ p.total }}</span>
+              <span style="position:absolute;left:{{ p.leftPct }};top:92.5%;transform:{{ p.monTx }};font:500 10.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:{{ p.labelFg }};pointer-events:none">{{ p.label }}</span>
+            </sc-for>
+            <sc-if value="{{ tipShown }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;left:{{ tipLeft }};top:{{ tipTop }};transform:translate(-50%,-100%) translateY(-14px);background:#1c1c1c;color:#fff;border-radius:11px;padding:12px 14px;min-width:172px;pointer-events:none;box-shadow:0 12px 30px -12px rgba(28,28,28,.5)">
+                <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+                  <span style="font-size:12px;font-weight:600">{{ tipTitle }}</span>
+                  <sc-if value="{{ tipPartial }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#e0c88a">in progress</span></sc-if>
+                </div>
+                <sc-for list="{{ tipRows }}" as="tr" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:12px;font-size:11.5px;padding:2px 0">
+                    <span style="font-family:'IBM Plex Mono',monospace;color:#b3aea4">{{ tr.code }}</span>
+                    <span style="margin-left:auto;font:600 11.5px 'IBM Plex Mono',monospace">{{ tr.val }}</span>
+                  </div>
+                </sc-for>
+                <div style="display:flex;align-items:center;gap:12px;font-size:11.5px;border-top:1px solid rgba(255,255,255,.18);margin-top:6px;padding-top:7px">
+                  <span style="color:#b3aea4">Total</span>
+                  <span style="margin-left:auto;font:600 12px 'IBM Plex Mono',monospace">{{ tipTotal }}</span>
+                </div>
+              </div>
+            </sc-if>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:18px;margin-top:10px;font-size:11.5px;color:#8a8577">
+              <span style="display:inline-flex;align-items:center;gap:7px"><span style="width:18px;height:0;border-top:2.5px solid #1c1c1c;border-radius:2px"></span>Collected</span>
+              <sc-if value="{{ trendPartialLegend }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:7px"><span style="width:18px;height:0;border-top:2.5px dashed #8a8577"></span>Current month · in progress</span></sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ trendEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:64px 24px;text-align:center">
+              <div style="font-size:14px;font-weight:600;margin-bottom:5px">No payments yet</div>
+              <p style="margin:0 auto;font-size:12.5px;color:#8a8577;max-width:46ch">{{ trendEmptyCopy }}</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ trendUnreachable }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:64px 24px;text-align:center">
+              <div style="font-size:14px;font-weight:600;color:#b23a2f;margin-bottom:5px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:9px;color:#9c6a1d"></i>Couldn't reach this academy's database</div>
+              <p style="margin:0 auto 14px;font-size:12.5px;color:#8a8577;max-width:46ch">Its revenue history can't be read right now, and it contributes nothing to the platform totals.</p>
+              <button onClick="{{ noop }}" style="height:34px;padding:0 16px;border-radius:9px;border:1px solid #e5e3de;background:#faf9f7;color:#1c1c1c;font:600 12px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">Retry connection</button>
+            </div>
+          </sc-if>
+        </section>
+      </div>
+      </sc-if>
+
+      <!-- ============ ACADEMIES ============ -->
+      <sc-if value="{{ isAcademies }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap">
+          <div>
+            <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-.02em">Academies</h1>
+            <p style="margin:6px 0 0;font-size:13px;color:#8a8577">{{ academyCount }} registered · suspended academies are excluded from finance totals</p>
+          </div>
+          <button onClick="{{ goProvision }}" class="ad-btn" style="margin-left:auto;display:inline-flex;align-items:center;gap:9px;height:40px;padding:0 17px;border-radius:10px;border:none;background:#1c1c1c;color:#fff;font:600 13px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer"><i class="fa-solid fa-plus"></i>New academy</button>
+        </div>
+
+      </div>
+      </sc-if>
+
+      <!-- ============ PROVISION ============ -->
+      <sc-if value="{{ isProvision }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="margin-bottom:18px">
+          <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-.02em">Provision academy</h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#8a8577">Set up a new tenant end-to-end — its first staff member can log in the moment this finishes.</p>
+        </div>
+        <sc-if value="{{ provMsgShown }}" hint-placeholder-val="{{ false }}">
+          <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 16px;border-radius:11px;border:1px solid #cfe5d6;background:#effaf2;color:#1f8a4c;font-size:13.5px">
+            <i class="fa-solid fa-circle-check"></i>{{ provMsg }}
+            <a onClick="{{ goAcademies }}" style="margin-left:6px;font-weight:600;cursor:pointer;color:#1f8a4c;text-decoration:underline">View in academies</a>
+            <button onClick="{{ dismissProvMsg }}" aria-label="Dismiss" style="margin-left:auto;border:none;background:none;color:#1f8a4c;cursor:pointer;font-size:14px"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </sc-if>
+        <div style="padding:22px 24px;border:1px solid #e5e3de;border-radius:14px;background:#fff">
+            <p style="margin:0 0 18px;font-size:12.5px;line-height:1.6;color:#8a8577">Creates the academy's own database, runs all migrations, registers it on the platform, and seeds the first staff account — that person can sign straight into the Staff app of a working, empty academy.</p>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
+              <div><label for="pv-code" style="display:block;font-size:12px;font-weight:500;color:#8a8577;margin-bottom:6px">Institution code</label><input id="pv-code" class="ad-in" placeholder="e.g. UW123 — letters, digits, _ or -" onInput="{{ provInput }}" style="font-family:'IBM Plex Mono',monospace"></div>
+              <div><label for="pv-name" style="display:block;font-size:12px;font-weight:500;color:#8a8577;margin-bottom:6px">Academy name</label><input id="pv-name" class="ad-in" placeholder="e.g. Bright Minds Academy" onInput="{{ provInput }}"></div>
+              <div><label for="pv-sname" style="display:block;font-size:12px;font-weight:500;color:#8a8577;margin-bottom:6px">First staff — name</label><input id="pv-sname" class="ad-in" placeholder="Full name" onInput="{{ provInput }}"></div>
+              <div><label for="pv-semail" style="display:block;font-size:12px;font-weight:500;color:#8a8577;margin-bottom:6px">First staff — email</label><input id="pv-semail" class="ad-in" type="email" placeholder="Must be new to the platform" onInput="{{ provInput }}"></div>
+              <div><label for="pv-spass" style="display:block;font-size:12px;font-weight:500;color:#8a8577;margin-bottom:6px">First staff — password</label><input id="pv-spass" class="ad-in" type="password" placeholder="Min 8 characters" onInput="{{ provInput }}"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap">
+              <button onClick="{{ submitProv }}" aria-disabled="{{ provDisabledAria }}" class="ad-btn" style="display:inline-flex;align-items:center;gap:9px;height:42px;padding:0 20px;border-radius:11px;border:none;font:600 13.5px 'Noto Sans KR',system-ui,sans-serif;cursor:{{ provCursor }};background:#1c1c1c;color:#fff;opacity:{{ provBtnOp }}">
+                <sc-if value="{{ provBusy }}" hint-placeholder-val="{{ false }}"><i class="fa-solid fa-circle-notch fa-spin"></i></sc-if>{{ provBtnLabel }}
+              </button>
+              <sc-if value="{{ provBusy }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:#9c6a1d"><i class="fa-solid fa-triangle-exclamation" style="margin-right:7px"></i>Creating and migrating a database — this takes a moment. Don't resubmit.</span></sc-if>
+              <sc-if value="{{ provErrShown }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:13px;color:#b23a2f">{{ provErr }}</span></sc-if>
+            </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ ACADEMIES TABLE ============ -->
+      <sc-if value="{{ isAcademies }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <section style="background:#fff;border:1px solid #e5e3de;border-radius:14px;overflow:hidden">
+          <div style="overflow-x:auto">
+            <div style="min-width:1040px">
+              <div style="display:grid;grid-template-columns:200px 1fr 92px 110px 128px 112px 122px 108px;padding:12px 22px;border-bottom:1px solid #e5e3de;font:600 10.5px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#b3aea4">
+                <span>Code</span><span>Name</span><span style="text-align:right">Students</span><span style="text-align:right">Classes</span><span style="text-align:right">Collected</span><span style="text-align:right">This month</span><span style="text-align:center">Schema</span><span></span>
+              </div>
+              <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+                <div class="adm-row" style="display:grid;grid-template-columns:200px 1fr 92px 110px 128px 112px 122px 108px;align-items:center;padding:14px 22px;border-bottom:1px solid #f0eee8;opacity:{{ r.rowOp }}">
+                  <span style="display:flex;align-items:center;gap:11px">
+                    <span aria-hidden="true" style="width:32px;height:32px;border-radius:9px;background:{{ r.logoBg }};display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">{{ r.initials }}</span>
+                    <span style="display:flex;flex-direction:column;gap:3px">
+                      <span style="font:600 13px 'IBM Plex Mono',monospace">{{ r.code }}</span>
+                      <sc-if value="{{ r.suspended }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#b23a2f;border:1px solid #ecc8c3;background:#fdf1ef;border-radius:5px;padding:1px 6px;width:fit-content">Suspended</span></sc-if>
+                    </span>
+                  </span>
+                  <span style="display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:500;min-width:0">
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</span>
+                    <sc-if value="{{ r.unreachable }}" hint-placeholder-val="{{ false }}">
+                      <span title="Couldn't reach this academy's database" style="color:#9c6a1d;font-size:12px;flex-shrink:0"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                      <button onClick="{{ r.retry }}" style="flex-shrink:0;border:1px solid #e5e3de;background:none;color:#8a8577;font:500 11px 'Noto Sans KR',system-ui,sans-serif;border-radius:7px;padding:3px 9px;cursor:pointer">Retry</button>
+                    </sc-if>
+                  </span>
+                  <span style="text-align:right;font:500 13px 'IBM Plex Mono',monospace;color:{{ r.numFg }}">{{ r.students }}</span>
+                  <span style="text-align:right;font:500 13px 'IBM Plex Mono',monospace;color:{{ r.numFg }}">{{ r.classes }}</span>
+                  <span style="text-align:right;font:500 13px 'IBM Plex Mono',monospace;color:{{ r.numFg }}">{{ r.total }}</span>
+                  <span style="text-align:right;font:500 13px 'IBM Plex Mono',monospace;color:{{ r.numFg }}">{{ r.month }}</span>
+                  <span style="text-align:center"><span title="{{ r.schemaTip }}" style="font-size:11px;font-weight:600;border-radius:6px;padding:3px 9px;border:1px solid {{ r.schemaBd }};background:{{ r.schemaBg }};color:{{ r.schemaFg }}">{{ r.schema }}</span></span>
+                  <span style="text-align:right"><button onClick="{{ r.configure }}" style="height:32px;padding:0 14px;border-radius:9px;border:1px solid {{ r.cfgBd }};background:{{ r.cfgBg }};color:{{ r.cfgFg }};font:600 12px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">Configure</button></span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </section>
+
+        <!-- Config editor -->
+        <sc-if value="{{ cfgOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:18px;border:1px solid #e5e3de;border-radius:14px;background:#fff;overflow:hidden">
+            <sc-if value="{{ cfgUnreachable }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:28px 24px;text-align:center">
+                <div style="font-size:14px;font-weight:600;color:#b23a2f;margin-bottom:6px"><i class="fa-solid fa-triangle-exclamation" style="margin-right:9px;color:#9c6a1d"></i>Academy not found or unreachable</div>
+                <p style="margin:0 auto 16px;font-size:12.5px;color:#8a8577;max-width:52ch">The console couldn't reach {{ cfgCode }}'s database. Settings can't be read or written until the connection recovers.</p>
+                <button onClick="{{ cfgRetry }}" style="height:36px;padding:0 18px;border-radius:10px;border:1px solid #e5e3de;background:#faf9f7;color:#1c1c1c;font:600 12.5px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">Retry connection</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ cfgReady }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:13px;padding:18px 22px;border-bottom:1px solid #e5e3de;flex-wrap:wrap">
+                <span aria-hidden="true" style="width:34px;height:34px;border-radius:9px;background:{{ cfgLogoBg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">{{ cfgInitials }}</span>
+                <div>
+                  <div style="font-size:15px;font-weight:600">Configure <span style="font-family:'IBM Plex Mono',monospace">{{ cfgCode }}</span></div>
+                  <div style="font-size:12px;color:#8a8577">{{ cfgName }} · changes apply on save, only edited keys are sent</div>
+                </div>
+                <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+                  <a onClick="{{ noop }}" style="font-size:12.5px;cursor:pointer;color:#8a8577"><i class="fa-solid fa-clock-rotate-left" style="margin-right:6px"></i>Change log</a>
+                  <button onClick="{{ askSuspend }}" style="height:34px;padding:0 14px;border-radius:9px;border:1px solid #ecc8c3;background:#fdf1ef;color:#b23a2f;font:600 12px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">{{ suspendLabel }}</button>
+                  <button onClick="{{ closeCfg }}" aria-label="Close configuration" style="width:34px;height:34px;border-radius:9px;border:1px solid #e5e3de;background:#faf9f7;color:#8a8577;cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+
+              <sc-if value="{{ suspendConfirming }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid #ecc8c3;background:#fdf1ef;flex-wrap:wrap">
+                  <span style="font-size:13px;color:#b23a2f"><i class="fa-solid fa-triangle-exclamation" style="margin-right:8px"></i>{{ suspendConfirmCopy }}</span>
+                  <span style="margin-left:auto;display:flex;gap:10px">
+                    <button onClick="{{ confirmSuspend }}" style="height:32px;padding:0 14px;border-radius:8px;border:none;background:#b23a2f;color:#fff;font:600 12px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">{{ suspendConfirmBtn }}</button>
+                    <button onClick="{{ cancelSuspend }}" style="height:32px;padding:0 14px;border-radius:8px;border:1px solid #e5e3de;background:none;color:#8a8577;font:500 12px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">Cancel</button>
+                  </span>
+                </div>
+              </sc-if>
+
+              <div style="padding:8px 22px 4px">
+                <sc-for list="{{ cfgGroups }}" as="g" hint-placeholder-count="4">
+                  <div style="padding:14px 0 6px">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+                      <span style="font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#8a8577">{{ g.name }}</span>
+                      <sc-if value="{{ g.dormant }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#9c6a1d;border:1px solid #ecdcbb;background:#fff8ea;border-radius:5px;padding:1px 7px">Not yet active</span></sc-if>
+                    </div>
+                    <sc-for list="{{ g.items }}" as="k" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:18px;padding:12px 0;border-bottom:1px solid #f0eee8">
+                        <div style="flex:1;min-width:0">
+                          <div style="display:flex;align-items:center;gap:9px">
+                            <span style="font-size:13.5px;font-weight:500">{{ k.label }}</span>
+                            <sc-if value="{{ k.dormant }}" hint-placeholder-val="{{ false }}"><span title="Editable and saved, but no academy feature reads this yet" style="font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#9c6a1d;border:1px solid #ecdcbb;background:#fff8ea;border-radius:4px;padding:1px 6px">dormant</span></sc-if>
+                            <sc-if value="{{ k.dirty }}" hint-placeholder-val="{{ false }}"><span style="font-size:9.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#1c1c1c;border:1px solid #d5d2c9;background:#f3f2ee;border-radius:4px;padding:1px 6px">edited</span></sc-if>
+                          </div>
+                          <div style="font-size:12px;color:#8a8577;margin-top:3px">{{ k.desc }}</div>
+                          <div style="font-size:11px;color:#b3aea4;margin-top:3px"><i class="fa-solid fa-clock-rotate-left" style="margin-right:5px"></i>{{ k.history }}</div>
+                        </div>
+                        <sc-if value="{{ k.isToggle }}" hint-placeholder-val="{{ false }}">
+                          <button onClick="{{ k.onToggle }}" role="switch" aria-checked="{{ k.ariaOn }}" aria-label="{{ k.label }}" style="width:46px;height:26px;border-radius:999px;border:none;cursor:pointer;position:relative;background:{{ k.trackBg }};flex-shrink:0">
+                            <span style="position:absolute;top:3px;left:{{ k.knobLeft }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s ease;box-shadow:0 1px 3px rgba(0,0,0,.25)"></span>
+                          </button>
+                        </sc-if>
+                        <sc-if value="{{ k.isNumber }}" hint-placeholder-val="{{ false }}">
+                          <input type="number" class="ad-num" aria-label="{{ k.label }}" min="{{ k.min }}" value="{{ k.val }}" onInput="{{ k.onInput }}">
+                        </sc-if>
+                        <sc-if value="{{ k.isSelect }}" hint-placeholder-val="{{ false }}">
+                          <select class="ad-sel" aria-label="{{ k.label }}" value="{{ k.val }}" onChange="{{ k.onInput }}">
+                            <option value="collect_now">Collect now</option>
+                            <option value="payment_link">Payment link</option>
+                            <option value="both">Both</option>
+                          </select>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:14px;padding:16px 22px;border-top:1px solid #e5e3de;background:#faf9f7">
+                <button onClick="{{ saveCfg }}" class="ad-btn" style="height:40px;padding:0 22px;border-radius:10px;border:none;background:#1c1c1c;color:#fff;font:600 13.5px 'Noto Sans KR',system-ui,sans-serif;cursor:pointer">{{ saveLabel }}</button>
+                <span role="status" aria-live="polite" style="font-size:13px;color:#1f8a4c">{{ savedMsg }}</span>
+                <span style="margin-left:auto;font-size:12px;color:#b3aea4">{{ draftCount }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+      </sc-if>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { view:'overview', trendSel:[], trendMenuOpen:false, provOpen:false, provBusy:false, provErr:'', provMsg:'', provFilled:false,
+    cfgFor:null, draft:{}, savedMsg:'', suspendConfirming:false,
+    academies:[
+      { code:'HANRIVER', name:'Han River Academy', active:true, unreachable:false, students:214, classes:52, total:688400, month:61200, logoBg:'linear-gradient(135deg,#2c6e6e,#143d3d)', schema:'v42 · current' },
+      { code:'UW123', name:'Univer Prep', active:true, unreachable:false, students:148, classes:36, total:412800, month:38450, logoBg:'linear-gradient(135deg,#3a5f8a,#1c2c40)', schema:'v42 · current' },
+      { code:'MAPLE7', name:'Maple Grove Tutoring', active:true, unreachable:false, students:89, classes:21, total:201300, month:17800, logoBg:'linear-gradient(135deg,#a8552e,#6e2f14)', schema:'v42 · current' },
+      { code:'NOVA', name:'Nova Prep Collective', active:true, unreachable:false, students:42, classes:11, total:88700, month:9400, logoBg:'linear-gradient(135deg,#5b6bc0,#2e3a75)', schema:'v42 · current' },
+      { code:'PINE03', name:'Pinehill Academy', active:true, unreachable:false, students:12, classes:4, total:15600, month:2900, logoBg:'linear-gradient(135deg,#6e8a3a,#3d4d1c)', schema:'v41 · behind', behind:true },
+      { code:'BRIGHT01', name:'Bright Minds Academy', active:true, unreachable:false, students:0, classes:0, total:0, month:0, logoBg:'linear-gradient(135deg,#4f9a6e,#2c5940)', schema:'v42 · current' },
+      { code:'WEST12', name:'Westgate Learning', active:false, unreachable:false, students:33, classes:8, total:54100, month:0, logoBg:'linear-gradient(135deg,#8a6e3a,#4d3a14)', schema:'v38 · behind', behind:true },
+      { code:'OAK9', name:'Oakline Tutoring', active:false, unreachable:false, students:61, classes:14, total:96200, month:0, logoBg:'linear-gradient(135deg,#c98a2e,#8a5a14)', schema:'v39 · behind', behind:true },
+      { code:'SEOUL22', name:'Seoul Edge Academy', active:true, unreachable:true, students:null, classes:null, total:null, month:null, logoBg:'linear-gradient(135deg,#9a5bbf,#5f2c80)', schema:'unknown', unknown:true },
+    ] };
+  cfgStore = {};
+  noop = () => {};
+
+  get knobGroups(){
+    return [
+      { name:'Booking & scheduling', items:[
+        { key:'self_serve_booking_enabled', type:'toggle', label:'Self-serve booking', desc:'Let students book their own sessions instead of staff-only scheduling.', def:false },
+        { key:'group_catalog_visible', type:'toggle', label:'Class catalog visible', desc:'Show the group-class catalog to students and guardians.', def:true },
+        { key:'reschedule_window_hours', type:'number', min:0, label:'Reschedule window', desc:'Hours before a session that a reschedule request is still allowed.', def:24 },
+        { key:'instructor_response_window_hours', type:'number', min:1, label:'Instructor response window', desc:'Hours an instructor has to accept or decline a reschedule request.', def:48 },
+        { key:'session_generation_horizon_weeks', type:'number', min:1, label:'Schedule horizon', desc:'How many weeks of recurring sessions are generated in advance.', def:8 },
+      ]},
+      { name:'Attendance & records', items:[
+        { key:'session_record_lock_days', type:'number', min:1, label:'Record lock', desc:'Days after a session before its attendance record locks for edits.', def:7 },
+        { key:'attendance_autocomplete_hours', type:'number', min:1, label:'Attendance auto-complete', desc:'Hours after a session before unmarked attendance auto-completes as attended.', def:24 },
+      ]},
+      { name:'Billing & balances', items:[
+        { key:'enrollment_runway_sessions', type:'number', min:1, label:'Enrollment runway', desc:'Minimum prepaid sessions required to enroll in a new class.', def:4 },
+        { key:'negative_balance_floor_sessions', type:'number', min:0, label:'Negative balance floor', desc:'How many sessions a wallet may go negative before booking blocks.', def:2 },
+        { key:'low_balance_notify_runway_sessions', type:'number', min:1, label:'Low-balance alert runway', desc:'Remaining-session count that triggers the family low-balance alert.', def:3 },
+        { key:'default_one_on_one_credit_cost', type:'number', min:0, label:'Default 1:1 credit cost', desc:'Credits deducted per one-on-one session unless the class overrides it.', def:1 },
+      ]},
+      { name:'Payments', dormant:true, items:[
+        { key:'payment_modes_enabled', type:'select', label:'Payment modes', desc:'Which checkout paths staff can offer: collect now, payment link, or both.', def:'both', dormant:true },
+        { key:'payment_link_ttl_hours', type:'number', min:1, label:'Payment link lifetime', desc:'Hours before an issued payment link expires.', def:72, dormant:true },
+        { key:'consultation_hold_ttl_min', type:'number', min:1, label:'Consultation hold', desc:'Minutes a consultation slot is held before it releases.', def:30, dormant:true },
+        { key:'trial_class_enabled', type:'toggle', label:'Trial classes', desc:'Allow one discounted trial session per new student.', def:false, dormant:true },
+      ]},
+    ];
+  }
+  valuesFor(code){
+    if(!this.cfgStore[code]){
+      const v={}; this.knobGroups.forEach(g=>g.items.forEach(k=>{ v[k.key]=k.def; }));
+      if(code==='UW123'){ v.self_serve_booking_enabled=true; v.reschedule_window_hours=48; }
+      this.cfgStore[code]=v;
+    }
+    return this.cfgStore[code];
+  }
+  setDraft(key,val){ this.setState(s=>({ draft:{ ...s.draft, [key]:val }, savedMsg:'' })); }
+  openCfg(code){ this.setState({ cfgFor:code, draft:{}, savedMsg:'', suspendConfirming:false }); }
+  closeCfg = () => this.setState({ cfgFor:null, draft:{}, savedMsg:'', suspendConfirming:false });
+  saveCfg = () => {
+    const keys=Object.keys(this.state.draft);
+    if(!keys.length){ this.closeCfg(); return; }
+    Object.assign(this.valuesFor(this.state.cfgFor), this.state.draft);
+    this.setState({ draft:{}, savedMsg:'Saved.' });
+  };
+  askSuspend = () => this.setState({ suspendConfirming:true });
+  cancelSuspend = () => this.setState({ suspendConfirming:false });
+  confirmSuspend = () => this.setState(s=>({
+    academies:s.academies.map(a=> a.code===s.cfgFor ? { ...a, active:!a.active } : a),
+    suspendConfirming:false }));
+
+  provInput = () => {
+    const ids=['pv-code','pv-name','pv-sname','pv-semail','pv-spass'];
+    const filled=ids.every(id=>{ const el=document.getElementById(id); return el && el.value.trim(); });
+    this.setState({ provFilled:filled, provErr:'' });
+  };
+  toggleProv = () => this.setState(s=>({ provOpen:!s.provOpen, provErr:'' }));
+  dismissProvMsg = () => this.setState({ provMsg:'' });
+  submitProv = () => {
+    if(!this.state.provFilled || this.state.provBusy) return;
+    const g=id=>document.getElementById(id).value.trim();
+    const code=g('pv-code').toUpperCase(), name=g('pv-name'), semail=g('pv-semail'), spass=document.getElementById('pv-spass').value;
+    if(!/^[A-Za-z0-9_-]{3,32}$/.test(code)){ this.setState({ provErr:'Code must be 3\u201332 characters: letters, digits, _ or - only.' }); return; }
+    if(this.state.academies.some(a=>a.code===code)){ this.setState({ provErr:'Institution code '+code+' already exists' }); return; }
+    if(semail==='admin@univerprep.com'){ this.setState({ provErr:'email already belongs to an account' }); return; }
+    if(spass.length<8){ this.setState({ provErr:'Password must be at least 8 characters.' }); return; }
+    this.setState({ provBusy:true, provErr:'' });
+    setTimeout(()=>{
+      ['pv-code','pv-name','pv-sname','pv-semail','pv-spass'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+      this.setState(s=>({
+        provBusy:false, provFilled:false,
+        provMsg:'Provisioned '+code+' \u2014 first staff '+semail+' can now log in.',
+        academies:[{ code, name, active:true, unreachable:false, students:0, classes:0, total:0, month:0, logoBg:'linear-gradient(135deg,#5f8a8a,#2c4d4d)', schema:'v42 · current' }, ...s.academies],
+      }));
+    }, 1900);
+  };
+
+  renderVals(){
+    const v=this.state.view;
+    const fmt=x=> x==null ? '\u2014' : '$'+x.toLocaleString('en-US');
+    const acs=this.state.academies;
+    const finance=acs.filter(a=>a.active && !a.unreachable);
+    const total=finance.reduce((s,a)=>s+a.total,0), month=finance.reduce((s,a)=>s+a.month,0);
+    const students=finance.reduce((s,a)=>s+(a.students||0),0);
+    const now=new Date();
+    const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const anchor={ y:2025, m:8 }; // history starts Sep 2025
+    const N=Math.max((now.getFullYear()-anchor.y)*12+(now.getMonth()-anchor.m)+1, 12);
+    const monthsMeta=Array.from({length:N},(_,i)=>{ const mi=anchor.m+i, y=anchor.y+Math.floor(mi/12), m=mi%12; return { label:MN[m].toUpperCase(), title:MN[m]+' '+y, mon:MN[m], y }; });
+    const BASE={
+      HANRIVER:[48900,52300,55100,53800,57600,59200,60100,63400,61800,66200,68900,61200],
+      UW123:[41200,44800,43100,46700,49800,50900,52400,61200,58900,66800,71300,38450],
+      MAPLE7:[14200,15100,15800,14900,16400,17200,16800,17900,18300,19100,19600,17800],
+      NOVA:[6800,7200,7500,7100,7900,8300,8100,8600,8900,9200,9700,9400],
+      PINE03:[0,0,0,0,900,1400,1700,2100,2400,2600,2800,2900],
+      BRIGHT01:Array(12).fill(0),
+      WEST12:[9800,9200,8700,8100,7600,7000,6400,5800,5100,4300,3600,0],
+      OAK9:[15400,14100,13200,12600,11800,9600,8200,7400,6900,5200,3100,0],
+      SEOUL22:null };
+    const HISTF={};
+    Object.keys(BASE).forEach(c=>{ if(!BASE[c]){ HISTF[c]=null; return; }
+      const v=BASE[c].slice();
+      while(v.length<N){ const i=v.length; v.push(c==='BRIGHT01'?0:Math.max(0,Math.round((v[i-1]||30000)*(0.9+((i*29)%8)/40)))); }
+      HISTF[c]=v; });
+    const maxOff=N-6;
+    const offC=Math.min(this.state.trendOffset||0, maxOff);
+    const start=N-6-offC;
+    const isPartialWindow=offC===0;
+    const windowMeta=monthsMeta.slice(start,start+6);
+    const HIST={}; Object.keys(HISTF).forEach(c=>{ HIST[c]=HISTF[c]?HISTF[c].slice(start,start+6):null; });
+    const rangeText=windowMeta[0].y===windowMeta[5].y ? windowMeta[0].mon+' \u2013 '+windowMeta[5].mon+' '+windowMeta[5].y : windowMeta[0].title+' \u2013 '+windowMeta[5].title;
+    const selArr=this.state.trendSel||[];
+    const isAll=selArr.length===0;
+    const chosen=isAll ? acs.filter(a=>a.active).map(a=>a.code) : selArr;
+    const reachableChosen=chosen.filter(c=>HIST[c]);
+    const sumVals=reachableChosen.length ? Array.from({length:6},(_,i)=>reachableChosen.reduce((s,c)=>s+HIST[c][i],0)) : null;
+    const selLabel=isAll ? 'All academies' : selArr.length<=2 ? selArr.join(' + ') : selArr.length+' academies';
+    const onlyUnreachable=!isAll && chosen.length>0 && reachableChosen.length===0;
+    const allZero=sumVals && sumVals.every(x=>x===0);
+    const ser={
+      label:selLabel+' · '+rangeText,
+      vals:(onlyUnreachable||allZero) ? null : sumVals,
+      unreachable:onlyUnreachable,
+      suspended:chosen.includes('OAK9'),
+      partialExcluded:chosen.includes('SEOUL22'),
+      empty: allZero ? (chosen.includes('BRIGHT01')&&chosen.length===1 ? 'Bright Minds Academy was just provisioned \u2014 its first payment will start the trend.' : 'No payments recorded for this selection in '+rangeText+'.') : '',
+    };
+    const trendData=(ser.vals||[]).map((val,i)=>[windowMeta[i].label,val]);
+    const cfg=this.state.cfgFor ? acs.find(a=>a.code===this.state.cfgFor) : null;
+    const vals=cfg && !cfg.unreachable ? this.valuesFor(cfg.code) : {};
+    const draft=this.state.draft;
+    const dirtyN=Object.keys(draft).length;
+    const navStyle=(on)=>`display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:${on?600:500};padding:10px 12px;border-radius:10px;background:${on?'#fff':'transparent'};color:${on?'#1c1c1c':'#6f6a60'};border:1px solid ${on?'#e5e3de':'transparent'}`;
+    const spark=(arr,hi)=>arr.map((x,i)=>({ h:Math.max(4,Math.round(x/Math.max(...arr)*44))+'px', c:i===hi?'#1c1c1c':'#dedbd2' }));
+    return {
+      noop:this.noop,
+      goOverview:()=>this.setState({ view:'overview' }),
+      goAcademies:()=>this.setState({ view:'academies' }),
+      goProvision:()=>this.setState({ view:'provision' }),
+      navOverview:navStyle(v==='overview'), navAcademies:navStyle(v==='academies'), navProvision:navStyle(v==='provision'),
+      crumb:v==='overview'?'Overview':v==='provision'?'Provision academy':'Academies',
+      isOverview:v==='overview', isAcademies:v==='academies', isProvision:v==='provision',
+      grandTotal:fmt(total),
+      stats:[
+        { label:'Total collected', value:fmt(total), sub:'All payments, every active academy', up:true, spark:spark([32,38,35,41,45,51],5) },
+        { label:'This month', value:fmt(month), sub:'August 2026 · resets on the 1st', up:true, spark:spark([52,61,59,67,71,38],5) },
+        { label:'Active students', value:String(students), sub:acs.length+' academies · '+acs.filter(a=>!a.active).length+' suspended · '+acs.filter(a=>a.unreachable).length+' unreachable', up:false, spark:spark([90,104,118,127,141,148],5) },
+      ],
+      trendPrev:()=>this.setState(s=>({ trendOffset:Math.min((s.trendOffset||0)+1, maxOff) })),
+      trendNext:()=>this.setState(s=>({ trendOffset:Math.max((s.trendOffset||0)-1, 0) })),
+      prevOp:offC<maxOff?'1':'.35', prevCur:offC<maxOff?'pointer':'default',
+      nextOp:offC>0?'1':'.35', nextCur:offC>0?'pointer':'default',
+      trendPartialLegend:isPartialWindow,
+      trendMenuToggle:()=>this.setState(s=>({ trendMenuOpen:!s.trendMenuOpen })),
+      trendMenuOpen:!!this.state.trendMenuOpen,
+      trendSelLabel:selLabel,
+      trendPickAll:()=>this.setState({ trendSel:[] }),
+      allBg:isAll?'#f0eee8':'transparent',
+      allIcon:isAll?'fa-solid fa-square-check':'fa-regular fa-square', allIconFg:isAll?'#1c1c1c':'#d5d2c9',
+      trendOptions:acs.map(a=>{
+        const on=selArr.includes(a.code);
+        return { code:a.code, name:a.name,
+          icon:on?'fa-solid fa-square-check':'fa-regular fa-square', iconFg:on?'#1c1c1c':'#d5d2c9',
+          bg:on?'#faf9f7':'transparent',
+          tag:a.unreachable?'UNREACHABLE':!a.active?'SUSPENDED':'', tagFg:a.unreachable?'#9c6a1d':'#b23a2f',
+          toggle:()=>this.setState(s=>{ const cur=s.trendSel||[]; return { trendSel: cur.includes(a.code) ? cur.filter(c=>c!==a.code) : [...cur, a.code] }; }),
+        };
+      }),
+      trendTotalLabel:ser.label,
+      trendTotal: ser.unreachable ? '\u2014' : ser.vals ? '$'+ser.vals.reduce((s,x)=>s+x,0).toLocaleString('en-US') : '$0',
+      trendFootnote:(isAll||ser.partialExcluded)&&!ser.unreachable, trendSuspendedNote:!!ser.suspended&&!isAll&&!!ser.vals,
+      trendReady:!!ser.vals, trendEmpty:!ser.vals&&!ser.unreachable, trendUnreachable:!!ser.unreachable,
+      trendEmptyCopy:ser.empty||'',
+      ...(()=>{
+        if(!ser.vals) return { grid:[], pts:[], linePath:'', partialPath:'', areaPath:'' };
+        const L=8, R=752, T=26, B=210;
+        const max=Math.max(...ser.vals,1);
+        const top=[2000,5000,10000,20000,40000,80000,160000].find(t=>t>=max)||160000;
+        const X=i=> L + (R-L)*(i/(trendData.length-1));
+        const Y=val=> B - (val/top)*(B-T);
+        const pts=trendData.map(([label,val],i)=>({ x:X(i), y:Y(val), val, label:label.toUpperCase(), partial:isPartialWindow&&i===trendData.length-1 }));
+        const half=(X(1)-X(0))/2;
+        const curve=(arr)=> arr.map((p,i)=> i===0 ? 'M '+p.x.toFixed(1)+' '+p.y.toFixed(1)
+          : 'C '+(arr[i-1].x+half).toFixed(1)+' '+arr[i-1].y.toFixed(1)+', '+(p.x-half).toFixed(1)+' '+p.y.toFixed(1)+', '+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+        const solid=isPartialWindow?pts.slice(0,-1):pts, last=pts[pts.length-1], prev=pts[pts.length-2];
+        const fmtK=v=> v>=1000 ? '$'+(v/1000)+'k' : '$'+v;
+        return {
+          grid:[0,.25,.5,.75,1].map(f=>({ y:String(Y(f*top)), pct:(Y(f*top)/250*100).toFixed(2)+'%', label:f===0?'':fmtK(f*top) })),
+          linePath:curve(solid),
+          partialPath:isPartialWindow ? 'M '+prev.x.toFixed(1)+' '+prev.y.toFixed(1)+' C '+(prev.x+half).toFixed(1)+' '+prev.y.toFixed(1)+', '+(last.x-half).toFixed(1)+' '+last.y.toFixed(1)+', '+last.x.toFixed(1)+' '+last.y.toFixed(1) : '',
+          areaPath:curve(pts)+' L '+last.x.toFixed(1)+' '+B+' L '+pts[0].x.toFixed(1)+' '+B+' Z',
+          pts:pts.map((p,i)=>{
+            const hov=this.state.trendHover===i;
+            const txX = i===0 ? '0' : i===pts.length-1 ? '-100%' : '-50%';
+            // avoid the first value label colliding with a y-axis grid label at the left edge
+            const nearGrid = i===0 && [0,.25,.5,.75,1].some(f=>Math.abs((p.y-24)-(Y(f*top)-15))<14);
+            const valLift = nearGrid ? '-26px' : '-10px';
+            return { x:p.x.toFixed(1), y:p.y.toFixed(1),
+              leftPct:(p.x/760*100).toFixed(2)+'%', topPct:(p.y/250*100).toFixed(2)+'%',
+              valTx:'translate('+txX+',-100%) translateY('+valLift+')', monTx:'translateX('+txX+')',
+              total:'$'+(p.val/1000).toFixed(1)+'k', label:p.label,
+              r:hov?'6.5':'4.5', guideOp:hov?'1':'0',
+              dot:p.partial?'#8a8577':'#1c1c1c', valFg:p.partial?'#8a8577':'#1c1c1c', labelFg:p.partial?'#1c1c1c':'#b3aea4',
+              enter:()=>this.setState({ trendHover:i }), leave:()=>this.setState({ trendHover:null }) };
+          }),
+          ...(()=>{
+            const hi=this.state.trendHover;
+            if(hi==null || !pts[hi]) return { tipShown:false, tipLeft:'0', tipTop:'0', tipTitle:'', tipTotal:'', tipRows:[], tipPartial:false };
+            const p=pts[hi];
+            return { tipShown:true,
+              tipLeft:(p.x/760*100).toFixed(2)+'%', tipTop:(p.y/250*100).toFixed(2)+'%',
+              tipTitle:windowMeta[hi].title, tipPartial:p.partial,
+              tipTotal:'$'+p.val.toLocaleString('en-US'),
+              tipRows:reachableChosen.map(c=>({ code:c, val:'$'+HIST[c][hi].toLocaleString('en-US') })),
+            };
+          })(),
+        };
+      })(),
+      academyCount:acs.length,
+      rows:acs.map(a=>({
+        code:a.code, name:a.name, suspended:!a.active, unreachable:a.unreachable,
+        initials:a.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(), logoBg:a.logoBg,
+        students:a.students==null?'\u2014':String(a.students), classes:a.classes==null?'\u2014':String(a.classes),
+        total:fmt(a.total), month:fmt(a.month),
+        numFg:a.unreachable?'#b3aea4':'#1c1c1c', rowOp:a.active?'1':'.6',
+        schema:a.unknown?'unknown':a.schema,
+        schemaBd:a.behind?'#ecdcbb':a.unknown?'#e5e3de':'#cfe5d6', schemaBg:a.behind?'#fff8ea':a.unknown?'#faf9f7':'#effaf2',
+        schemaFg:a.behind?'#9c6a1d':a.unknown?'#8a8577':'#1f8a4c',
+        schemaTip:a.behind?'Migrations out of date \u2014 3 behind current':a.unknown?'Unreachable \u2014 schema version unknown':'All migrations applied',
+        configure:()=>this.openCfg(a.code), retry:this.noop,
+        cfgBd:this.state.cfgFor===a.code?'#1c1c1c':'#e5e3de',
+        cfgBg:this.state.cfgFor===a.code?'#1c1c1c':'#fff', cfgFg:this.state.cfgFor===a.code?'#fff':'#1c1c1c',
+      })),
+      provOpen:this.state.provOpen, provBusy:this.state.provBusy,
+      provErrShown:!!this.state.provErr, provErr:this.state.provErr,
+      provMsgShown:!!this.state.provMsg, provMsg:this.state.provMsg,
+      provBtnLabel:this.state.provBusy?'Provisioning\u2026':'Provision academy',
+      provDisabledAria:(!this.state.provFilled||this.state.provBusy)?'true':'false',
+      provBtnOp:(!this.state.provFilled||this.state.provBusy)?'.45':'1',
+      provCursor:(!this.state.provFilled||this.state.provBusy)?'default':'pointer',
+      toggleProv:this.toggleProv, submitProv:this.submitProv, provInput:this.provInput, dismissProvMsg:this.dismissProvMsg,
+      cfgOpen:!!cfg, cfgUnreachable:!!(cfg&&cfg.unreachable), cfgReady:!!(cfg&&!cfg.unreachable),
+      cfgCode:cfg?cfg.code:'', cfgName:cfg?cfg.name:'', cfgLogoBg:cfg?cfg.logoBg:'', cfgInitials:cfg?cfg.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase():'',
+      cfgRetry:this.noop, closeCfg:this.closeCfg, saveCfg:this.saveCfg,
+      suspendLabel:cfg&&!cfg.active?'Reactivate academy':'Suspend academy',
+      askSuspend:this.askSuspend, cancelSuspend:this.cancelSuspend, confirmSuspend:this.confirmSuspend,
+      suspendConfirming:this.state.suspendConfirming,
+      suspendConfirmCopy:cfg&&!cfg.active ? 'Reactivate '+(cfg?cfg.code:'')+'? Its staff, instructors and families can log in again, and its payments rejoin the totals.' : 'Suspend '+(cfg?cfg.code:'')+'? All logins for this academy are blocked and its payments leave the finance totals. Data is kept.',
+      suspendConfirmBtn:cfg&&!cfg.active?'Confirm reactivate':'Confirm suspend',
+      cfgGroups:this.knobGroups.map(g=>({ name:g.name, dormant:!!g.dormant,
+        items:g.items.map(k=>{
+          const cur=(k.key in draft)?draft[k.key]:vals[k.key];
+          const dirty=k.key in draft;
+          return { label:k.label, desc:k.desc, dormant:!!k.dormant, dirty,
+            history:'Last changed by Joseph Tran \u00b7 Jul 30, 2026',
+            isToggle:k.type==='toggle', isNumber:k.type==='number', isSelect:k.type==='select',
+            min:k.min||0, val:cur==null?'':String(cur),
+            ariaOn:cur===true?'true':'false', trackBg:cur===true?'#1c1c1c':'#d5d2c9', knobLeft:cur===true?'23px':'3px',
+            onToggle:()=>this.setDraft(k.key, !cur),
+            onInput:(e)=>{ const nv=k.type==='number'?(e.target.value===''?'':Math.max(k.min||0, parseInt(e.target.value,10)||0)):e.target.value; this.setDraft(k.key, nv); },
+          };
+        }) })),
+      saveLabel:dirtyN? 'Save '+dirtyN+' change'+(dirtyN>1?'s':'') : 'Close',
+      savedMsg:this.state.savedMsg, draftCount:dirtyN? dirtyN+' unsaved edit'+(dirtyN>1?'s':'') : 'No unsaved edits',
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -150,5 +150,6 @@ It provides actionable insights into student engagement, instructor efficiency, 
 | Student | `ben@demo.com` | Ben Lee — low/negative wallet balance (for testing delinquency states) |
 | Student | `charlie@demo.com` | Charlie Adult — no linked guardian |
 | Guardian | `grace@demo.com` | Grace Park — Alice's parent/guardian |
+| Admin | `admin@mobius.com` | Platform admin (Mobius employee) — admin console |
 
 **Sandbox setup**: `node server/scripts/dev/sandbox.js` boots the real server against an in-memory PGlite database seeded with the accounts above. Client dev server runs on `:5173`, API on `:5001`.

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/fonts/fonts.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/styles.css">
+<script src="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.js"></script>
+<style>
+  *:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands){font-family:'Noto Sans KR',system-ui,sans-serif !important}
+  *{box-sizing:border-box}
+  body{margin:0}
+  a{color:#5b6bc0;text-decoration:none}a:hover{color:#1c2233}
+  .in-root ::-webkit-scrollbar{width:9px;height:9px}
+  .in-root ::-webkit-scrollbar-thumb{background:#dfe3f2;border-radius:8px}
+  .in-root ::-webkit-scrollbar-track{background:transparent}
+  .in-root .hm-btn{border-color:#e6e8f2;color:#4a5270}
+  .in-root .hm-btn.primary{background:#5b6bc0;border-color:#5b6bc0;color:#fff}
+  .in-root .hm-card{border-color:#e6e8f2}
+  .in-root .hm-link{color:#5b6bc0}
+  .in-menuitem{transition:background .15s ease,color .15s ease}
+  .in-menuitem:hover{background:#eef1fb;color:#1c2233}
+  .in-rail{transition:background .15s ease,color .15s ease}
+  .in-rail:hover{background:rgba(255,255,255,.22);color:#fff}
+  .in-row{transition:background .15s ease}
+  .in-row:hover{background:#f7f8fd}
+  .in-card{transition:box-shadow .18s ease,transform .15s ease}
+  .in-card:hover{box-shadow:0 14px 34px -22px rgba(28,34,51,.45);transform:translateY(-2px)}
+  #modal-root .modal{max-width:760px;padding:26px 30px}
+  @keyframes inFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .in-fade{animation:inFade .2s ease both}
+  @media (max-width:1120px){
+    .in-hero{grid-template-columns:1fr !important}
+    .in-lower{grid-template-columns:1fr !important}
+  }
+</style>
+</helmet>
+<div class="in-root" style="display:flex;min-height:100vh;background:radial-gradient(1200px 620px at 82% -12%,#eef0fb 0,#f8f9fd 55%);font-family:'Noto Sans KR',system-ui,sans-serif;color:#1c2233">
+  <div id="modal-root"></div>
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside style="position:sticky;top:0;align-self:flex-start;height:100vh;width:320px;flex-shrink:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:center;gap:2px;font-weight:600;font-size:26px;letter-spacing:-.03em;color:#333;padding:22px 20px 8px">
+      <span style="font-family:'Noto Sans KR',sans-serif">möb</span>
+      <i class="fa-solid fa-pen-ruler" style="color:#4c5aa8;font-size:17px;transform:translateY(-1px);margin:0 2px"></i>
+      <span style="font-family:'Noto Sans KR',sans-serif">us</span>
+    </div>
+    <div style="flex:1;display:flex;min-height:0">
+      <!-- floating icon rail -->
+      <div style="margin-top:8px;width:76px;flex-shrink:0;background:linear-gradient(185deg,#5b6bc0 0%,#4453a4 65%,#39468d 100%);border-radius:0 28px 28px 0;padding:22px 0;display:flex;flex-direction:column;align-items:center;gap:18px;box-shadow:0 24px 50px -30px rgba(28,34,51,.55);min-height:0">
+        <div style="display:flex;flex-direction:column;align-items:center;padding:10px 6px;border-radius:24px;background:rgba(255,255,255,.16)">
+          <button class="in-rail" onClick="{{ goOverview }}" title="Overview" style="{{ railOverview }}"><i class="fa-solid fa-compass"></i></button>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px;border-radius:24px;background:rgba(255,255,255,.16)">
+          <button class="in-rail" onClick="{{ goTeach }}" title="Teach" style="{{ railTeach }}"><i class="fa-solid fa-chalkboard-user"></i></button>
+          <button class="in-rail" onClick="{{ goMe }}" title="Me" style="{{ railMe }}"><i class="fa-solid fa-circle-user"></i><span style="{{ railMsgDot }}">{{ unreadCount }}</span></button>
+        </div>
+      </div>
+      <!-- labeled menu panel for the active section -->
+      <div style="flex:1;min-width:0;padding:30px 16px 16px 18px;overflow:auto">
+        <div style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:600;color:#5b6bc0;padding:0 8px 14px"><i class="{{ menuIcon }}" style="font-size:13px"></i>{{ menuTitle }}</div>
+        <nav style="display:flex;flex-direction:column;gap:3px">
+          <sc-for list="{{ menuItems }}" as="it" hint-placeholder-count="3">
+            <button class="in-menuitem" onClick="{{ it.onClick }}" style="{{ it.rowStyle }}"><i class="{{ it.icon }}" style="width:18px;text-align:center;font-size:14px"></i>{{ it.label }}<sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}"><span style="{{ it.badgeStyle }}">{{ it.badge }}</span></sc-if></button>
+          </sc-for>
+        </nav>
+      </div>
+    </div>
+
+    <!-- profile card, pinned bottom -->
+    <div style="margin:0 16px 20px;padding:14px;border-radius:18px;background:#fff;border:1px solid #e6e8f2;box-shadow:0 16px 34px -24px rgba(28,34,51,.45)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span style="position:relative;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#5b6bc0,#8b96d8);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:15px;flex-shrink:0">KS<span style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:#39c07a;border:2px solid #fff"></span></span>
+        <div style="line-height:1.3;min-width:0">
+          <div style="font-size:15px;font-weight:600;color:#1c2233;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Kim Soyeon</div>
+          <div style="font-size:12px;color:#9aa2bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Instructor @ Møbius Academy</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px">
+        <button onClick="{{ goAvailability }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:500;padding:10px;border-radius:11px;border:none;cursor:pointer;font-family:inherit;background:#f1f2f8;color:#4a5270"><i class="fa-solid fa-gear"></i>Settings</button>
+        <button onClick="{{ noop }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:500;padding:10px;border-radius:11px;border:none;cursor:pointer;font-family:inherit;background:#fbe6e6;color:#d0483b"><i class="fa-solid fa-arrow-right-from-bracket"></i>Logout</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="position:sticky;top:0;z-index:15;backdrop-filter:blur(10px);background:rgba(248,249,253,.85);border-bottom:1px solid #e6e8f2;padding:14px 30px;display:flex;align-items:center;gap:20px">
+      <div style="line-height:1.15">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#5b6bc0">{{ crumb }}</div>
+        <div style="font-size:18px;font-weight:600;letter-spacing:-.01em">{{ pageTitle }}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        <label style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #e6e8f2;border-radius:11px;padding:0 13px;height:40px;width:min(280px,30vw)">
+          <i class="fa-solid fa-magnifying-glass" style="color:#9aa2bd;font-size:13px"></i>
+          <input placeholder="Search students, classes…" style="border:none;outline:none;background:none;font-family:inherit;font-size:13.5px;color:#1c2233;width:100%">
+        </label>
+        <button onClick="{{ noop }}" style="position:relative;width:40px;height:40px;border-radius:11px;background:#fff;border:1px solid #e6e8f2;color:#6b7488;cursor:pointer"><i class="fa-regular fa-bell"></i><span style="position:absolute;top:7px;right:8px;min-width:15px;height:15px;padding:0 4px;border-radius:999px;background:#c0654f;color:#fff;font-size:9px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #fff">2</span></button>
+      </div>
+    </header>
+
+    <main style="flex:1;min-height:0;overflow:auto;padding:28px 30px 40px">
+
+      <!-- ============ TODAY ============ -->
+      <sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
+      <div class="in-fade" style="max-width:1240px;margin:0 auto">
+        <div style="background:#fff;border:1px solid #e6e8f2;border-radius:20px;overflow:hidden;margin-bottom:20px">
+          <div class="in-hero" style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,1fr);gap:20px;padding:24px 26px;align-items:center">
+            <div>
+              <div style="font-size:12.5px;font-weight:600;color:#5b6bc0;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">{{ todayLabel }}</div>
+              <h1 style="margin:0;font-size:29px;font-weight:600;letter-spacing:-.02em">Good afternoon, Soyeon</h1>
+              <p style="margin:10px 0 0;font-size:14.5px;line-height:1.55;color:#6b7488;max-width:50ch">{{ heroCopy }}</p>
+            </div>
+            <div style="position:relative;overflow:hidden;border-radius:17px;background:linear-gradient(150deg,#1c2233 0%,#2f3a63 55%,#5b6bc0 155%);color:#fff;padding:20px 22px">
+              <div style="position:absolute;right:-28px;top:-28px;width:140px;height:140px;border-radius:50%;background:rgba(183,191,230,.16)"></div>
+              <div style="position:relative">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                  <span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#b7bfe6">Up next</span>
+                  <span style="width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.14);display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:#b7bfe6"><i class="{{ nextIcon }}"></i></span>
+                </div>
+                <div style="font-size:20px;font-weight:600;letter-spacing:-.01em">{{ nextName }}</div>
+                <div style="display:flex;gap:16px;margin-top:9px;font-size:12.5px;color:#d9ddf3">
+                  <span><i class="fa-regular fa-clock" style="margin-right:6px;color:#b7bfe6"></i>{{ nextTime }}</span>
+                  <span><i class="fa-solid fa-location-dot" style="margin-right:6px;color:#b7bfe6"></i>{{ nextRoom }}</span>
+                </div>
+                <div style="display:flex;gap:9px;margin-top:18px">
+                  <button onClick="{{ nextTake }}" style="flex:1;min-width:0;height:40px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;background:#fff;color:#1c2233;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px"><i class="fa-solid fa-clipboard-check" style="color:#5b6bc0;flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ nextCta }}</span></button>
+                  <button onClick="{{ goClasses }}" style="flex:1;min-width:0;height:40px;border-radius:10px;border:1px solid rgba(255,255,255,.28);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 12px"><i class="fa-solid fa-users" style="flex-shrink:0"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Roster</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;padding:18px 4px;background:#fbfcfe;border-top:1px solid #eef0f7">
+            <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+              <div style="flex:1;text-align:center;padding:0 14px;border-right:{{ k.divider }}">
+                <div style="font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#9aa2bd">{{ k.label }}</div>
+                <div style="font-size:25px;font-weight:600;letter-spacing:-.02em;margin:5px 0 3px;color:{{ k.fg }}">{{ k.value }}</div>
+                <div style="font-size:11.5px;color:#6b7488">{{ k.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div class="in-lower" style="display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start">
+          <section class="hm-card" style="padding:0;overflow:hidden">
+            <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #eef0f7;margin:0"><h2>Today's sessions</h2><a class="hm-link" onClick="{{ goSchedule }}" style="cursor:pointer">Full week</a></div>
+            <sc-for list="{{ todaySessions }}" as="s" hint-placeholder-count="2">
+              <div class="in-row" style="display:flex;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid #eef0f7;flex-wrap:wrap">
+                <span style="width:44px;height:44px;border-radius:12px;flex-shrink:0;background:{{ s.tintBg }};color:{{ s.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:16px"><i class="{{ s.icon }}"></i></span>
+                <div style="min-width:150px;flex:1;line-height:1.3">
+                  <div style="font-size:14.5px;font-weight:600">{{ s.name }}</div>
+                  <div style="font-size:12px;color:#6b7488;margin-top:2px">{{ s.time }} · {{ s.room }} · {{ s.count }} students</div>
+                </div>
+                <sc-if value="{{ s.marked }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:13px;flex-shrink:0">
+                    <sc-for list="{{ s.tally }}" as="t" hint-placeholder-count="3">
+                      <span style="font-size:12px;color:#4a5270"><strong style="color:{{ t.fg }}">{{ t.n }}</strong> {{ t.label }}</span>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <span style="flex-shrink:0;font-size:11px;font-weight:600;padding:5px 11px;border-radius:999px;background:{{ s.stBg }};color:{{ s.stFg }}">{{ s.status }}</span>
+                <button onClick="{{ s.take }}" class="hm-btn {{ s.btnCls }}" style="height:36px;flex-shrink:0">{{ s.cta }}</button>
+              </div>
+            </sc-for>
+          </section>
+
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>Needs your note</h2><a class="hm-link" onClick="{{ goFeedback }}" style="cursor:pointer">All feedback</a></div>
+              <sc-if value="{{ noPending }}" hint-placeholder-val="{{ false }}">
+                <div style="text-align:center;padding:26px 14px">
+                  <i class="fa-solid fa-check-double" style="font-size:20px;color:#2c8a5b"></i>
+                  <div style="font-size:13.5px;font-weight:600;margin-top:10px">All caught up</div>
+                  <div style="font-size:12.5px;color:#6b7488;margin-top:4px">Every attended session has feedback.</div>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <sc-for list="{{ pendingFeedback }}" as="p" hint-placeholder-count="2">
+                  <button onClick="{{ p.write }}" style="display:flex;align-items:center;gap:11px;text-align:left;width:100%;padding:12px 13px;border-radius:12px;cursor:pointer;font-family:inherit;border:1px solid #e6e8f2;background:#fbfcfe">
+                    <span style="width:34px;height:34px;border-radius:10px;flex-shrink:0;background:{{ p.tintBg }};color:{{ p.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ p.initials }}</span>
+                    <div style="flex:1;min-width:0;line-height:1.3">
+                      <div style="font-size:13px;font-weight:600">{{ p.name }}</div>
+                      <div style="font-size:11.5px;color:#6b7488">{{ p.klass }} · {{ p.when }}</div>
+                    </div>
+                    <i class="fa-solid fa-pen" style="font-size:11px;color:#9aa2bd;flex-shrink:0"></i>
+                  </button>
+                </sc-for>
+              </div>
+            </section>
+
+            <section class="hm-card">
+              <div class="hm-card-head"><h2>This month</h2><a class="hm-link" onClick="{{ goPay }}" style="cursor:pointer">Pay</a></div>
+              <div style="display:flex;flex-direction:column;gap:1px;background:#eef0f7;border:1px solid #eef0f7;border-radius:13px;overflow:hidden">
+                <sc-for list="{{ payPeek }}" as="p" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:12px;background:#fff;padding:12px 15px">
+                    <span style="font-size:12.5px;color:#6b7488;flex:1">{{ p.label }}</span>
+                    <span style="font-size:13px;font-weight:600;color:{{ p.fg }}">{{ p.value }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ SCHEDULE ============ -->
+      <sc-if value="{{ isSchedule }}" hint-placeholder-val="{{ false }}">
+      <div class="in-fade" style="max-width:1240px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+          <h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em">Jul 20 – 26, 2026</h1>
+          <div style="display:flex;gap:6px">
+            <button onClick="{{ noop }}" class="hm-btn" style="width:36px;height:36px;padding:0;justify-content:center"><i class="fa-solid fa-chevron-left"></i></button>
+            <button onClick="{{ noop }}" class="hm-btn" style="height:36px">Today</button>
+            <button onClick="{{ noop }}" class="hm-btn" style="width:36px;height:36px;padding:0;justify-content:center"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:16px;font-size:12.5px;color:#6b7488">
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#5b6bc0"></span>Teaching</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:#c7cdec"></span>Available</span>
+          </div>
+        </div>
+        <section class="hm-card" style="padding:0;overflow:hidden">
+          <div style="display:grid;grid-template-columns:56px repeat(7,1fr);border-bottom:1px solid #e6e8f2">
+            <div></div>
+            <sc-for list="{{ weekHeads }}" as="d" hint-placeholder-count="7">
+              <div style="padding:12px 8px;text-align:center;border-left:1px solid #eef0f7;background:{{ d.headBg }}">
+                <div style="font-size:11px;font-weight:600;letter-spacing:.05em;color:#9aa2bd;text-transform:uppercase">{{ d.dow }}</div>
+                <div style="margin-top:3px;font-size:16px;font-weight:600;color:{{ d.numFg }}">{{ d.num }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="position:relative;display:grid;grid-template-columns:56px repeat(7,1fr);height:640px">
+            <div style="position:relative">
+              <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
+                <div style="position:absolute;left:0;right:0;top:{{ h.top }};height:1px"><span style="position:absolute;right:8px;top:-7px;font-size:10.5px;color:#9aa2bd">{{ h.label }}</span></div>
+              </sc-for>
+            </div>
+            <sc-for list="{{ weekCols }}" as="c" hint-placeholder-count="7">
+              <div style="position:relative;border-left:1px solid #eef0f7;background-image:repeating-linear-gradient(#f4f6fb 0 1px,transparent 1px 64px)">
+                <sc-for list="{{ c.blocks }}" as="b" hint-placeholder-count="0">
+                  <button onClick="{{ b.open }}" style="position:absolute;left:5px;right:5px;top:{{ b.top }};height:{{ b.height }};border:1px solid {{ b.bd }};border-left:3px solid {{ b.accent }};background:{{ b.bg }};border-radius:9px;padding:7px 9px;text-align:left;cursor:pointer;overflow:hidden;font-family:inherit">
+                    <div style="font-size:12px;font-weight:600;color:{{ b.fg }};line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.subject }}</div>
+                    <div style="font-size:10.5px;color:{{ b.metaFg }};margin-top:2px">{{ b.time }}</div>
+                    <div style="font-size:10.5px;color:{{ b.metaFg }};margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.room }}</div>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+      </sc-if>
+
+      <!-- ============ MY CLASSES ============ -->
+      <sc-if value="{{ isClasses }}" hint-placeholder-val="{{ false }}">
+      <div class="in-fade" style="max-width:1160px;margin:0 auto">
+        <p style="margin:0 0 20px;font-size:14px;color:#6b7488">The classes you teach this term. Tap a student to see their history or write feedback.</p>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <sc-for list="{{ myClasses }}" as="c" hint-placeholder-count="2">
+            <section class="hm-card" style="padding:0;overflow:hidden">
+              <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid #eef0f7;flex-wrap:wrap">
+                <span style="width:44px;height:44px;border-radius:12px;flex-shrink:0;background:{{ c.tintBg }};color:{{ c.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:16px"><i class="{{ c.icon }}"></i></span>
+                <div style="min-width:160px;flex:1;line-height:1.3">
+                  <div style="font-size:15.5px;font-weight:600">{{ c.name }} <span style="font-size:11px;font-weight:600;color:{{ c.tintFg }};background:{{ c.tintBg }};padding:3px 8px;border-radius:999px;margin-left:6px">{{ c.code }}</span></div>
+                  <div style="font-size:12.5px;color:#6b7488;margin-top:3px">{{ c.when }} · {{ c.room }}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0">
+                  <div style="font-size:12px;color:#6b7488">{{ c.seats }}</div>
+                  <div style="font-size:12px;color:#6b7488;margin-top:2px">Attendance <strong style="color:{{ c.attFg }}">{{ c.attendance }}</strong></div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:1px;background:#eef0f7">
+                <sc-for list="{{ c.roster }}" as="r" hint-placeholder-count="6">
+                  <button onClick="{{ r.write }}" class="in-row" style="display:flex;align-items:center;gap:11px;padding:13px 16px;background:#fff;border:none;cursor:pointer;font-family:inherit;text-align:left">
+                    <span style="width:34px;height:34px;border-radius:10px;flex-shrink:0;background:{{ r.tintBg }};color:{{ r.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ r.initials }}</span>
+                    <div style="min-width:0;line-height:1.25">
+                      <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div>
+                      <div style="font-size:11px;color:{{ r.metaFg }}">{{ r.meta }}</div>
+                    </div>
+                  </button>
+                </sc-for>
+              </div>
+            </section>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ FEEDBACK ============ -->
+      <sc-if value="{{ isFeedback }}" hint-placeholder-val="{{ false }}">
+      <div class="in-fade" style="max-width:1000px;margin:0 auto">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+          <sc-for list="{{ fbTabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:999px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;border:1px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}<span style="font-size:11px;font-weight:600;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:{{ t.cntBg }};color:{{ t.cntFg }}">{{ t.count }}</span></button>
+          </sc-for>
+          <span style="margin-left:auto;font-size:12.5px;color:#6b7488">Students see these in their app</span>
+        </div>
+        <sc-if value="{{ fbEmpty }}" hint-placeholder-val="{{ false }}">
+          <div class="hm-empty" style="text-align:center;padding:56px 20px;background:#fff;border:1px solid #e6e8f2;border-radius:16px">
+            <i class="{{ fbEmptyIcon }}" style="font-size:26px;color:#9aa2bd"></i>
+            <div style="font-size:15.5px;font-weight:600;margin-top:14px">{{ fbEmptyTitle }}</div>
+            <div style="font-size:13.5px;color:#6b7488;margin-top:6px">{{ fbEmptySub }}</div>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:13px">
+          <sc-for list="{{ fbRows }}" as="f" hint-placeholder-count="3">
+            <section class="hm-card" style="padding:17px 19px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:11px;flex-wrap:wrap">
+                <span style="width:40px;height:40px;border-radius:12px;flex-shrink:0;background:{{ f.tintBg }};color:{{ f.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">{{ f.initials }}</span>
+                <div style="min-width:0;line-height:1.3">
+                  <div style="font-size:14.5px;font-weight:600">{{ f.name }}</div>
+                  <div style="font-size:12px;color:#9aa2bd;margin-top:2px">{{ f.klass }} · {{ f.when }}</div>
+                </div>
+                <sc-if value="{{ f.written }}" hint-placeholder-val="{{ false }}">
+                  <span style="margin-left:auto;font-size:14px;color:#e0a83e;letter-spacing:1px;flex-shrink:0">{{ f.stars }}</span>
+                </sc-if>
+                <sc-if value="{{ f.pending }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ f.write }}" class="hm-btn primary" style="margin-left:auto;height:34px;font-size:12.5px;flex-shrink:0"><i class="fa-solid fa-pen" style="margin-right:7px"></i>Write feedback</button>
+                </sc-if>
+              </div>
+              <sc-if value="{{ f.written }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:0;font-size:13.5px;line-height:1.6;color:#4a5270">{{ f.note }}</p>
+                <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;align-items:center">
+                  <sc-for list="{{ f.tags }}" as="t" hint-placeholder-count="0">
+                    <span style="font-size:11.5px;font-weight:500;color:#5b6bc0;background:#eef1fb;padding:4px 11px;border-radius:999px">{{ t.label }}</span>
+                  </sc-for>
+                  <a class="hm-link" onClick="{{ f.write }}" style="cursor:pointer;font-size:12.5px;margin-left:auto">Edit</a>
+                </div>
+              </sc-if>
+            </section>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ MESSAGES ============ -->
+      <sc-if value="{{ isMessages }}" hint-placeholder-val="{{ false }}">
+      <div class="in-fade" style="max-width:1160px;margin:0 auto">
+        <div class="hm-card" style="padding:0;overflow:hidden;display:grid;grid-template-columns:310px 1fr;min-height:540px">
+          <div style="border-right:1px solid #e6e8f2;display:flex;flex-direction:column">
+            <div style="padding:12px;border-bottom:1px solid #eef0f7">
+              <button onClick="{{ noop }}" class="hm-btn primary" style="width:100%;height:38px;justify-content:center"><i class="fa-solid fa-pen" style="margin-right:8px"></i>New message</button>
+            </div>
+            <div style="overflow:auto;flex:1">
+              <sc-for list="{{ threads }}" as="t" hint-placeholder-count="4">
+                <button onClick="{{ t.pick }}" class="in-row" style="width:100%;text-align:left;border:none;background:{{ t.bg }};border-bottom:1px solid #eef0f7;padding:14px 16px;cursor:pointer;display:flex;gap:12px;font-family:inherit">
+                  <span style="width:38px;height:38px;border-radius:11px;flex-shrink:0;background:{{ t.tintBg }};color:{{ t.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ t.initials }}</span>
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.name }}</span><span style="margin-left:auto;font-size:11px;color:#9aa2bd;flex-shrink:0">{{ t.time }}</span></div>
+                    <div style="font-size:12.5px;color:#6b7488;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.preview }}</div>
+                  </div>
+                  <sc-if value="{{ t.unread }}" hint-placeholder-val="{{ false }}"><span style="width:8px;height:8px;border-radius:50%;background:#5b6bc0;flex-shrink:0;margin-top:6px"></span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;min-width:0">
+            <div style="padding:16px 20px;border-bottom:1px solid #eef0f7;display:flex;align-items:center;gap:12px">
+              <span style="width:38px;height:38px;border-radius:11px;background:#eef1fb;color:#5b6bc0;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">AP</span>
+              <div><div style="font-size:14.5px;font-weight:600">Alice Park</div><div style="font-size:12px;color:#6b7488">Algebra II · Grade 11</div></div>
+            </div>
+            <div style="flex:1;overflow:auto;padding:22px 20px;display:flex;flex-direction:column;gap:14px;background:#fbfcfe">
+              <sc-for list="{{ chat }}" as="m" hint-placeholder-count="4">
+                <div style="display:flex;justify-content:{{ m.justify }}">
+                  <div style="max-width:70%;padding:11px 14px;border-radius:14px;font-size:13.5px;line-height:1.5;background:{{ m.bubbleBg }};color:{{ m.bubbleFg }};border:{{ m.bubbleBd }}">{{ m.text }}<div style="font-size:10px;margin-top:5px;color:{{ m.timeFg }}">{{ m.time }}</div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:14px 18px;border-top:1px solid #eef0f7;display:flex;gap:10px;align-items:center">
+              <label style="flex:1;display:flex;align-items:center;gap:9px;background:#f7f8fd;border:1px solid #e6e8f2;border-radius:11px;padding:0 14px;height:44px"><input placeholder="Write a message…" style="border:none;outline:none;background:none;font-family:inherit;font-size:13.5px;width:100%"></label>
+              <button onClick="{{ noop }}" class="hm-btn primary" style="width:44px;height:44px;padding:0;justify-content:center"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ============ AVAILABILITY ============ -->
+      <sc-if value="{{ isAvailability }}" hint-placeholder-val="{{ false }}">
+      <div class="in-fade" style="max-width:900px;margin:0 auto">
+        <div style="display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border-radius:13px;background:#eef1fb;border:1px solid #dfe3f2;margin-bottom:20px">
+          <i class="fa-solid fa-circle-info" style="color:#5b6bc0;font-size:13px;margin-top:2px"></i>
+          <div style="font-size:12.5px;line-height:1.55;color:#4a5270">Operations uses these hours to match you with new students. Blocks where you already teach are locked — clear a class from your schedule first.</div>
+        </div>
+        <section class="hm-card">
+          <div class="hm-card-head"><h2>Weekly availability</h2><span style="font-size:12.5px;color:#6b7488;margin-left:auto;margin-right:12px">{{ availCount }} blocks open</span><button onClick="{{ noop }}" class="hm-btn primary" style="height:34px;font-size:12.5px">Save</button></div>
+          <div style="display:grid;grid-template-columns:58px repeat(7,minmax(0,1fr));gap:6px">
+            <span></span>
+            <sc-for list="{{ availDays }}" as="d" hint-placeholder-count="7">
+              <span style="text-align:center;font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#9aa2bd">{{ d.label }}</span>
+            </sc-for>
+            <sc-for list="{{ availRows }}" as="r" hint-placeholder-count="6">
+              <span style="font-size:11px;color:#6b7488;display:flex;align-items:center">{{ r.time }}</span>
+              <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="7">
+                <button onClick="{{ c.toggle }}" title="{{ c.title }}" style="{{ c.style }}"><i class="{{ c.icon }}" style="font-size:10px"></i></button>
+              </sc-for>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:18px;margin-top:16px;font-size:11.5px;color:#6b7488;flex-wrap:wrap">
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:11px;height:11px;border-radius:3px;background:#5b6bc0"></span>Teaching (locked)</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:11px;height:11px;border-radius:3px;background:#c7cdec"></span>Available</span>
+            <span style="display:flex;align-items:center;gap:7px"><span style="width:11px;height:11px;border-radius:3px;background:#f4f6fb;border:1px solid #e6e8f2"></span>Unavailable</span>
+          </div>
+        </section>
+      </div>
+      </sc-if>
+
+      <!-- ============ PAY ============ -->
+      <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+      <div class="in-fade" style="max-width:900px;margin:0 auto">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px">
+          <sc-for list="{{ payStats }}" as="p" hint-placeholder-count="4">
+            <div class="hm-card in-card" style="padding:16px 18px">
+              <div style="font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#9aa2bd">{{ p.label }}</div>
+              <div style="font-size:23px;font-weight:600;letter-spacing:-.02em;margin-top:5px;color:{{ p.fg }}">{{ p.value }}</div>
+              <div style="font-size:11.5px;color:#6b7488;margin-top:3px">{{ p.sub }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <section class="hm-card" style="padding:0;overflow:hidden">
+          <div class="hm-card-head" style="padding:16px 20px;border-bottom:1px solid #eef0f7;margin:0"><h2>Hours logged</h2><span style="font-size:12.5px;color:#6b7488">July 2026</span></div>
+          <div style="display:grid;grid-template-columns:minmax(150px,1.4fr) 100px 90px 100px;gap:12px;padding:12px 20px;border-bottom:1px solid #eef0f7;background:#fbfcfe;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#9aa2bd">
+            <span>Class</span><span>Sessions</span><span>Hours</span><span style="text-align:right">Amount</span>
+          </div>
+          <sc-for list="{{ payRows }}" as="p" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:minmax(150px,1.4fr) 100px 90px 100px;gap:12px;padding:13px 20px;border-bottom:1px solid #eef0f7;align-items:center">
+              <span style="font-size:13.5px;font-weight:600">{{ p.name }}</span>
+              <span style="font-size:13px;color:#4a5270">{{ p.sessions }}</span>
+              <span style="font-size:13px;color:#4a5270">{{ p.hours }}</span>
+              <span style="font-size:13.5px;font-weight:600;text-align:right">{{ p.amount }}</span>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:center;padding:15px 20px;background:#fbfcfe">
+            <span style="font-size:13px;font-weight:600;flex:1">Gross this cycle</span>
+            <span style="font-size:17px;font-weight:600;color:#5b6bc0">{{ payTotal }}</span>
+          </div>
+        </section>
+        <p style="margin:14px 0 0;font-size:12px;color:#9aa2bd"><i class="fa-solid fa-circle-info" style="margin-right:7px"></i>Hours come from attendance you submit. Payroll is run by Operations on the 5th.</p>
+      </div>
+      </sc-if>
+
+    </main>
+  </div>
+
+  <!-- ===================== TAKE ATTENDANCE MODAL ===================== -->
+  <x-import component-from-global-scope="Mobius.Modal" is-open="{{ markOpen }}" on-close="{{ closeMark }}" hint-size="0,0">
+    <sc-if value="{{ markDone }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:14px 6px 6px">
+        <span style="width:60px;height:60px;border-radius:50%;background:#eef1fb;color:#5b6bc0;display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px"><i class="fa-solid fa-clipboard-check"></i></span>
+        <h2 style="margin:0;font-size:19px;font-weight:600">Attendance submitted</h2>
+        <p style="margin:10px auto 0;font-size:13.5px;color:#6b7488;line-height:1.6;max-width:400px">{{ markSavedNote }}</p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:20px">
+          <button class="hm-btn" onClick="{{ markToFeedback }}" style="justify-content:center;padding:0 20px"><i class="fa-solid fa-pen" style="margin-right:8px"></i>Write feedback</button>
+          <button class="hm-btn primary" onClick="{{ closeMark }}" style="justify-content:center;padding:0 26px">Done</button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ markForm }}" hint-placeholder-val="{{ true }}">
+      <div style="width:100%;max-width:100%;height:min(80vh,600px);display:flex;flex-direction:column;min-height:0">
+        <h2 style="margin:0 0 3px;font-size:19px;font-weight:600">{{ markTitle }}</h2>
+        <p style="margin:0 0 14px;font-size:12.5px;color:#9aa2bd">{{ markSubtitle }}</p>
+        <div style="display:flex;gap:9px;padding-bottom:14px;border-bottom:1px solid #eef0f7;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;color:#6b7488">Mark all</span>
+          <sc-for list="{{ markAllBtns }}" as="b" hint-placeholder-count="2">
+            <button onClick="{{ b.click }}" style="padding:6px 13px;border-radius:999px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid {{ b.bd }};background:#fff;color:{{ b.fg }}">{{ b.label }}</button>
+          </sc-for>
+          <span style="margin-left:auto;font-size:12px;color:{{ markProgFg }}">{{ markProgress }}</span>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:14px 8px 4px 2px;margin-right:-8px">
+          <div style="display:flex;flex-direction:column;gap:9px">
+            <sc-for list="{{ markRows }}" as="r" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:13px;border:1px solid {{ r.rowBd }};background:{{ r.rowBg }};flex-wrap:wrap">
+                <span style="width:36px;height:36px;border-radius:10px;flex-shrink:0;background:{{ r.tintBg }};color:{{ r.tintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ r.initials }}</span>
+                <div style="flex:1;min-width:110px;line-height:1.3">
+                  <div style="font-size:13.5px;font-weight:600">{{ r.name }}</div>
+                  <div style="font-size:11.5px;color:{{ r.metaFg }}">{{ r.meta }}</div>
+                </div>
+                <div style="display:flex;gap:5px;flex-shrink:0">
+                  <sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="4">
+                    <button onClick="{{ o.pick }}" title="{{ o.title }}" style="width:38px;height:36px;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }}"><i class="{{ o.icon }}"></i></button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:16px;padding-left:11px;border-left:3px solid #5b6bc0;font-size:12.5px;line-height:1.5;color:#4a5270">{{ markConsequence }}</div>
+        </div>
+        <div style="display:flex;gap:10px;padding-top:14px;border-top:1px solid #eef0f7">
+          <button class="hm-btn" onClick="{{ closeMark }}" style="justify-content:center;padding:0 22px">Cancel</button>
+          <button class="hm-btn primary" onClick="{{ saveMark }}" style="flex:1;justify-content:center;opacity:{{ markSaveOpacity }};pointer-events:{{ markSavePe }}">{{ markSaveLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+  </x-import>
+
+  <!-- ===================== WRITE FEEDBACK MODAL ===================== -->
+  <x-import component-from-global-scope="Mobius.Modal" is-open="{{ fbOpen }}" on-close="{{ closeFb }}" hint-size="0,0">
+    <sc-if value="{{ fbSent }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align:center;padding:14px 6px 6px">
+        <span style="width:60px;height:60px;border-radius:50%;background:#eef1fb;color:#5b6bc0;display:inline-flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:15px"><i class="fa-solid fa-paper-plane"></i></span>
+        <h2 style="margin:0;font-size:19px;font-weight:600">Feedback sent</h2>
+        <p style="margin:10px auto 0;font-size:13.5px;color:#6b7488;line-height:1.6;max-width:360px">{{ fbSentNote }}</p>
+        <button class="hm-btn primary" onClick="{{ closeFb }}" style="margin:20px auto 0;justify-content:center;padding:0 26px">Done</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ fbForm }}" hint-placeholder-val="{{ true }}">
+      <div style="width:100%;max-width:100%">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+          <span style="width:44px;height:44px;border-radius:12px;flex-shrink:0;background:{{ fbTintBg }};color:{{ fbTintFg }};display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:600">{{ fbInitials }}</span>
+          <div style="line-height:1.3">
+            <h2 style="margin:0;font-size:18px;font-weight:600">{{ fbName }}</h2>
+            <div style="font-size:12.5px;color:#9aa2bd;margin-top:2px">{{ fbContext }}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#9aa2bd;margin-bottom:9px">How did the session go?</div>
+        <div style="display:flex;gap:7px;margin-bottom:18px">
+          <sc-for list="{{ fbStars }}" as="s" hint-placeholder-count="5">
+            <button onClick="{{ s.pick }}" style="width:44px;height:40px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:16px;border:1px solid {{ s.bd }};background:{{ s.bg }};color:{{ s.fg }}"><i class="fa-solid fa-star"></i></button>
+          </sc-for>
+          <span style="align-self:center;margin-left:8px;font-size:12.5px;color:#6b7488">{{ fbRatingLabel }}</span>
+        </div>
+        <div class="login-saas-input-group"><label class="login-saas-input-label">Note to the student</label>
+          <textarea class="login-saas-input" rows="4" style="resize:vertical;font-family:inherit;line-height:1.55" placeholder="What went well, and what to work on before next session…">{{ fbDraft }}</textarea>
+        </div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#9aa2bd;margin:6px 0 9px">Tags (optional)</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px">
+          <sc-for list="{{ fbTagOpts }}" as="t" hint-placeholder-count="5">
+            <button onClick="{{ t.toggle }}" style="padding:7px 14px;border-radius:999px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;border:1px solid {{ t.bd }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:12px;background:#f7f8fd;border:1px solid #e6e8f2;margin-bottom:18px">
+          <i class="fa-solid fa-eye" style="color:#5b6bc0;font-size:12px;margin-top:2px"></i>
+          <div style="font-size:12px;line-height:1.5;color:#4a5270">{{ fbVisibility }}</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="hm-btn" onClick="{{ closeFb }}" style="justify-content:center;padding:0 22px">Cancel</button>
+          <button class="hm-btn primary" onClick="{{ sendFb }}" style="flex:1;justify-content:center;opacity:{{ fbSendOpacity }};pointer-events:{{ fbSendPe }}">Send to student</button>
+        </div>
+      </div>
+    </sc-if>
+  </x-import>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900}}">
+const CODE_INFO={ M01:['Algebra II','4:00 – 5:00 PM',16,17,'Room 305'], M03:['Pre-Calculus','3:00 – 4:00 PM',15,16,'Room 302'] };
+const ME={ name:'Kim Soyeon', initials:'KS', rate:45 };
+const TINTS=[['#eef1fb','#5b6bc0'],['#fdeedd','#c26a24'],['#fbeef1','#b95a76'],['#e6f3f0','#2e9d8d']];
+const tintFor=(n)=>TINTS[n.length%TINTS.length];
+const ROSTERS={
+  M01:['Alice Park','Leo Tanaka','Noah Bell','Mia Fournier','Priya Shah','Sofia Rossi'],
+  M03:['Priya Shah','Daniel Cho','Emma Osei','Sara Haddad'],
+};
+const SESSIONS=[
+  { id:'m03-0723', code:'M03', icon:'fa-solid fa-square-root-variable' },
+  { id:'m01-0723', code:'M01', icon:'fa-solid fa-square-root-variable' },
+];
+const STATUS={ present:['Present','#2c8a5b','#e9f5ee','fa-solid fa-check'], late:['Late','#9c6a1d','#fff4e0','fa-solid fa-clock'], absent:['Absent','#9c3a31','#fdf1ef','fa-solid fa-xmark'], excused:['Excused','#5b6bc0','#eef1fb','fa-solid fa-notes-medical'] };
+const TODAY='Thu, Jul 23';
+const ini=(n)=>n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+class Component extends DCLogic {
+  state = {
+    view:'today',
+    marks:{ 'm03-0723':{ 'Priya Shah':'present','Daniel Cho':'present','Emma Osei':'late','Sara Haddad':'present' } },
+    feedback:{ 'm03-0723|Priya Shah':{ rating:5, note:'Priya worked through the limits set without a hint today — a real shift from last month. Ready for the derivative unit.', tags:['On track','Great participation'] } },
+    markOpen:false, markDone:false, markSession:null, draft:{},
+    fbOpen:false, fbSent:false, fbFor:null, fbRating:0, fbTags:[], fbTab:'todo',
+    avail:{ 'Mon-2':true,'Mon-3':true,'Tue-1':true,'Wed-2':true,'Thu-1':true,'Thu-3':true,'Fri-2':true },
+  };
+  noop=()=>{};
+  go(v){ return ()=>this.setState({ view:v }); }
+  openMark(s){ this.setState({ markOpen:true, markDone:false, markSession:s, draft:{ ...(this.state.marks[s.id]||{}) } }); }
+  closeMark=()=>this.setState({ markOpen:false, markDone:false, markSession:null, draft:{} });
+  setMark(n,v){ this.setState(s=>({ draft:{ ...s.draft, [n]:v } })); }
+  markAll(v,names){ this.setState(s=>{ const d={ ...s.draft }; names.forEach(n=>{ d[n]=v; }); return { draft:d }; }); }
+  saveMark=()=>this.setState(s=>({ markDone:true, marks:{ ...s.marks, [s.markSession.id]:{ ...s.draft } } }));
+  openFb(sessionId,name,klass,when){ const k=sessionId+'|'+name; const ex=this.state.feedback[k];
+    this.setState({ fbOpen:true, fbSent:false, fbFor:{ key:k, name, klass, when }, fbRating:ex?ex.rating:0, fbTags:ex?[...ex.tags]:[] }); }
+  closeFb=()=>this.setState({ fbOpen:false, fbSent:false, fbFor:null, fbRating:0, fbTags:[] });
+  sendFb=()=>{ if(!this.state.fbRating) return; this.setState(s=>({ fbSent:true,
+    feedback:{ ...s.feedback, [s.fbFor.key]:{ rating:s.fbRating, note:'', tags:[...s.fbTags] } } })); };
+  toggleTag(t){ this.setState(s=>({ fbTags:s.fbTags.includes(t)?s.fbTags.filter(x=>x!==t):[...s.fbTags,t] })); }
+  toggleAvail(k){ this.setState(s=>({ avail:{ ...s.avail, [k]:!s.avail[k] } })); }
+
+  sessionsToday(){
+    return SESSIONS.map(s=>{ const ci=CODE_INFO[s.code], roster=ROSTERS[s.code], m=this.state.marks[s.id];
+      const cnt=(v)=>roster.filter(n=>(m||{})[n]===v).length;
+      return { ...s, name:ci[0], time:ci[1], room:ci[4], roster, count:roster.length, marked:!!m,
+        tally:[ { n:cnt('present')+cnt('late'), label:'in', fg:'#2c8a5b' }, { n:cnt('absent'), label:'absent', fg:'#9c3a31' }, { n:cnt('excused'), label:'excused', fg:'#5b6bc0' } ] };
+    });
+  }
+
+  renderVals(){
+    const v=this.state.view;
+    const sess=this.sessionsToday();
+    const unmarked=sess.filter(s=>!s.marked).length;
+
+    // pending feedback = attended students with no note yet
+    const pending=[];
+    sess.forEach(s=>{ const m=this.state.marks[s.id]; if(!m) return;
+      s.roster.forEach(n=>{ const v2=m[n]; if(v2!=='present'&&v2!=='late') return;
+        if(!this.state.feedback[s.id+'|'+n]) pending.push({ sid:s.id, name:n, klass:s.name, when:TODAY }); }); });
+    const written=[];
+    Object.keys(this.state.feedback).forEach(k=>{ const [sid,name]=k.split('|');
+      const s=sess.find(x=>x.id===sid); if(!s) return;
+      const f=this.state.feedback[k];
+      written.push({ sid, name, klass:s.name, when:TODAY, rating:f.rating, note:f.note, tags:f.tags }); });
+
+    const unread=2;
+    const sectionDefs={
+      overview:{ title:'Overview', icon:'fa-solid fa-compass', items:[
+        { view:'today', icon:'fa-solid fa-house', label:'Today', badge:unmarked },
+      ]},
+      teach:{ title:'Teach', icon:'fa-solid fa-chalkboard-user', items:[
+        { view:'schedule', icon:'fa-regular fa-calendar', label:'My schedule' },
+        { view:'classes', icon:'fa-solid fa-users', label:'My classes' },
+        { view:'feedback', icon:'fa-solid fa-comment-medical', label:'Feedback', badge:pending.length },
+      ]},
+      me:{ title:'Me', icon:'fa-solid fa-circle-user', items:[
+        { view:'messages', icon:'fa-regular fa-comment-dots', label:'Messages', badge:unread },
+        { view:'availability', icon:'fa-solid fa-clock', label:'Availability' },
+        { view:'pay', icon:'fa-solid fa-wallet', label:'Pay' },
+      ]},
+    };
+    const secOf=(x)=>(x==='schedule'||x==='classes'||x==='feedback')?'teach':(x==='messages'||x==='availability'||x==='pay')?'me':'overview';
+    const curSec=this.state.section||secOf(v);
+    const secDef=sectionDefs[curSec];
+    const itemStyle=(on)=>`display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:${on?600:500};padding:11px 12px;border-radius:12px;background:${on?'#eef1fb':'transparent'};color:${on?'#5b6bc0':'#4a5270'}`;
+    const menuItems=secDef.items.map(it=>({ label:it.label, icon:it.icon, rowStyle:itemStyle(v===it.view),
+      onClick:()=>this.setState({ view:it.view, section:secOf(it.view) }),
+      hasBadge:!!it.badge, badge:it.badge,
+      badgeStyle:'margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#5b6bc0;color:#fff;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center' }));
+    const railTile=(on)=>`position:relative;width:46px;height:46px;border-radius:15px;border:none;cursor:pointer;font-size:17px;display:inline-flex;align-items:center;justify-content:center;background:${on?'#fff':'transparent'};color:${on?'#4453a4':'rgba(255,255,255,.82)'}`;
+
+    const titles={ today:['Teaching','Today'], schedule:['Teaching','My schedule'], classes:['Teaching','My classes'], feedback:['Teaching','Feedback'], messages:['Me','Messages'], availability:['Me','Availability'], pay:['Me','Pay'] };
+    const t=titles[v]||titles.today;
+
+    const next=sess.find(s=>!s.marked)||sess[sess.length-1];
+    const totalStudents=[...new Set(Object.values(ROSTERS).flat())].length;
+    const allMarks=Object.values(this.state.marks);
+    let att=0, tot=0;
+    Object.keys(this.state.marks).forEach(sid=>{ const m=this.state.marks[sid];
+      Object.keys(m).forEach(n=>{ const x=m[n]; if(x==='excused') return; tot++; if(x==='present'||x==='late') att++; }); });
+    const attRate=tot?Math.round(att/tot*100):0;
+
+    const heroCopy=unmarked
+      ? sess.length+' sessions today · '+unmarked+' still '+(unmarked===1?'needs':'need')+' attendance. '+(pending.length?pending.length+' students are waiting on feedback.':'Feedback is up to date.')
+      : 'All '+sess.length+' sessions marked. '+(pending.length?pending.length+' students are waiting on feedback.':'Nothing left to do today.');
+
+    // schedule grid
+    const y=(h)=>((h-8)*64)+'px', span=(a,b)=>((b-a)*64-6)+'px';
+    const teach={ bg:'#eef1fb', bd:'#d5dbf2', accent:'#5b6bc0', fg:'#1c2233', metaFg:'#5b6bc0' };
+    const mkBlock=(code)=>{ const ci=CODE_INFO[code];
+      return { subject:ci[0], time:ci[1], room:ci[4], top:y(ci[2]), height:span(ci[2],ci[3]), ...teach, open:()=>this.setState({view:'classes'}) }; };
+    const weekCols=[ {blocks:[]}, {blocks:[mkBlock('M01')]}, {blocks:[mkBlock('M03')]}, {blocks:[mkBlock('M01')]}, {blocks:[mkBlock('M03')]}, {blocks:[]}, {blocks:[]} ];
+    const hours=[8,9,10,11,12,13,14,15,16,17].map(h=>({ top:y(h), label:h===12?'12 PM':(h<12?h+' AM':(h-12)+' PM') }));
+    const weekHeads=['SUN','MON','TUE','WED','THU','FRI','SAT'].map((dow,i)=>({ dow, num:19+i, headBg:i===4?'#f7f8fd':'#fff', numFg:i===4?'#5b6bc0':'#1c2233' }));
+
+    // classes + rosters
+    const myClasses=Object.keys(ROSTERS).map(code=>{ const ci=CODE_INFO[code], roster=ROSTERS[code];
+      const days=code==='M01'?'Mon & Wed':'Tue & Thu';
+      const sid=SESSIONS.find(s=>s.code===code).id, m=this.state.marks[sid]||{};
+      const seen=Object.keys(m).length;
+      const ok=Object.keys(m).filter(n=>m[n]==='present'||m[n]==='late').length;
+      const tint=code==='M01'?['#eef1fb','#5b6bc0']:['#fdeedd','#c26a24'];
+      return { code, name:ci[0], when:days+' · '+ci[1], room:ci[4], icon:'fa-solid fa-square-root-variable',
+        tintBg:tint[0], tintFg:tint[1], seats:roster.length+' of 8 enrolled',
+        attendance:seen?Math.round(ok/seen*100)+'%':'—', attFg:(seen&&ok/seen<0.8)?'#9c6a1d':'#2c8a5b',
+        roster:roster.map(n=>{ const st=m[n], sm=st?STATUS[st]:null;
+          const tn=tintFor(n);
+          return { name:n, initials:ini(n), tintBg:sm?sm[2]:tn[0], tintFg:sm?sm[1]:tn[1],
+            meta:sm?sm[0]+' today':'Not marked', metaFg:sm?sm[1]:'#9aa2bd',
+            write:()=>this.openFb(sid,n,ci[0],TODAY) }; }) };
+    });
+
+    // feedback view
+    const fbTab=this.state.fbTab;
+    const fbTabs=[['todo','To write',pending.length],['done','Sent',written.length]].map(([key,label,count])=>{ const on=fbTab===key;
+      return { label, count, pick:()=>this.setState({fbTab:key}), bd:on?'#5b6bc0':'#e6e8f2', bg:on?'#5b6bc0':'#fff', fg:on?'#fff':'#4a5270', cntBg:on?'rgba(255,255,255,.25)':'#eef1fb', cntFg:on?'#fff':'#5b6bc0' }; });
+    const fbRows=(fbTab==='todo'?pending:written).map(r=>{ const tn=tintFor(r.name);
+      return { name:r.name, initials:ini(r.name), klass:r.klass, when:r.when, tintBg:tn[0], tintFg:tn[1],
+        pending:fbTab==='todo', written:fbTab==='done',
+        stars:'★'.repeat(r.rating||0)+'☆'.repeat(5-(r.rating||0)),
+        note:r.note||'No written note — rating only.',
+        tags:(r.tags||[]).map(label=>({ label })),
+        write:()=>this.openFb(r.sid,r.name,r.klass,r.when) }; });
+
+    // availability grid
+    const aDays=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const aTimes=['1 PM','2 PM','3 PM','4 PM','5 PM','6 PM'];
+    const teachingAt={ 'Mon-3':true,'Wed-3':true,'Tue-2':true,'Thu-2':true };
+    const availRows=aTimes.map((time,ri)=>({ time, cells:aDays.map(d=>{ const k=d+'-'+ri;
+      const locked=!!teachingAt[k], on=!!this.state.avail[k];
+      const bg=locked?'#5b6bc0':on?'#c7cdec':'#f4f6fb';
+      return { toggle:locked?this.noop:()=>this.toggleAvail(k), title:locked?'Teaching':on?'Available':'Unavailable',
+        icon:locked?'fa-solid fa-lock':on?'fa-solid fa-check':'',
+        style:`height:40px;border-radius:9px;border:1px solid ${locked?'#5b6bc0':on?'#b3bce4':'#e6e8f2'};background:${bg};color:${locked?'#fff':'#5b6bc0'};cursor:${locked?'not-allowed':'pointer'};font-family:inherit` }; }) }));
+    const availCount=Object.values(this.state.avail).filter(Boolean).length;
+
+    // pay
+    const payRowsData=Object.keys(ROSTERS).map(code=>{ const ci=CODE_INFO[code];
+      const n=code==='M01'?9:8, hrs=n;
+      return { name:ci[0], sessions:n, hours:hrs+' hrs', amt:hrs*ME.rate }; });
+    const totalHrs=payRowsData.reduce((a,r)=>a+parseFloat(r.hours),0);
+    const gross=payRowsData.reduce((a,r)=>a+r.amt,0);
+
+    // mark modal
+    const ms=this.state.markSession, draft=this.state.draft;
+    const msRoster=ms?ms.roster:[];
+    const markRows=msRoster.map(n=>{ const cur=draft[n], sm=cur?STATUS[cur]:null, tn=tintFor(n);
+      return { name:n, initials:ini(n), tintBg:sm?sm[2]:tn[0], tintFg:sm?sm[1]:tn[1],
+        meta:cur?sm[0]:'Not marked', metaFg:cur?sm[1]:'#9aa2bd',
+        rowBd:cur?'#eef0f7':'#e6e8f2', rowBg:cur?'#fff':'#fbfcfe',
+        opts:['present','late','absent','excused'].map(x=>{ const on=cur===x, s2=STATUS[x];
+          return { pick:()=>this.setMark(n,x), title:s2[0], icon:s2[3], bd:on?s2[1]:'#e6e8f2', bg:on?s2[2]:'#fff', fg:on?s2[1]:'#c9cee0' }; }) }; });
+    const markedN=msRoster.filter(n=>draft[n]).length;
+    const allMarked=msRoster.length>0&&markedN===msRoster.length;
+    const nAb=msRoster.filter(n=>draft[n]==='absent').length;
+    const nEx=msRoster.filter(n=>draft[n]==='excused').length;
+
+    // feedback modal
+    const ff=this.state.fbFor;
+    const RATING=['','Needs support','Some progress','Solid session','Strong session','Excellent'];
+    const TAGOPTS=['On track','Great participation','Needs review','Homework missing','Ready to advance'];
+
+    return {
+      noop:this.noop, crumb:t[0], pageTitle:t[1],
+      menuTitle:secDef.title, menuIcon:secDef.icon, menuItems,
+      goOverview:()=>this.setState({ section:'overview', view:'today' }),
+      goTeach:()=>this.setState({ section:'teach', view:'schedule' }),
+      goMe:()=>this.setState({ section:'me', view:'messages' }),
+      goAvailability:()=>this.setState({ section:'me', view:'availability' }),
+      railOverview:railTile(curSec==='overview'), railTeach:railTile(curSec==='teach'), railMe:railTile(curSec==='me'),
+      unreadCount:unread,
+      railMsgDot:'position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#c0654f;color:#fff;font-size:10px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;border:2px solid #4453a4',
+      isToday:v==='today', isSchedule:v==='schedule', isClasses:v==='classes', isFeedback:v==='feedback',
+      isMessages:v==='messages', isAvailability:v==='availability', isPay:v==='pay',
+      goSchedule:this.go('schedule'), goClasses:this.go('classes'), goFeedback:this.go('feedback'), goPay:this.go('pay'),
+      todayLabel:'Thursday, July 23', heroCopy,
+      nextName:next.name, nextTime:next.time, nextRoom:next.room, nextIcon:next.icon,
+      nextCta:next.marked?'Review':'Attendance', nextTake:()=>this.openMark(next),
+      kpis:[
+        { label:'Sessions today', value:String(sess.length), sub:unmarked?unmarked+' to mark':'all marked', fg:'#1c2233' },
+        { label:'Students', value:String(totalStudents), sub:'across 2 classes', fg:'#1c2233' },
+        { label:'Attendance', value:tot?attRate+'%':'—', sub:'marked so far', fg:attRate>=90?'#2c8a5b':'#9c6a1d' },
+        { label:'Hours logged', value:String(totalHrs), sub:'July to date', fg:'#5b6bc0' },
+      ].map((k,i,a)=>({ ...k, divider:i===a.length-1?'none':'1px solid #eef0f7' })),
+      todaySessions:sess.map(s=>({ ...s, status:s.marked?'Marked':'Needs attendance', stBg:s.marked?'#e9f5ee':'#fff4e0', stFg:s.marked?'#2c8a5b':'#9c6a1d',
+        cta:s.marked?'Review':'Take attendance', btnCls:s.marked?'':'primary', tintBg:'#eef1fb', tintFg:'#5b6bc0', take:()=>this.openMark(s) })),
+      pendingFeedback:pending.slice(0,3).map(p=>{ const tn=tintFor(p.name);
+        return { name:p.name, initials:ini(p.name), klass:p.klass, when:p.when, tintBg:tn[0], tintFg:tn[1], write:()=>this.openFb(p.sid,p.name,p.klass,p.when) }; }),
+      noPending:pending.length===0,
+      payPeek:[ { label:'Hours logged', value:totalHrs+' hrs', fg:'#1c2233' }, { label:'Hourly rate', value:'$'+ME.rate, fg:'#1c2233' }, { label:'Gross this cycle', value:'$'+gross.toLocaleString(), fg:'#5b6bc0' } ],
+      hours, weekHeads, weekCols, myClasses,
+      fbTabs, fbRows, fbEmpty:fbRows.length===0,
+      fbEmptyIcon:fbTab==='todo'?'fa-solid fa-check-double':'fa-regular fa-comment',
+      fbEmptyTitle:fbTab==='todo'?'All caught up':'Nothing sent yet',
+      fbEmptySub:fbTab==='todo'?'Every attended student has feedback.':'Feedback you send appears here.',
+      availDays:aDays.map(label=>({ label })), availRows, availCount,
+      payStats:[
+        { label:'Hours logged', value:String(totalHrs), sub:'July to date', fg:'#1c2233' },
+        { label:'Hourly rate', value:'$'+ME.rate, sub:'full-time', fg:'#1c2233' },
+        { label:'Gross this cycle', value:'$'+gross.toLocaleString(), sub:'before deductions', fg:'#5b6bc0' },
+        { label:'Next payout', value:'Aug 5', sub:'run by Operations', fg:'#1c2233' },
+      ],
+      payRows:payRowsData.map(r=>({ ...r, amount:'$'+r.amt.toLocaleString() })), payTotal:'$'+gross.toLocaleString(),
+      threads:[
+        { name:'Alice Park', initials:'AP', tintBg:'#eef1fb', tintFg:'#5b6bc0', preview:'Should I finish the factoring sheet?', time:'12m', unread:true },
+        { name:'Operations', initials:'OP', tintBg:'#fdeedd', tintFg:'#c26a24', preview:'Reschedule request for Algebra II', time:'1h', unread:true },
+        { name:'Priya Shah', initials:'PS', tintBg:'#fbeef1', tintFg:'#b95a76', preview:'Thanks for the extra practice set!', time:'Yesterday', unread:false },
+        { name:'Daniel Cho', initials:'DC', tintBg:'#e6f3f0', tintFg:'#2e9d8d', preview:'I\u2019ll be 10 min late on Thursday', time:'2d', unread:false },
+      ].map((th,i)=>({ ...th, pick:this.noop, bg:i===0?'#f7f8fd':'#fff' })),
+      chat:[
+        { text:'Hi Soyeon — should I finish the factoring worksheet before today?', mine:false, time:'3:04 PM' },
+        { text:'Yes please. Bring questions on #7 and #8, those trip most people up.', mine:true, time:'3:11 PM' },
+        { text:'Got it. #8 is the one I keep getting wrong.', mine:false, time:'3:14 PM' },
+      ].map(m=>({ text:m.text, time:m.time, justify:m.mine?'flex-end':'flex-start', bubbleBg:m.mine?'#5b6bc0':'#fff', bubbleFg:m.mine?'#fff':'#1c2233', bubbleBd:m.mine?'none':'1px solid #e6e8f2', timeFg:m.mine?'rgba(255,255,255,.7)':'#9aa2bd' })),
+      markOpen:this.state.markOpen, markForm:!this.state.markDone, markDone:this.state.markDone,
+      closeMark:this.closeMark, saveMark:this.saveMark, markRows,
+      markTitle:ms?ms.name:'', markSubtitle:ms?(ms.time+' · '+ms.room+' · '+TODAY):'',
+      markAllBtns:[['present','Present','#2c8a5b'],['absent','Absent','#9c3a31']].map(([x,label,fg])=>({ label, fg, bd:fg, click:()=>this.markAll(x,msRoster) })),
+      markProgress:markedN+' of '+msRoster.length+' marked', markProgFg:allMarked?'#2c8a5b':'#9aa2bd',
+      markSaveLabel:allMarked?'Submit attendance':'Mark everyone to submit',
+      markSaveOpacity:allMarked?'1':'.5', markSavePe:allMarked?'auto':'none',
+      markConsequence:(nAb||nEx)
+        ? [nAb?nAb+' absence'+(nAb>1?'s':'')+' — billed to the student and deducted from their credits':'', nEx?nEx+' excused — credit returned':''].filter(Boolean).join(' · ')
+        : 'Submitting logs your teaching hours to payroll and updates each student’s attendance record.',
+      markSavedNote:ms?(msRoster.filter(n=>draft[n]==='present'||draft[n]==='late').length+' of '+msRoster.length+' attended '+ms.name+'. '+(nAb?nAb+' no-show'+(nAb>1?'s':'')+' billed. ':'')+'1 hour logged to your July timesheet.'):'',
+      markToFeedback:()=>this.setState({ markOpen:false, markDone:false, markSession:null, draft:{}, view:'feedback', fbTab:'todo' }),
+      fbOpen:this.state.fbOpen, fbForm:!this.state.fbSent, fbSent:this.state.fbSent, closeFb:this.closeFb, sendFb:this.sendFb,
+      fbName:ff?ff.name:'', fbInitials:ff?ini(ff.name):'', fbContext:ff?(ff.klass+' · '+ff.when):'',
+      fbTintBg:ff?tintFor(ff.name)[0]:'#eef1fb', fbTintFg:ff?tintFor(ff.name)[1]:'#5b6bc0',
+      fbStars:[1,2,3,4,5].map(n=>{ const on=this.state.fbRating>=n;
+        return { pick:()=>this.setState({fbRating:n}), bd:on?'#e0a83e':'#e6e8f2', bg:on?'#fff8ea':'#fff', fg:on?'#e0a83e':'#d8dceb' }; }),
+      fbRatingLabel:RATING[this.state.fbRating]||'Tap to rate',
+      fbDraft:'',
+      fbTagOpts:TAGOPTS.map(label=>{ const on=this.state.fbTags.includes(label);
+        return { label, toggle:()=>this.toggleTag(label), bd:on?'#5b6bc0':'#e6e8f2', bg:on?'#eef1fb':'#fff', fg:on?'#5b6bc0':'#4a5270' }; }),
+      fbVisibility:'This goes straight to the student’s Feedback tab, and their guardian can see it. Operations sees the rating only.',
+      fbSendOpacity:this.state.fbRating?'1':'.5', fbSendPe:this.state.fbRating?'auto':'none',
+      fbSentNote:ff?(ff.name+' will see this in their Feedback tab. It also counts toward their progress in '+ff.klass+'.'):'',
+    };
+  }
+}
+</script>
+</body>
+</html>

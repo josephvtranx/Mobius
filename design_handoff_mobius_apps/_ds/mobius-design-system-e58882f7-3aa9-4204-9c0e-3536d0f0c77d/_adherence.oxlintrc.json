@@ -1,0 +1,116 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/general/ActionButtons/**",
+              "components/general/CalendarWidget/**",
+              "components/general/Modal/**",
+              "components/general/SearchableDropdown/**",
+              "components/general/SummaryCard/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Poppins|Inter|Font Awesome 6 Brands|Font Awesome 6 Free|Font Awesome 5 Brands|Font Awesome 5 Free|FontAwesome))/i]",
+        "message": "Font not provided by the design system. Available: Poppins, Inter, Font Awesome 6 Brands, Font Awesome 6 Free, Font Awesome 5 Brands, Font Awesome 5 Free, FontAwesome."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Modal'] > JSXAttribute > JSXIdentifier[name!=/^(?:isOpen|onClose|children|key|ref|className|style|children)$/]",
+        "message": "<Modal> doesn't accept that prop. Declared props: isOpen, onClose, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SearchableDropdown'] > JSXAttribute > JSXIdentifier[name!=/^(?:options|value|onChange|placeholder|getOptionLabel|getOptionValue|className|disabled|isLoading|error|renderOption|optionGroups|key|ref|className|style|children)$/]",
+        "message": "<SearchableDropdown> doesn't accept that prop. Declared props: options, value, onChange, placeholder, getOptionLabel, getOptionValue, className, disabled, isLoading, error, renderOption, optionGroups."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SummaryCard'] > JSXAttribute > JSXIdentifier[name!=/^(?:title|value|year|percentChange|isPositive|chartData|lineColor|key|ref|className|style|children)$/]",
+        "message": "<SummaryCard> doesn't accept that prop. Declared props: title, value, year, percentChange, isPositive, chartData, lineColor."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "ActionButtons": {
+        "replaces": []
+      },
+      "CalendarWidget": {
+        "replaces": []
+      },
+      "Modal": {
+        "replaces": []
+      },
+      "SearchableDropdown": {
+        "replaces": []
+      },
+      "SummaryCard": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--fa",
+      "--fa-animation-direction",
+      "--fa-font-brands",
+      "--fa-font-regular",
+      "--fa-font-solid",
+      "--fa-style-family-brands",
+      "--fa-style-family-classic",
+      "--interface-primary-v2",
+      "--mobius-text-darker-grey",
+      "--mobius-text-grey"
+    ],
+    "tokenKinds": {
+      "--fa-animation-direction": "other",
+      "--fa": "other",
+      "--fa-style-family-brands": "other",
+      "--fa-font-brands": "font",
+      "--fa-font-regular": "font",
+      "--fa-style-family-classic": "other",
+      "--fa-font-solid": "font",
+      "--interface-primary-v2": "color",
+      "--mobius-text-darker-grey": "font",
+      "--mobius-text-grey": "font"
+    },
+    "fontFamilies": [
+      "Font Awesome 5 Brands",
+      "Font Awesome 5 Free",
+      "Font Awesome 6 Brands",
+      "Font Awesome 6 Free",
+      "FontAwesome",
+      "Inter",
+      "Poppins"
+    ]
+  }
+}

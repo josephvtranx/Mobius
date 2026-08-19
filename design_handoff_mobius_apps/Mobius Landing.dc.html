@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/fonts/fonts.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/styles.css">
+<script src="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.js"></script>
+<style>
+  *:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands){font-family:'Noto Sans KR',system-ui,sans-serif !important}
+  *{box-sizing:border-box}
+  body{margin:0}
+  @keyframes ldBreathe{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes ldIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div onClick="{{ enter }}" style="min-height:100vh;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Noto Sans KR',system-ui,sans-serif;background:radial-gradient(900px 600px at 12% 8%,#e2f4f8 0,transparent 60%),radial-gradient(800px 560px at 92% 6%,#f8ecdf 0,transparent 55%),radial-gradient(1000px 700px at 50% 100%,#eceafa 0,transparent 65%),#eef5f7">
+  <div style="animation:ldIn .6s ease both;display:flex;align-items:center;gap:3px;font-weight:600;font-size:56px;letter-spacing:-.03em;color:#1c1c1c;user-select:none">
+    <span>möb</span><i class="fa-solid fa-pen-ruler" style="color:#2e9d8d;font-size:36px;transform:translateY(-2px);margin:0 4px"></i><span>us</span>
+  </div>
+  <div style="position:absolute;bottom:56px;font-size:13px;letter-spacing:.08em;color:#7d938f;animation:ldBreathe 2.6s ease-in-out infinite;user-select:none">Press any key or click to continue</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:860}}">
+class Component extends DCLogic {
+  enter = () => { window.location.href = 'Mobius Login.dc.html'; };
+  componentDidMount(){
+    this._onKey = () => this.enter();
+    window.addEventListener('keydown', this._onKey);
+  }
+  componentWillUnmount(){ window.removeEventListener('keydown', this._onKey); }
+  renderVals(){ return { enter:this.enter }; }
+}
+</script>
+</body>
+</html>

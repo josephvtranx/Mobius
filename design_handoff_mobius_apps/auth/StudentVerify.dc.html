@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- Verify-email step of the Student Login Flow (entry: StudentSignin.dc.html) -->
+<helmet>
+<script src="./ds-base.js"></script>
+<style>
+  *{box-sizing:border-box}
+  a{color:#2e9d8d;text-decoration:none}a:hover{color:#16303a}
+  .au-code{width:52px;height:60px;text-align:center;font-size:24px;font-weight:600;color:#16303a;border:1.5px solid #e3eeec;border-radius:12px;outline:none;font-family:inherit}
+  .au-code:focus{border-color:#63b3a6;box-shadow:0 0 0 3px rgba(99,179,166,.22)}
+</style>
+</helmet>
+<div class="login-saas-bg" style="font-family:Poppins,system-ui,sans-serif;background:radial-gradient(900px 500px at 15% 10%,#eaf6f3 0,#f4f9f8 60%)">
+  <div class="login-saas-container" style="box-shadow:0 30px 80px -40px rgba(22,48,58,.45);border-radius:22px;overflow:hidden;background:#fff;border:1px solid #e3eeec">
+    <div class="login-saas-left">
+      <div class="login-saas-form">
+        <div style="width:54px;height:54px;border-radius:15px;background:#eef8f6;display:flex;align-items:center;justify-content:center;color:#2e9d8d;font-size:22px;margin-bottom:26px"><i class="fa-regular fa-envelope"></i></div>
+        <h1 class="login-saas-heading">Check your email</h1>
+        <p class="login-saas-subheading">We sent a 6-digit code to <strong style="color:#16303a">alice.p@mobius.academy</strong>. Enter it below to verify.</p>
+
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <sc-for list="{{ boxes }}" as="b" hint-placeholder-count="6">
+            <input class="au-code" maxlength="1" inputmode="numeric" value="{{ b.v }}" onInput="{{ b.onInput }}">
+          </sc-for>
+        </div>
+        <p style="font-size:13px;color:#64827e;margin:0 0 26px">Didn't get it? <a href="StudentVerify.dc.html" style="font-weight:600">Resend code</a> · <span style="color:#9db4b0">0:58</span></p>
+
+        <div class="login-saas-btn-group">
+          <a href="StudentWelcome.dc.html" class="login-saas-signin-btn" style="text-decoration:none">Verify &amp; continue</a>
+        </div>
+        <p style="margin-top:24px;font-size:13.5px;color:#64827e;text-align:center"><a href="StudentSignup.dc.html" style="font-weight:600"><i class="fa-solid fa-arrow-left" style="font-size:11px;margin-right:6px"></i>Back</a></p>
+      </div>
+    </div>
+
+    <div class="login-saas-right" style="background:linear-gradient(150deg,#16303a 0%,#234a52 55%,#2e9d8d 140%);color:#fff;padding:56px 48px;flex-direction:column;justify-content:space-between;align-items:flex-start">
+      <div style="display:flex;align-items:center;gap:9px;font-weight:600;font-size:15px;color:#cdece6"><span style="display:inline-flex;align-items:center;gap:1px"><span>möb</span><i class="fa-solid fa-pen-ruler" style="font-size:12px;margin:0 2px;color:#8fd8cb"></i><span>us</span></span> Learning</div>
+      <div>
+        <h2 style="font-size:27px;font-weight:600;line-height:1.3;letter-spacing:-.01em;margin:0 0 22px">Almost there — let's make sure it's really you.</h2>
+        <div style="display:flex;flex-direction:column;gap:14px;font-size:14px;color:#d6ece7">
+          <div style="display:flex;gap:12px;align-items:center"><i class="fa-solid fa-lock" style="color:#8fd8cb;width:20px;text-align:center"></i>Verification keeps your account secure</div>
+          <div style="display:flex;gap:12px;align-items:center"><i class="fa-solid fa-clock" style="color:#8fd8cb;width:20px;text-align:center"></i>Codes expire after 10 minutes</div>
+        </div>
+      </div>
+      <div style="font-size:12.5px;color:#9fc4bd">Trusted by 120+ academies</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1040,&quot;height&quot;:620}}">
+class Component extends DCLogic {
+  state = { code: ['3', '9', '', '', '', ''] };
+  set(i, v) {
+    const code = this.state.code.slice();
+    code[i] = (v || '').replace(/\D/g, '').slice(-1);
+    this.setState({ code });
+    if (code[i]) {
+      const next = document.querySelectorAll('.au-code')[i + 1];
+      if (next) next.focus();
+    }
+  }
+  renderVals() {
+    return {
+      boxes: this.state.code.map((v, i) => ({ v, onInput: (e) => this.set(i, e.target.value) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

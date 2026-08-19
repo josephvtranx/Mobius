@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- Welcome/onboarding step of the Student Login Flow (entry: StudentSignin.dc.html) -->
+<helmet>
+<script src="./ds-base.js"></script>
+<style>
+  *{box-sizing:border-box}
+  a{color:#2e9d8d;text-decoration:none}a:hover{color:#16303a}
+  .ob-grade{border:1.5px solid #e3eeec;background:#fff;color:#64827e}
+  .ob-grade.sel{border-color:#2e9d8d;background:#eef8f6;color:#16303a}
+  .ob-grade:hover{border-color:#63b3a6}
+  .ob-chip button:hover{color:#16303a}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;font-family:Poppins,system-ui,sans-serif;color:#16303a;background:radial-gradient(900px 500px at 50% -5%,#eaf6f3 0,#f4f9f8 60%)">
+  <div style="width:min(560px,100%);background:#fff;border:1px solid #e3eeec;border-radius:22px;box-shadow:0 30px 80px -40px rgba(22,48,58,.45);padding:40px 40px 34px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:26px">
+      <div style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:17px">
+        <span style="display:inline-flex;align-items:center;gap:2px;font-weight:600;font-size:22px;letter-spacing:-.03em;color:#333"><span>möb</span><i class="fa-solid fa-pen-ruler" style="color:#2e8079;font-size:14px;transform:translateY(-1px);margin:0 2px"></i><span>us</span></span>
+      </div>
+      <span style="font-size:12.5px;color:#64827e;font-weight:500">Step 3 of 3</span>
+    </div>
+    <div style="height:6px;border-radius:999px;background:#edf4f2;margin-bottom:28px;overflow:hidden"><div style="height:100%;width:100%;background:#2e9d8d;border-radius:999px"></div></div>
+
+    <h1 style="margin:0 0 8px;font-size:26px;font-weight:600;letter-spacing:-.01em">Welcome, Alice 👋</h1>
+    <p style="margin:0 0 26px;font-size:14.5px;color:#64827e">Tell us a little about your studies so we can tailor your dashboard.</p>
+
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">What grade are you in?</div>
+    <div style="display:flex;gap:9px;margin-bottom:26px">
+      <sc-for list="{{ grades }}" as="g" hint-placeholder-count="4">
+        <button class="ob-grade {{ g.cls }}" onClick="{{ g.pick }}" style="flex:1;padding:12px 0;border-radius:11px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:border-color .15s,background .15s,color .15s">{{ g.label }}</button>
+      </sc-for>
+    </div>
+
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">Which subjects are you focusing on?</div>
+    <x-import component-from-global-scope="Mobius.SearchableDropdown" options="{{ subjectOptions }}" placeholder="Add a subject…" get-option-label="{{ getLabel }}" get-option-value="{{ getValue }}" on-change="{{ addSubject }}" hint-size="100%,46px"></x-import>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;min-height:34px">
+      <sc-for list="{{ chosen }}" as="c" hint-placeholder-count="2">
+        <span class="ob-chip" style="display:inline-flex;align-items:center;gap:8px;padding:7px 8px 7px 13px;border-radius:999px;background:#eef8f6;border:1px solid #cfeae4;font-size:13px;font-weight:500;color:#16303a">{{ c.name }}<button onClick="{{ c.remove }}" aria-label="Remove" style="border:none;background:none;color:#64827e;cursor:pointer;font-size:12px;line-height:1"><i class="fa-solid fa-xmark"></i></button></span>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:32px">
+      <a href="../Mobius Student.dc.html" class="hm-btn" style="flex:0 0 auto;justify-content:center">Skip for now</a>
+      <a href="../Mobius Student.dc.html" class="hm-btn primary" style="flex:1;justify-content:center;text-decoration:none">Go to my dashboard<i class="fa-solid fa-arrow-right" style="margin-left:8px;font-size:12px"></i></a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:600,&quot;height&quot;:720}}">
+class Component extends DCLogic {
+  state = { grade: '11', chosen: [1, 2] };
+  allSubjects = [
+    { id: 1, name: 'Algebra II' }, { id: 2, name: 'Chemistry' }, { id: 3, name: 'English Literature' },
+    { id: 4, name: 'Physics' }, { id: 5, name: 'Biology' }, { id: 6, name: 'World History' },
+    { id: 7, name: 'Spanish' }, { id: 8, name: 'Computer Science' },
+  ];
+  pickGrade(g) { this.setState({ grade: g }); }
+  addSubject = (id) => {
+    if (id == null || this.state.chosen.includes(id)) return;
+    this.setState((s) => ({ chosen: [...s.chosen, id] }));
+  };
+  remove(id) { this.setState((s) => ({ chosen: s.chosen.filter((x) => x !== id) })); }
+  renderVals() {
+    const g = this.state.grade;
+    return {
+      grades: ['9', '10', '11', '12'].map((label) => ({
+        label: 'Grade ' + label, pick: () => this.pickGrade(label),
+        cls: g === label ? 'sel' : '',
+      })),
+      subjectOptions: this.allSubjects.filter((o) => !this.state.chosen.includes(o.id)),
+      getLabel: (o) => o.name,
+      getValue: (o) => o.id,
+      addSubject: this.addSubject,
+      chosen: this.state.chosen.map((id) => {
+        const s = this.allSubjects.find((x) => x.id === id) || { name: '' };
+        return { name: s.name, remove: () => this.remove(id) };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/fonts/fonts.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.css">
+<link rel="stylesheet" href="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/styles.css">
+<script src="_ds/mobius-design-system-e58882f7-3aa9-4204-9c0e-3536d0f0c77d/_ds_bundle.js"></script>
+<script src="./image-slot.js"></script>
+<style>
+  *:not(i):not(.fa-solid):not(.fa-regular):not(.fa-brands){font-family:'Noto Sans KR',system-ui,sans-serif !important}
+  *{box-sizing:border-box}
+  body{margin:0}
+  a{color:#2e9d8d;text-decoration:none}a:hover{color:#16303a}
+  .lg-arrow{transition:background .15s ease}
+  .lg-arrow:hover{background:#f2faf8}
+  .au-err-field{border-color:#9c3a31 !important;box-shadow:0 0 0 3px rgba(156,58,49,.14) !important}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;background:#e8f4f6;font-family:'Noto Sans KR',system-ui,sans-serif;color:#16303a">
+  <header style="padding:18px 44px">
+    <a href="Mobius Landing.dc.html" style="display:inline-flex;align-items:center;gap:2px;font-weight:600;font-size:24px;letter-spacing:-.03em;color:#333">
+      <span>möb</span><i class="fa-solid fa-pen-ruler" style="color:#2e9d8d;font-size:16px;transform:translateY(-1px);margin:0 2px"></i><span>us</span>
+    </a>
+  </header>
+
+  <main style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px">
+    <div style="display:grid;grid-template-columns:minmax(340px,440px) minmax(0,520px);width:min(1080px,100%);border-radius:22px;overflow:hidden;background:#fff;border:1px solid #e3eeec;box-shadow:0 30px 80px -45px rgba(22,48,58,.4)">
+      <div style="padding:52px 48px;display:flex;flex-direction:column;justify-content:center">
+        <h1 style="margin:0;font-size:28px;font-weight:600;letter-spacing:-.02em">Welcome back</h1>
+        <p style="margin:9px 0 28px;font-size:14px;color:#64827e">Sign in to your institution's workspace.</p>
+
+        <div class="login-saas-input-group">
+          <label class="login-saas-input-label" for="lg-email">Email address</label>
+          <input id="lg-email" class="login-saas-input" type="email" placeholder="Enter your email" onInput="{{ clearError }}">
+        </div>
+        <div class="login-saas-input-group">
+          <label class="login-saas-input-label" for="lg-pass">Password</label>
+          <div style="position:relative;display:flex">
+            <input id="lg-pass" class="login-saas-input {{ passErrCls }}" type="{{ passType }}" placeholder="Enter your password" onInput="{{ clearError }}" style="flex:1;padding-right:44px">
+            <button onClick="{{ togglePass }}" aria-label="Show password" style="position:absolute;right:6px;top:0;height:46px;width:38px;border:none;background:none;color:#64827e;cursor:pointer"><i class="{{ passIcon }}"></i></button>
+          </div>
+        </div>
+        <div style="margin:0 0 20px"><a href="auth/StudentReset.dc.html" style="font-size:13px;font-weight:500;text-decoration:underline;color:#16303a">Forgot password?</a></div>
+
+        <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+          <div class="login-saas-error" style="margin-bottom:14px"><i class="fa-solid fa-circle-exclamation" style="margin-right:8px"></i>We couldn't sign you in. Check your email and password and try again.</div>
+        </sc-if>
+        <button class="login-saas-signin-btn" onClick="{{ submit }}" style="display:flex;align-items:center;justify-content:center;gap:10px">Sign in<i class="fa-solid fa-arrow-right"></i></button>
+
+        <div class="login-saas-divider" style="margin:22px 0 10px">or</div>
+
+        <a href="auth/StudentSignup.dc.html" class="lg-arrow" style="display:flex;align-items:center;gap:12px;padding:11px 12px;margin:0 -12px;border-radius:11px;font-size:14px;font-weight:500;color:#2e9d8d">New user? Register with your institution code<i class="fa-solid fa-arrow-right" style="margin-left:auto"></i></a>
+        <a onClick="{{ noop }}" class="lg-arrow" style="display:flex;align-items:center;gap:12px;padding:11px 12px;margin:0 -12px;border-radius:11px;font-size:14px;font-weight:500;color:#2e9d8d;cursor:pointer">Setting up a new institution? Request a workspace<i class="fa-solid fa-arrow-right" style="margin-left:auto"></i></a>
+
+      </div>
+
+      <div style="background:linear-gradient(160deg,#eef7f4 0%,#f6f3ea 100%);display:flex;align-items:center;justify-content:center;padding:36px">
+        <div style="width:100%;aspect-ratio:4/3">
+          <image-slot id="login-art" shape="rounded" radius="16" src="login-illustration.png" placeholder="Drop your illustration here"></image-slot>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { show:false, error:false };
+  noop = () => {};
+  togglePass = () => this.setState(s=>({ show:!s.show }));
+  clearError = () => { if(this.state.error) this.setState({ error:false }); };
+  submit = () => {
+    const email=(document.getElementById('lg-email')||{}).value||'';
+    const pass=(document.getElementById('lg-pass')||{}).value||'';
+    if(email.trim().toLowerCase()==='staff@mobius.demo' && pass==='Password123!'){ window.location.href='Mobius Staff.dc.html'; }
+    else this.setState({ error:true });
+  };
+  renderVals(){
+    return {
+      noop:this.noop, togglePass:this.togglePass, clearError:this.clearError, submit:this.submit,
+      passType:this.state.show?'text':'password',
+      passIcon:this.state.show?'fa-regular fa-eye-slash':'fa-regular fa-eye',
+      hasError:this.state.error, passErrCls:this.state.error?'au-err-field':'',
+    };
+  }
+}
+</script>
+</body>
+</html>
