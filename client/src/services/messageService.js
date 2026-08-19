@@ -22,6 +22,28 @@ const messageService = {
         }
     },
 
+    // Classes the caller may post announcements to (instructor/staff).
+    getAnnounceable: async () => {
+        try {
+            const response = await api.get('/messages/announceable');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching announceable classes:', error);
+            throw error;
+        }
+    },
+
+    // Get-or-create a class's announcement thread.
+    startClassThread: async (classId) => {
+        try {
+            const response = await api.post(`/messages/conversations/class/${classId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error starting class thread:', error);
+            throw error;
+        }
+    },
+
     startConversation: async (recipientUserId) => {
         try {
             const response = await api.post('/messages/conversations', { recipient_user_id: recipientUserId });

@@ -1,7 +1,9 @@
 // Who's allowed to message whom. Not an open free-for-all: staff can reach
 // anyone (operational necessity), but an instructor and a student/guardian
 // can only message each other if a real active teaching relationship
-// exists (derived from enrollments/classes, not a stored contact list) —
+// exists (derived from enrollments/classes — including 'pending' one-off
+// bookings awaiting instructor confirmation, so booking-only families can
+// reach their instructor), not a stored contact list —
 // mirrors the design's "message your teacher" / "message your student's
 // family" model rather than a general social-messaging free-for-all.
 // instructor_id/student_id/staff_id are all == users.user_id (1:1 PK-as-FK).
@@ -10,7 +12,7 @@ async function instructorTeachesStudent(db, instructorId, studentId) {
   const { rows } = await db.query(
     `SELECT 1 FROM enrollments e JOIN classes c ON c.class_id = e.class_id
       WHERE e.student_id = $1 AND c.instructor_id = $2
-        AND e.status = 'active' AND c.status = 'active' LIMIT 1`,
+        AND e.status = 'active' AND c.status IN ('active','pending') LIMIT 1`,
     [studentId, instructorId]);
   return rows.length > 0;
 }
@@ -22,7 +24,7 @@ async function instructorTeachesGuardiansChild(db, instructorId, guardianUserId)
        JOIN enrollments e ON e.student_id = sg.student_id
        JOIN classes c ON c.class_id = e.class_id
       WHERE g.user_id = $1 AND c.instructor_id = $2
-        AND e.status = 'active' AND c.status = 'active' LIMIT 1`,
+        AND e.status = 'active' AND c.status IN ('active','pending') LIMIT 1`,
     [guardianUserId, instructorId]);
   return rows.length > 0;
 }
@@ -58,14 +60,14 @@ export async function getContacts(db, user) {
        SELECT DISTINCT u.user_id, u.name, u.role
          FROM enrollments e JOIN classes c ON c.class_id = e.class_id
          JOIN users u ON u.user_id = e.student_id
-        WHERE c.instructor_id = $1 AND e.status = 'active' AND c.status = 'active' AND u.is_active = true
+        WHERE c.instructor_id = $1 AND e.status = 'active' AND c.status IN ('active','pending') AND u.is_active = true
         UNION
        SELECT DISTINCT u.user_id, u.name, u.role
          FROM enrollments e JOIN classes c ON c.class_id = e.class_id
          JOIN student_guardians sg ON sg.student_id = e.student_id
          JOIN guardians g ON g.guardian_id = sg.guardian_id
          JOIN users u ON u.user_id = g.user_id
-        WHERE c.instructor_id = $1 AND e.status = 'active' AND c.status = 'active' AND u.is_active = true
+        WHERE c.instructor_id = $1 AND e.status = 'active' AND c.status IN ('active','pending') AND u.is_active = true
        ORDER BY name`, [user.user_id]);
     return rows;
   }
@@ -85,7 +87,7 @@ export async function getContacts(db, user) {
        JOIN enrollments e ON e.student_id = s.student_id
        JOIN classes c ON c.class_id = e.class_id
        JOIN users u ON u.user_id = c.instructor_id
-      WHERE e.status = 'active' AND c.status = 'active' AND u.is_active = true
+      WHERE e.status = 'active' AND c.status IN ('active','pending') AND u.is_active = true
      ORDER BY name`, [user.user_id]);
   return rows;
 }
