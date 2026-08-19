@@ -117,3 +117,8 @@ client/src/css/.ds-sync-entry.css
 .design-handoff/
 UI workflows.zip
 Student UI/
+
+# Local Claude Code guides (per-machine, not shared)
+CLAUDE.md
+client/CLAUDE.md
+server/CLAUDE.md
