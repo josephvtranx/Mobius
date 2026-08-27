@@ -156,7 +156,7 @@ export function getShellNav(role, user) {
         },
         {
           label: 'Finance',
-          icon: 'fa-solid fa-sack-dollar',
+          icon: 'fa-solid fa-coins',
           items: [
             {
               label: 'Financial dashboard',
@@ -167,6 +167,7 @@ export function getShellNav(role, user) {
                 { label: 'Income breakdown', path: '/operations/finance/income' },
                 { label: 'Cost breakdown', path: '/operations/finance/costs' },
                 { label: 'Payments', path: '/operations/finance/payments' },
+                { label: 'Packages', path: '/operations/finance/packages' },
               ],
             },
             { label: 'Wallets', icon: 'fa-solid fa-wallet', path: '/operations/wallets' },

@@ -15,7 +15,7 @@
 // week-browser. "This week" always means the real current week.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DateTime } from 'luxon';
-import EnrollmentWizard from './classes/EnrollmentWizard';
+import AddSubjectModal from './classes/AddSubjectModal';
 import studentService from '@/services/studentService';
 import instructorService from '@/services/instructorService';
 import studentViewService from '@/services/studentViewService';
@@ -251,10 +251,11 @@ function Scheduling() {
       )}
 
       {selected?.type === 'student' && (
-        <EnrollmentWizard
+        <AddSubjectModal
           isOpen={wizardOpen}
           onClose={() => setWizardOpen(false)}
-          initialStudentId={selected.id}
+          student={{ student_id: selected.id, name: selected.name }}
+          studentSessions={sessions ?? []}
           onDone={() => load(selected)}
         />
       )}

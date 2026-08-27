@@ -13,6 +13,7 @@ function StaffRoster() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState({});
+  const [q, setQ] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
   useEffect(() => {
@@ -39,7 +40,10 @@ function StaffRoster() {
     setSortConfig((c) => ({ key, direction: c.key === key && c.direction === 'ascending' ? 'descending' : 'ascending' }));
   };
 
-  const sorted = [...staff].sort((a, b) => {
+  const needle = q.trim().toLowerCase();
+  const filtered = staff.filter((m) =>
+    !needle || `${m.name} ${m.contact} ${m.department}`.toLowerCase().includes(needle));
+  const sorted = [...filtered].sort((a, b) => {
     const av = a[sortConfig.key] ?? '';
     const bv = b[sortConfig.key] ?? '';
     if (av < bv) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -57,10 +61,14 @@ function StaffRoster() {
 
   return (
     <div className="rt-page">
-      <header className="hm-greeting">
-        <h1>Staff roster</h1>
-        <p>Non-teaching staff by department and employment status.</p>
-      </header>
+      {/* No in-page title — the topbar crumb already says "Staff roster". */}
+      <div className="rt-filterbar">
+        <label className="rt-search">
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input type="text" placeholder="Filter by name, contact, department…" aria-label="Filter staff"
+            value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+      </div>
 
       <section className="rt-section">
         <div className="rt-grid rt-grid--staff rt-head">

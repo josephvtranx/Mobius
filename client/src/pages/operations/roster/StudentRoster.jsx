@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/services/api';
 import { tintFor, toneFor } from '@/lib/rosterColors';
+import NewStudentModal from './NewStudentModal';
 import '@/css/roster.css';
 
 const DAY_MAP = { mon: 'M', tue: 'T', wed: 'W', thu: 'Th', fri: 'F', sat: 'Sa', sun: 'Su' };
@@ -31,7 +32,9 @@ function StudentRoster() {
   const [error, setError] = useState('');
   const [expandedRows, setExpandedRows] = useState({});
   const [filter, setFilter] = useState('All');
+  const [q, setQ] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+  const [newStudentOpen, setNewStudentOpen] = useState(false);
   // Per-student guardian-link form state (keyed by student id).
   const [gForm, setGForm] = useState({});
   const [gMsg, setGMsg] = useState({});
@@ -61,7 +64,7 @@ function StudentRoster() {
     }
   };
 
-  useEffect(() => {
+  const load = () => {
     api.get('/students/roster')
       .then((res) => {
         setStudents((res.data || []).map((s) => ({
@@ -80,7 +83,8 @@ function StudentRoster() {
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to fetch student roster'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(load, []);
 
   const requestSort = (key) => {
     setSortConfig((c) => ({ key, direction: c.key === key && c.direction === 'ascending' ? 'descending' : 'ascending' }));
@@ -88,7 +92,11 @@ function StudentRoster() {
   const toggleRow = (id) => setExpandedRows((p) => ({ ...p, [id]: !p[id] }));
 
   const statuses = ['All', ...new Set(students.map((s) => s.status).filter(Boolean))];
-  const filtered = filter === 'All' ? students : students.filter((s) => s.status === filter);
+  const needle = q.trim().toLowerCase();
+  const filtered = students
+    .filter((s) => filter === 'All' || s.status === filter)
+    .filter((s) => !needle ||
+      `${s.name} ${s.studentEmail} ${s.parentNames.join(' ')} ${s.instructors.join(' ')}`.toLowerCase().includes(needle));
   const sorted = [...filtered].sort((a, b) => {
     const av = a[sortConfig.key] ?? '';
     const bv = b[sortConfig.key] ?? '';
@@ -103,20 +111,28 @@ function StudentRoster() {
 
   return (
     <div className="rt-page">
-      <header className="hm-greeting">
-        <h1>Student roster</h1>
-        <p>Every enrolled student, contacts, classes and weekly schedule.</p>
-      </header>
+      {/* No in-page title — the topbar crumb already says "Student roster". */}
+      <div className="rt-filterbar">
+        {statuses.length > 1 && (
+          <div className="rt-filters">
+            {statuses.map((s) => (
+              <button key={s} type="button" className={`rt-filter ${filter === s ? 'active' : ''}`} onClick={() => setFilter(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        <label className="rt-search">
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input type="text" placeholder="Filter by name, email, guardian, tutor…" aria-label="Filter students"
+            value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        <button type="button" className="rt-btn-primary" onClick={() => setNewStudentOpen(true)}>
+          <i className="fa-solid fa-user-plus" style={{ marginRight: 7 }} />Add student
+        </button>
+      </div>
 
-      {statuses.length > 1 && (
-        <div className="rt-filters">
-          {statuses.map((s) => (
-            <button key={s} type="button" className={`rt-filter ${filter === s ? 'active' : ''}`} onClick={() => setFilter(s)}>
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
+      <NewStudentModal isOpen={newStudentOpen} onClose={() => setNewStudentOpen(false)} onDone={load} />
 
       <section className="rt-section">
         <div className="rt-grid rt-grid--student rt-head">
@@ -154,53 +170,87 @@ function StudentRoster() {
                 </div>
               </div>
               {expandedRows[s.id] && (
-                <div className="rt-row" style={{ display: 'block', padding: '10px 16px' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 12 }}>
-                    {s.studentPhone && <span className="rt-cell">Student: {s.studentPhone}</span>}
-                    {s.parentNames.length === 0 && <span className="rt-cell">No guardian linked yet.</span>}
-                    {s.parentNames.map((name, i) => (
-                      <span key={i} className="rt-cell">
-                        {name}{s.parentEmails[i] ? ` · ${s.parentEmails[i]}` : ''}{s.parentPhones[i] ? ` · ${s.parentPhones[i]}` : ''}
-                      </span>
-                    ))}
+                <div className="rt-expand">
+                  <div>
+                    <div className="rt-expand-label">Guardians</div>
+                    {s.parentNames.length === 0 && (
+                      <div className="rt-cell" style={{ whiteSpace: 'normal' }}>
+                        No guardian linked yet — link one on the right.
+                      </div>
+                    )}
+                    {s.parentNames.map((name, i) => {
+                      const tint = tintFor(name);
+                      return (
+                        <div key={i} className="rt-person">
+                          <span className="rt-avatar" style={{ background: tint.bg, color: tint.fg }}>
+                            {String(name || '?').split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <div className="rt-person-name">{name}</div>
+                            <div className="rt-person-sub">
+                              {[s.parentEmails[i], s.parentPhones[i]].filter(Boolean).join(' · ') || 'No contact on file'}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {s.studentPhone && (
+                      <>
+                        <div className="rt-expand-label" style={{ marginTop: 14 }}>Student contact</div>
+                        <div className="rt-cell">{s.studentPhone}</div>
+                      </>
+                    )}
                   </div>
-                  {/* Staff guardian-linking (GRD-2): links an existing guardian by email,
-                      or creates + links a new one when a name is given. */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                    <span className="rt-sub" style={{ fontWeight: 600 }}>Link a guardian:</span>
-                    <input
-                      type="email"
-                      placeholder="guardian email (required)"
-                      value={gForm[s.id]?.email || ''}
-                      onChange={(e) => patchForm(s.id, { email: e.target.value })}
-                      style={{ minWidth: 200 }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="name (for a new guardian)"
-                      value={gForm[s.id]?.name || ''}
-                      onChange={(e) => patchForm(s.id, { name: e.target.value })}
-                      style={{ minWidth: 160 }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="relationship (e.g. parent)"
-                      value={gForm[s.id]?.relationship || ''}
-                      onChange={(e) => patchForm(s.id, { relationship: e.target.value })}
-                      style={{ minWidth: 150 }}
-                    />
-                    <button
-                      type="button"
-                      className="hm-btn"
-                      disabled={gBusy[s.id] || !gForm[s.id]?.email?.trim()}
-                      onClick={() => linkGuardian(s)}
-                    >
-                      {gBusy[s.id] ? 'Linking…' : 'Link'}
-                    </button>
+
+                  {/* Staff guardian-linking (GRD-2): links an existing guardian by
+                      email, or creates + links a new one when a name is given. */}
+                  <div>
+                    <div className="rt-expand-label">Link a guardian</div>
+                    <div className="rt-person-sub" style={{ marginBottom: 10 }}>
+                      An existing guardian's email links them directly; add a name to create a new guardian account.
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <input
+                        type="email"
+                        className="rt-input"
+                        placeholder="Guardian email"
+                        aria-label="Guardian email (required)"
+                        value={gForm[s.id]?.email || ''}
+                        onChange={(e) => patchForm(s.id, { email: e.target.value })}
+                        style={{ flex: '1 1 200px' }}
+                      />
+                      <input
+                        type="text"
+                        className="rt-input"
+                        placeholder="Name (new guardian only)"
+                        aria-label="Guardian name"
+                        value={gForm[s.id]?.name || ''}
+                        onChange={(e) => patchForm(s.id, { name: e.target.value })}
+                        style={{ flex: '1 1 160px' }}
+                      />
+                      <input
+                        type="text"
+                        className="rt-input"
+                        placeholder="Relationship (e.g. parent)"
+                        aria-label="Relationship"
+                        value={gForm[s.id]?.relationship || ''}
+                        onChange={(e) => patchForm(s.id, { relationship: e.target.value })}
+                        style={{ flex: '1 1 150px' }}
+                      />
+                      <button
+                        type="button"
+                        className="rt-btn-primary"
+                        disabled={gBusy[s.id] || !gForm[s.id]?.email?.trim()}
+                        onClick={() => linkGuardian(s)}
+                      >
+                        {gBusy[s.id] ? 'Linking…' : 'Link guardian'}
+                      </button>
+                    </div>
                     {gMsg[s.id] && (
-                      <span className="rt-sub" style={{ color: gMsg[s.id].ok ? 'var(--status-success)' : 'var(--status-error, #c0392b)' }}>
+                      <div className="rt-person-sub" style={{ marginTop: 8, fontWeight: 600,
+                        color: gMsg[s.id].ok ? 'var(--status-success, #2c8a5b)' : 'var(--status-error, #c0392b)' }}>
                         {gMsg[s.id].text}
-                      </span>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import uploadService from '../services/uploadService';
 import authService from '../services/authService';
 import ImageCropper from './ImageCropper';
@@ -13,6 +13,10 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
   const [showCropper, setShowCropper] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => () => {
+    if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   // Get current profile picture URL
   const currentProfilePic = currentUser?.profile_pic_url;
@@ -190,7 +194,8 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/gif"
+          disabled={isUploading}
           onChange={handleFileSelect}
           className="file-input"
           id="profile-picture-input"

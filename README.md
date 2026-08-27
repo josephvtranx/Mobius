@@ -1,3 +1,7 @@
+## Testing with your team
+
+On Mac, double-click **Start Mobius.command** for a private, fully seeded testing academy. No developer tools or production credentials needed. [Start and test guide](TESTING.md).
+
 # Mobius
 ## Overview
 
@@ -152,4 +156,4 @@ It provides actionable insights into student engagement, instructor efficiency, 
 | Guardian | `grace@demo.com` | Grace Park — Alice's parent/guardian |
 | Admin | `admin@mobius.com` | Platform admin (Mobius employee) — admin console |
 
-**Sandbox setup**: `node server/scripts/dev/sandbox.js` boots the real server against an in-memory PGlite database seeded with the accounts above. Client dev server runs on `:5173`, API on `:5001`.
+**Sandbox setup**: From the repository root, run `bash "Start Mobius.command"` on Mac. It installs its own Node.js runtime and dependencies, starts a fresh in-memory academy, and opens a welcome page with the accounts above. The frontend and API use available local ports; use the URL printed by the launcher. Keep its terminal open while testing. Closing it discards the session.

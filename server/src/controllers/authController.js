@@ -465,6 +465,7 @@ export const login = async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    profile_pic_url: user.profile_pic_url,
                     institution_name: dir.institution_name
                 }
             });
@@ -534,6 +535,7 @@ export const login = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
+                profile_pic_url: user.profile_pic_url,
                 institution_name: await institutionNameFor(req.tenantCode)
             }
         });

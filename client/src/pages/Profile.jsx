@@ -27,6 +27,12 @@ function Profile() {
     api.get('/users/profile')
       .then((res) => {
         setUser(res.data);
+        // Keep only public profile fields in browser storage (not password hashes).
+        const cached = authService.getCurrentUser() || {};
+        const fresh = { ...cached, name: res.data.name, profile_pic_url: res.data.profile_pic_url };
+        setCurrentUser(fresh);
+        authService.setCurrentUser(fresh);
+        window.dispatchEvent(new CustomEvent('profile-updated'));
         setFormData({ name: res.data.name, email: res.data.email, phone: res.data.phone || '' });
       })
       .catch((err) => setError(err.response?.data?.message || 'Failed to fetch profile data'))

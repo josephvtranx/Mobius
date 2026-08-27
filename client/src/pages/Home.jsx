@@ -17,7 +17,6 @@ import rescheduleService from '@/services/rescheduleService';
 import bookingService from '@/services/bookingService';
 import studentViewService from '@/services/studentViewService';
 import walletService from '@/services/walletService';
-import paymentService from '@/services/paymentService';
 import { walletStatus, attendanceRate, findRoomClashes } from '@/lib/derive';
 import { tintFor } from '@/lib/rosterColors';
 import '@/css/home.css';
@@ -36,13 +35,6 @@ function subjectIcon(subject) {
 }
 
 const label = (s) => String(s ?? '').replace(/_/g, ' ');
-// Compact "$24.6k"-style KPI display — the full "$24,600.00" form used on
-// the Financial dashboard/Payments pages is too wide for a small KPI tile.
-const moneyCompact = (n) => {
-  const v = Number(n);
-  if (Math.abs(v) >= 1000) return `$${(v / 1000).toFixed(1)}k`;
-  return `$${v.toFixed(0)}`;
-};
 const day = (iso) => isoToLocal(iso).toFormat('ccc, LLL d');
 const time = (iso) => isoToLocal(iso).toFormat('h:mm a');
 
@@ -108,17 +100,14 @@ function StaffHome({ user }) {
   const [busyRequest, setBusyRequest] = useState(null);
 
   const load = () => {
-    const monthStart = DateTime.now().startOf('month').toISODate();
-    const monthEnd = DateTime.now().endOf('month').toISODate();
     Promise.all([
       reportService.getDashboard(),
       classService.getAllClasses(),
       classService.getMembershipRequests('pending'),
       studentService.getAllStudents(),
       roomService.getAllRooms(),
-      paymentService.getPayments({ start: monthStart, end: monthEnd }),
     ])
-      .then(async ([dash, classes, requests, students, rooms, monthPayments]) => {
+      .then(async ([dash, classes, requests, students, rooms]) => {
         const active = classes.filter((c) => c.status === 'active');
         // Per-class sessions aren't on the list endpoint — same N+1 pattern
         // Attendance.jsx already uses to get real session instances.
@@ -126,7 +115,7 @@ function StaffHome({ user }) {
         const allSessions = details.flatMap((d, i) =>
           (d.sessions || []).map((s) => ({ ...s, class_id: active[i].class_id, subject: active[i].subject, instructor: active[i].instructor, enrolled: active[i].enrolled, student_limit: active[i].student_limit }))
         );
-        setData({ dash, classes: active, requests, students, allSessions, rooms, monthPayments });
+        setData({ dash, classes: active, requests, students, allSessions, rooms });
       })
       .catch((err) => setError(err.response?.data?.message || 'Could not load the dashboard'));
   };
@@ -147,8 +136,7 @@ function StaffHome({ user }) {
   if (error) return <div className="hm-error">{error}</div>;
   if (!data) return <Loading />;
 
-  const { dash, classes, requests, students, allSessions, rooms, monthPayments } = data;
-  const revenueMtd = monthPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const { dash, classes, requests, students, allSessions, rooms } = data;
   const roomName = new Map(rooms.map((r) => [r.room_id, r.name]));
   const now = DateTime.now();
   const todayIso = now.toISODate();
@@ -165,6 +153,9 @@ function StaffHome({ user }) {
   const seatFillRate = seatCapacity ? Math.round((seatEnrolled / seatCapacity) * 100) : null;
   const clashes = findRoomClashes(allSessions);
   const clashDay = clashes[0] ? isoToLocal(clashes[0][0].starts_at).toFormat('cccc') : null;
+  // Ended sessions still 'scheduled' = attendance never marked (marking flips
+  // the session to 'completed' server-side). The backlog staff drive to zero.
+  const unmarked = allSessions.filter((s) => s.status === 'scheduled' && isoToLocal(s.ends_at) < now).length;
 
   const heroParts = [
     `${todaySessions.length} session${todaySessions.length === 1 ? '' : 's'} run today${roomsToday.size ? ` across ${roomsToday.size} room${roomsToday.size === 1 ? '' : 's'}` : ''}.`,
@@ -202,7 +193,7 @@ function StaffHome({ user }) {
           <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{students.length}</span><span className="hm-hero-kpi-label">Active students</span></div>
           <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{sessionsThisWeek}</span><span className="hm-hero-kpi-label">Sessions this week</span></div>
           <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{seatFillRate != null ? `${seatFillRate}%` : '—'}</span><span className="hm-hero-kpi-label">Seat fill rate</span></div>
-          <div className="hm-hero-kpi"><span className="hm-hero-kpi-value">{moneyCompact(revenueMtd)}</span><span className="hm-hero-kpi-label">Revenue MTD</span></div>
+          <div className="hm-hero-kpi"><span className={`hm-hero-kpi-value ${unmarked ? 'alert' : ''}`}>{unmarked}</span><span className="hm-hero-kpi-label">Awaiting attendance</span></div>
         </div>
       </div>
 

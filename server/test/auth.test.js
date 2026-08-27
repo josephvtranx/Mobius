@@ -43,6 +43,24 @@ describe('POST /api/institution (stateless code validation — D7)', () => {
   });
 });
 
+describe('sandbox CORS preflight', () => {
+  it.each(['http://localhost:5173', 'http://127.0.0.1:5173'])('allows %s', async (origin) => {
+    const res = await request(env.app).options('/api/auth/login')
+      .set('Origin', origin)
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'content-type');
+    expect(res.status).toBe(204);
+    expect(res.headers['access-control-allow-origin']).toBe(origin);
+  });
+
+  it('does not allow arbitrary origins', async () => {
+    const res = await request(env.app).options('/api/auth/login')
+      .set('Origin', 'https://untrusted.invalid')
+      .set('Access-Control-Request-Method', 'POST');
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
+
 describe('POST /api/auth/login', () => {
   it('400s a directory-unknown email with no institution header (the !req.db guard)', async () => {
     // registry login supersedes the old always-400: emails IN the directory
@@ -91,7 +109,8 @@ describe('POST /api/auth/login', () => {
       email: SEED_USER.email,
       role: SEED_USER.role,
       // institution_name: registry-joined display name (profile card subtitle)
-      institution_name: 'Test Academy'
+      institution_name: 'Test Academy',
+      profile_pic_url: null
       // NB: no `username` key — column doesn't exist, undefined is dropped from JSON
     });
 

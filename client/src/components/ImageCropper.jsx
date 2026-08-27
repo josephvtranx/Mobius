@@ -56,10 +56,10 @@ const ImageCropper = ({ image, onCropComplete, onCancel }) => {
       pixelCrop.height
     );
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (!blob) {
-          console.error('Canvas is empty');
+          reject(new Error('Could not create the cropped image. Please try again.'));
           return;
         }
         blob.name = 'cropped-image.jpeg';

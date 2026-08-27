@@ -17,15 +17,20 @@ const OPEN_STATUSES = ['open', 'in_progress'];
 
 // Enrich each task with a student name and class subject where the
 // details JSON carries them (student_id is INT, class_id is UUID; both are
-// optional per kind). Newest urgent first.
+// optional per kind). Urgent first, then oldest first.
 const LIST_SQL = `
   SELECT t.task_id, t.kind, t.urgency, t.subject_type, t.subject_id,
          t.details, t.status, t.created_at, t.resolved_at,
+         c.class_id, session.session_id,
          su.name AS student_name,
          sub.name AS subject
     FROM staff_tasks t
-    LEFT JOIN users su ON su.user_id = NULLIF(t.details->>'student_id','')::int
-    LEFT JOIN classes c ON c.class_id = NULLIF(t.details->>'class_id','')::uuid
+    LEFT JOIN users su ON su.user_id::text = t.details->>'student_id'
+    LEFT JOIN class_sessions session ON session.session_id::text = COALESCE(
+      t.details->>'session_id', CASE WHEN t.subject_type IN ('session','class_session') THEN t.subject_id END)
+    LEFT JOIN classes c ON c.class_id::text = COALESCE(
+      t.details->>'class_id', session.class_id::text,
+      CASE WHEN t.subject_type = 'class' THEN t.subject_id END)
     LEFT JOIN subjects sub ON sub.subject_id = c.subject_id
    WHERE t.status = ANY($1)
    ORDER BY (t.urgency = 'urgent') DESC, t.created_at ASC
@@ -34,12 +39,17 @@ const LIST_SQL = `
 // GET /?status=open|in_progress|done|dismissed|all (default: open+in_progress)
 router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
   const { status } = req.query;
+  if (status !== undefined && !['open', 'in_progress', 'done', 'dismissed', 'all'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid task status' });
+  }
   const statuses = status === 'all'
     ? ['open', 'in_progress', 'done', 'dismissed']
     : status ? [status] : OPEN_STATUSES;
   const { rows } = await req.db.query(LIST_SQL, [statuses]);
-  const openCount = status ? undefined : rows.length;
-  res.json({ tasks: rows, open_count: openCount });
+  const { rows: [counts] } = await req.db.query(
+    `SELECT count(*) FILTER (WHERE status IN ('open','in_progress'))::int AS open_count,
+            count(*) FILTER (WHERE status = ANY($1))::int AS total_count FROM staff_tasks`, [statuses]);
+  res.json({ tasks: rows, ...counts });
 });
 
 // Lightweight badge count — the open/in-progress task total. Its own tiny
@@ -52,20 +62,26 @@ router.get('/count', authenticateToken, authorizeRole('staff'), async (req, res)
 
 // POST /:id/resolve  body { action: 'done' | 'dismissed' }
 router.post('/:id/resolve', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid task id' });
+  }
   const { action } = req.body;
   if (!['done', 'dismissed'].includes(action)) {
     return res.status(400).json({ message: "action must be 'done' or 'dismissed'" });
   }
-  const { rows: [task] } = await req.db.query(
-    `SELECT status FROM staff_tasks WHERE task_id = $1`, [req.params.id]);
-  if (!task) return res.status(404).json({ message: 'Task not found' });
-  if (!OPEN_STATUSES.includes(task.status)) {
-    return res.status(400).json({ message: `Task is already ${task.status}` });
-  }
+  // Conditional update prevents two staff members overwriting each other's resolution.
   const { rows: [updated] } = await req.db.query(
     `UPDATE staff_tasks SET status = $1, resolved_by = $2, resolved_at = CURRENT_TIMESTAMP
-      WHERE task_id = $3 RETURNING task_id, status, resolved_at`,
+      WHERE task_id = $3 AND status IN ('open','in_progress')
+      RETURNING task_id, status, resolved_at`,
     [action, req.user.user_id, req.params.id]);
+  if (!updated) {
+    const { rows: [task] } = await req.db.query(
+      `SELECT status FROM staff_tasks WHERE task_id = $1`, [req.params.id]);
+    return res.status(task ? 409 : 404).json({
+      message: task ? `Task is already ${task.status}. Refresh the inbox.` : 'Task not found'
+    });
+  }
   res.json(updated);
 });
 

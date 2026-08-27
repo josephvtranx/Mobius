@@ -89,6 +89,12 @@
      much darker burnt-orange gradient this used to render. */
   --shell-rail-gradient: #ffc06e;
   --shell-rail-pill-bg: rgba(255, 255, 255, 0.35);
+  /* Rail icons are a dark orange-brown on the light gold rail (mock) — the
+     translucent-white fallback was near-invisible here; active tile is
+     white with the same glyph color. */
+  --shell-rail-tile-fg: #8a4d1f;
+  --shell-rail-tile-active-bg: #ffffff;
+  --shell-rail-tile-active-fg: #8a4d1f;
   /* README doesn't spec a staff hero/page-bg gradient (page bg is plain
      white there) — derived to match the other two roles' pattern. */
   --shell-hero-gradient: linear-gradient(150deg, #33231a, #6b4a2e 55%, #d9772e 150%);
@@ -314,6 +320,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* Breathing room so the parent's active pill and an active child's pill
+     never touch — flush, the two tinted shapes read as one merged blob. */
+  margin-top: 4px;
+  margin-bottom: 4px;
   margin-left: 14px;
   padding-left: 12px;
   border-left: 1px solid var(--shell-border);

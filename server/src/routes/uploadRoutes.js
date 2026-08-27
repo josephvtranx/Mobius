@@ -1,135 +1,60 @@
 import express from 'express';
-import upload from '../middleware/upload.js';
-import { cleanupOrphanedFiles } from '../middleware/upload.js';
-import auth from '../middleware/auth.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import upload, { removeProfileFile } from '../middleware/upload.js';
+import { authenticateToken, authorizeRole } from '../middleware/auth.js';
+import { withTransaction } from '../helpers/withTransaction.js';
 
 const router = express.Router();
+const receive = upload.single('profilePicture');
+const imageType = (bytes) => {
+  if (bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) return 'png';
+  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return 'jpeg';
+  if (['GIF87a', 'GIF89a'].includes(bytes.subarray(0,6).toString())) return 'gif';
+  return null;
+};
 
-// Upload profile picture
-router.post('/profile-picture', auth, upload.single('profilePicture'), async (req, res) => {
+router.post('/profile-picture', authenticateToken, (req, res, next) => {
+  receive(req, res, (err) => {
+    if (!err) return next();
+    res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+      message: err.code === 'LIMIT_FILE_SIZE' ? 'Image must be 5 MB or smaller.' : err.message,
+    });
+  });
+}, async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  const imageUrl = `/uploads/${req.file.filename}`;
+  let committed = false;
   try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No file uploaded' 
-      });
-    }
-
-    const userId = req.user.user_id;
-    const filename = req.file.filename;
-    const imageUrl = `/uploads/${filename}`;
-
-    // Update user's profile_pic_url in database
-    const updateQuery = `
-      UPDATE users 
-      SET profile_pic_url = $1 
-      WHERE user_id = $2
-    `;
-    
-    await req.db.query(updateQuery, [imageUrl, userId]);
-
-    res.json({
-      success: true,
-      message: 'Profile picture uploaded successfully',
-      imageUrl: imageUrl,
-      filename: filename
+    const bytes = await fs.readFile(req.file.path);
+    const actual = imageType(bytes);
+    const claimed = req.file.mimetype.replace('image/', '').replace('jpg', 'jpeg');
+    if (!actual || actual !== claimed) return res.status(400).json({ message: 'The file does not match a supported image format.' });
+    const previous = await withTransaction(req.db, async (db) => {
+      const { rows: [user] } = await db.query('SELECT profile_pic_url FROM users WHERE user_id=$1 FOR UPDATE', [req.user.user_id]);
+      await db.query('UPDATE users SET profile_pic_url=$1 WHERE user_id=$2', [imageUrl, req.user.user_id]);
+      return user.profile_pic_url;
     });
-
-  } catch (error) {
-    console.error('Profile picture upload error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to upload profile picture',
-      error: error.message
-    });
+    committed = true;
+    await removeProfileFile(previous, req.tenantCode, req.user.user_id);
+    res.json({ success: true, imageUrl, filename: req.file.filename });
+  } finally {
+    if (!committed) await removeProfileFile(imageUrl, req.tenantCode, req.user.user_id);
   }
 });
 
-// Delete profile picture
-router.delete('/profile-picture', auth, async (req, res) => {
-  try {
-    const userId = req.user.user_id;
-
-    // Get current profile picture URL
-    const getQuery = 'SELECT profile_pic_url FROM users WHERE user_id = $1';
-    const result = await req.db.query(getQuery, [userId]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    const currentImageUrl = result.rows[0].profile_pic_url;
-
-    // Update database to remove profile picture
-    const updateQuery = `
-      UPDATE users 
-      SET profile_pic_url = NULL 
-      WHERE user_id = $1
-    `;
-    
-    await req.db.query(updateQuery, [userId]);
-
-    // Delete file from filesystem if it exists
-    if (currentImageUrl) {
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
-      const filePath = path.join(__dirname, '../../uploads', path.basename(currentImageUrl));
-      
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`Deleted profile picture: ${path.basename(currentImageUrl)}`);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Profile picture deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Profile picture deletion error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete profile picture',
-      error: error.message
-    });
-  }
+router.delete('/profile-picture', authenticateToken, async (req, res) => {
+  const previous = await withTransaction(req.db, async (db) => {
+    const { rows: [user] } = await db.query('SELECT profile_pic_url FROM users WHERE user_id=$1 FOR UPDATE', [req.user.user_id]);
+    await db.query('UPDATE users SET profile_pic_url=NULL WHERE user_id=$1', [req.user.user_id]);
+    return user.profile_pic_url;
+  });
+  await removeProfileFile(previous, req.tenantCode, req.user.user_id);
+  res.json({ success: true, message: 'Profile picture deleted successfully' });
 });
 
-// Cleanup orphaned files (staff only — tenant `admin` role removed, MODERNIZATION D2/2.4)
-router.post('/cleanup', auth, async (req, res) => {
-  try {
-    const userQuery = 'SELECT role FROM users WHERE user_id = $1';
-    const userResult = await req.db.query(userQuery, [req.user.user_id]);
-
-    if (!userResult.rows.length || userResult.rows[0].role !== 'staff') {
-      return res.status(403).json({
-        success: false,
-        message: 'Staff access required'
-      });
-    }
-
-    await cleanupOrphanedFiles(req.db);
-
-    res.json({
-      success: true,
-      message: 'Cleanup completed successfully'
-    });
-
-  } catch (error) {
-    console.error('Cleanup error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to cleanup orphaned files',
-      error: error.message
-    });
-  }
+// A tenant cannot determine which shared-directory files other tenants use.
+// Replacement/deletion perform targeted cleanup; bulk cleanup is intentionally disabled.
+router.post('/cleanup', authenticateToken, authorizeRole('staff'), (_req, res) => {
+  res.status(409).json({ message: 'Bulk cleanup is disabled for shared tenant storage. Profile replacement and deletion clean up their own files.' });
 });
-
-export default router; 
+export default router;

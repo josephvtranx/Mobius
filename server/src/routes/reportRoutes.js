@@ -9,20 +9,24 @@ import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 const router = express.Router();
 
 router.get('/note-completion', authenticateToken, authorizeRole('staff'), async (req, res) => {
-  const days = Math.min(Number(req.query.days) || 30, 365);
+  const days = req.query.days === undefined ? 30 : Number(req.query.days);
+  if (!Number.isInteger(days) || days < 1 || days > 365) {
+    return res.status(400).json({ message: 'days must be an integer between 1 and 365' });
+  }
   const since = DateTime.utc().minus({ days }).toISO();
 
   // one scan; noted = a session_notes row with any non-empty template field
   const { rows: pairs } = await req.db.query(
     `SELECT cs.session_id, cs.instructor_id, cs.class_id, sub.name AS subject,
-            u.name AS instructor, sa.student_id,
+            u.name AS instructor, sa.student_id, student.name AS student, cs.starts_at,
             (n.note_id IS NOT NULL AND
-             (n.performance IS NOT NULL OR n.improvements IS NOT NULL OR n.free_notes IS NOT NULL)) AS noted
+             (NULLIF(BTRIM(n.performance), '') IS NOT NULL OR NULLIF(BTRIM(n.improvements), '') IS NOT NULL OR NULLIF(BTRIM(n.free_notes), '') IS NOT NULL)) AS noted
        FROM session_attendance sa
        JOIN class_sessions cs ON cs.session_id = sa.session_id
        JOIN classes c ON c.class_id = cs.class_id
        JOIN subjects sub ON sub.subject_id = c.subject_id
        JOIN users u ON u.user_id = cs.instructor_id
+       JOIN users student ON student.user_id = sa.student_id
        LEFT JOIN session_notes n ON n.session_id = sa.session_id AND n.student_id = sa.student_id
       WHERE cs.ends_at >= $1 AND cs.ends_at <= CURRENT_TIMESTAMP
       ORDER BY cs.ends_at DESC`, [since]);
@@ -47,7 +51,8 @@ router.get('/note-completion', authenticateToken, authorizeRole('staff'), async 
       p => ({ class_id: p.class_id, subject: p.subject, instructor: p.instructor })),
     missing: pairs.filter(p => !p.noted).map(p => ({
       session_id: p.session_id, student_id: p.student_id,
-      instructor_id: p.instructor_id, class_id: p.class_id, subject: p.subject
+      instructor_id: p.instructor_id, instructor: p.instructor, class_id: p.class_id, subject: p.subject,
+      student: p.student, starts_at: p.starts_at
     }))
   });
 });
@@ -64,6 +69,7 @@ router.get('/dashboard', authenticateToken, authorizeRole('staff'), async (req, 
             count(*) FILTER (WHERE cs.status IN ('completed','cancelled_instructor'))::int AS taught
        FROM class_sessions cs JOIN users u ON u.user_id = cs.instructor_id
       WHERE cs.starts_at >= CURRENT_TIMESTAMP - interval '60 days'
+        AND cs.starts_at <= CURRENT_TIMESTAMP
         AND cs.status IN ('completed','cancelled_instructor')
       GROUP BY cs.instructor_id, u.name`);
 
@@ -79,8 +85,8 @@ router.get('/dashboard', authenticateToken, authorizeRole('staff'), async (req, 
             COALESCE(w.balance, 0)::int AS balance,
             date_part('day', CURRENT_TIMESTAMP - t.created_at)::int AS days_open
        FROM staff_tasks t
-       JOIN users u ON u.user_id = t.subject_id::int
-       LEFT JOIN wallets w ON w.student_id = t.subject_id::int
+       JOIN users u ON u.user_id::text = t.subject_id
+       LEFT JOIN wallets w ON w.student_id::text = t.subject_id
       WHERE t.kind = 'delinquent_balance' AND t.status IN ('open','in_progress')
       ORDER BY t.created_at`);
 

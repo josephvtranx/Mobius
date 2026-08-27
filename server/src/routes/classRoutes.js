@@ -207,18 +207,29 @@ router.get('/:id', authenticateToken, async (req, res) => {
   // sequential, not Promise.all: the tenant pool serves one connection at a time (PGlite),
   // so two concurrent req.db.query calls would contend for a single connection.
   const { rows: sessions } = await req.db.query(
-    `SELECT session_id, starts_at, ends_at, status, room_id FROM class_sessions
+    `SELECT session_id, starts_at, ends_at, status, room_id, cancellation_reason FROM class_sessions
       WHERE class_id = $1 ORDER BY starts_at`, [cls.class_id]);
+  // attended/marked mirror the client's canonical attendance-rate derivation
+  // (lib/derive.js): marked = present + absent_unexcused, attended = present.
   const { rows: roster } = await req.db.query(
-    `SELECT e.enrollment_id, e.student_id, e.status, u.name FROM enrollments e
-      JOIN users u ON u.user_id = e.student_id
-      WHERE e.class_id = $1 ORDER BY e.joined_at`, [cls.class_id]);
-  // include the subject display name (cls is SELECT * so it only has
-  // subject_id) — consumers like the instructor "My classes" cards title
-  // on it rather than the raw class_type.
+    `SELECT e.enrollment_id, e.student_id, e.status, e.joined_at, u.name,
+            count(*) FILTER (WHERE sa.status IN ('present','absent_unexcused'))::int AS marked,
+            count(*) FILTER (WHERE sa.status = 'present')::int AS attended
+       FROM enrollments e
+       JOIN users u ON u.user_id = e.student_id
+       LEFT JOIN class_sessions cs ON cs.class_id = e.class_id
+       LEFT JOIN session_attendance sa ON sa.session_id = cs.session_id AND sa.student_id = e.student_id
+      WHERE e.class_id = $1
+      GROUP BY e.enrollment_id, e.student_id, e.status, e.joined_at, u.name
+      ORDER BY e.joined_at`, [cls.class_id]);
+  // include the subject + instructor display names (cls is SELECT * so it
+  // only has ids) — consumers like the instructor "My classes" cards and the
+  // staff class-detail banner title on them rather than the raw ids.
   const { rows: [subj] } = await req.db.query(
     `SELECT name FROM subjects WHERE subject_id = $1`, [cls.subject_id]);
-  res.json({ ...cls, subject: subj?.name ?? null, sessions, roster });
+  const { rows: [instr] } = await req.db.query(
+    `SELECT name FROM users WHERE user_id = $1`, [cls.instructor_id]);
+  res.json({ ...cls, subject: subj?.name ?? null, instructor: instr?.name ?? null, sessions, roster });
 });
 
 // ---------------------------------------------------------------------------

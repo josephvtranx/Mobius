@@ -122,3 +122,7 @@ Student UI/
 CLAUDE.md
 client/CLAUDE.md
 server/CLAUDE.md
+
+# Local tester launcher state (never credentials or academy data)
+.mobius-sandbox/
+Mobius-Test-Kit/

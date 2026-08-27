@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       ...(useProxy && {
         proxy: {
+          '/uploads': { target: devServerOrigin, changeOrigin: true, secure: false },
           // Proxy anything starting with /api to your dev server
           '/api': {
             target: devServerOrigin,

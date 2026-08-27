@@ -240,6 +240,43 @@ describe('ACA-3 — note completion report', () => {
   });
 });
 
+describe('report validation and data quality', () => {
+  it.each(['0', '-1', '366', '1.5', 'abc'])('rejects invalid note window %s', async (days) => {
+    const res = await staff.agent.get(`/api/reports/note-completion?days=${days}`).set(staff.auth);
+    expect(res.status).toBe(400);
+  });
+
+  it('keeps blank notes missing and returns readable session context', async () => {
+    const { rows: [note] } = await env.tenantDb.query(
+      `INSERT INTO session_notes (session_id,student_id,created_by,performance,free_notes)
+       VALUES ($1,4,2,'   ','') RETURNING note_id`, [ses.sDone]);
+    try {
+      const res = await staff.agent.get('/api/reports/note-completion?days=30').set(staff.auth);
+      expect(res.status).toBe(200);
+      const missing = res.body.missing.find(r => r.session_id === ses.sDone && r.student_id === 4);
+      expect(missing.student).toBe('Student B');
+      expect(missing.instructor).toBe('Instructor');
+      expect(missing.starts_at).toMatch(/Z$/);
+      expect(res.body.by_instructor.find(r => r.instructor_id === 2).noted).toBe(1);
+    } finally {
+      await env.tenantDb.query('DELETE FROM session_notes WHERE note_id=$1',[note.note_id]);
+    }
+  });
+
+  it('handles nonnumeric task subjects without crashing dashboard reports', async () => {
+    const { rows: [task] } = await env.tenantDb.query(
+      `INSERT INTO staff_tasks (kind,subject_type,subject_id) VALUES ('delinquent_balance','student','not-an-id') RETURNING task_id`);
+    try {
+      const res = await staff.agent.get('/api/reports/dashboard').set(staff.auth);
+      expect(res.status).toBe(200);
+      expect(res.body.delinquency_queue.some(r=>r.task_id===task.task_id)).toBe(false);
+      expect((await staff.agent.get('/api/reports/dashboard').set(authAs(2))).status).toBe(403);
+    } finally {
+      await env.tenantDb.query('DELETE FROM staff_tasks WHERE task_id=$1',[task.task_id]);
+    }
+  });
+});
+
 describe('notes-pending nudge', () => {
   it('reminds the instructor once per note-missing session, deduped', async () => {
     // +25h: both marked sessions are past the 24h timer; sOld has no attendance

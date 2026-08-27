@@ -51,3 +51,28 @@
   font-weight: 600;
   color: var(--status-success, #2c8a5b);
 }
+
+/* Staff class detail: sessions left, roster + weekly schedule stacked right —
+   integrates the tall sessions card instead of orphaning it full-width below
+   (and the right column no longer strands dead space under the schedule). */
+.cd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "sessions roster"
+    "sessions weekly";
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+.cd-sessions { grid-area: sessions; }
+.cd-roster { grid-area: roster; }
+.cd-weekly { grid-area: weekly; }
+@media (max-width: 940px) {
+  .cd-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-template-areas: "roster" "weekly" "sessions";
+  }
+}

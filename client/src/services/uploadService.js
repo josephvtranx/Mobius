@@ -1,4 +1,5 @@
 import api from './api';
+import { profilePictureUrl } from '../lib/profilePictureUrl';
 
 const uploadService = {
   // Upload profile picture
@@ -35,17 +36,7 @@ const uploadService = {
   },
 
   // Get full URL for profile picture
-  getProfilePictureUrl: (imageUrl) => {
-    if (!imageUrl) return null;
-    
-    // If it's already a full URL, return as is
-    if (imageUrl.startsWith('http')) {
-      return imageUrl;
-    }
-    
-    // Otherwise, prepend the API base URL
-    return `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}${imageUrl}`;
-  }
+  getProfilePictureUrl: (imageUrl) => profilePictureUrl(imageUrl, api.defaults.baseURL),
 };
 
-export default uploadService; 
+export default uploadService;

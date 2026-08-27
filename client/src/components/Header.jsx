@@ -76,12 +76,10 @@ function Header({ variant = 'default' }) {
         <h1 className="shell-title">{title}</h1>
       </div>
 
+      {/* Topbar search removed until it's a real global navigator — a dead
+          input here made every page-level search read as a duplicate. */}
       {!isAuthRoute && (
         <div className="shell-topbar-right">
-          <div className="shell-search">
-            <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-            <input type="text" placeholder="Search" aria-label="Search" />
-          </div>
           <NotificationBell />
         </div>
       )}

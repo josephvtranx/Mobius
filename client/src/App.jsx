@@ -64,6 +64,7 @@ const Overview = lazy(() => import('./pages/operations/Financial-Dashboard/Overv
 const IncomeBreakdown = lazy(() => import('./pages/operations/Financial-Dashboard/Income-Breakdown'));
 const CostBreakdown = lazy(() => import('./pages/operations/Financial-Dashboard/Cost-Breakdown'));
 const Payments = lazy(() => import('./pages/operations/Financial-Dashboard/Payments'));
+const Packages = lazy(() => import('./pages/operations/Financial-Dashboard/Packages'));
 
 import './css/index.css';
 import './css/login.css';
@@ -343,6 +344,14 @@ function AppContent() {
               element={
                 <ProtectedRoute allowedRoles={['staff']}>
                   <Payments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/operations/finance/packages"
+              element={
+                <ProtectedRoute allowedRoles={['staff']}>
+                  <Packages />
                 </ProtectedRoute>
               }
             />

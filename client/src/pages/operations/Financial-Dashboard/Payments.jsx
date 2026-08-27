@@ -12,6 +12,7 @@ import { DateTime } from 'luxon';
 import paymentService from '@/services/paymentService';
 import invoiceService from '@/services/invoiceService';
 import studentService from '@/services/studentService';
+import packageService from '@/services/packageService';
 import '@/css/home.css';
 import '@/css/table.css';
 
@@ -28,9 +29,11 @@ function Payments() {
   const [payments, setPayments] = useState(null);
   const [invoices, setInvoices] = useState(null);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const [payForm, setPayForm] = useState({ student_id: '', amount: '', payment_date: today(), method_id: '', description: '' });
+  const [packages, setPackages] = useState([]);
+  const [payForm, setPayForm] = useState({ student_id: '', amount: '', payment_date: today(), method_id: '', description: '', package_id: '' });
   const [invForm, setInvForm] = useState({ student_id: '', total_amount: '', due_date: '', description: '' });
   const [payingInvoice, setPayingInvoice] = useState(null); // { invoice_id, amount, payment_date, method_id }
 
@@ -43,21 +46,31 @@ function Payments() {
   useEffect(() => {
     studentService.getAllStudents().then(setStudents).catch(() => {});
     paymentService.getMethods().then(setMethods).catch(() => {});
+    packageService.getPackages().then(setPackages).catch(() => {});
     loadAll();
   }, []);
+
+  // Picking a package pre-fills the amount with its price (still editable —
+  // desk discounts happen); the server credits the wallet on save.
+  const pickPackage = (packageId) => {
+    const pkg = packages.find((p) => String(p.package_id) === packageId);
+    setPayForm((f) => ({ ...f, package_id: packageId, amount: pkg ? String(pkg.price) : f.amount }));
+  };
 
   const submitPayment = async (e) => {
     e.preventDefault();
     setError(''); setBusy(true);
     try {
-      await paymentService.recordPayment({
+      const result = await paymentService.recordPayment({
         student_id: Number(payForm.student_id),
         amount: Number(payForm.amount),
         payment_date: payForm.payment_date,
         method_id: payForm.method_id ? Number(payForm.method_id) : null,
         description: payForm.description || null,
+        package_id: payForm.package_id ? Number(payForm.package_id) : undefined,
       });
-      setPayForm({ student_id: '', amount: '', payment_date: today(), method_id: '', description: '' });
+      if (result?.credited) setNotice(`Payment recorded — wallet credited ${result.credited} cr (balance ${result.balance}).`);
+      setPayForm({ student_id: '', amount: '', payment_date: today(), method_id: '', description: '', package_id: '' });
       loadAll();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to record payment');
@@ -121,6 +134,7 @@ function Payments() {
       </header>
 
       {error && <div className="hm-error">{error}</div>}
+      {notice && <div className="hm-card" style={{ color: 'var(--status-success, #2c8a5b)' }}>{notice}</div>}
 
       <div className="hm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <form onSubmit={submitPayment} className="hm-card" style={{ display: 'grid', gap: 10 }}>
@@ -132,6 +146,21 @@ function Payments() {
               {students.map((s) => <option key={s.student_id} value={s.student_id}>{s.name}</option>)}
             </select>
           </label>
+          <label className="hm-kpi-label">Credit package
+            <select style={fieldStyle} value={payForm.package_id} onChange={(e) => pickPackage(e.target.value)}>
+              <option value="">— none (money only) —</option>
+              {packages.map((p) => (
+                <option key={p.package_id} value={p.package_id}>
+                  {p.name} · {p.credits}{p.bonus_credits ? `+${p.bonus_credits}` : ''} cr · ${Number(p.price).toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </label>
+          {payForm.package_id && (
+            <div style={{ fontSize: 12, color: 'var(--status-success, #2c8a5b)' }}>
+              Saving credits the student's wallet automatically.
+            </div>
+          )}
           <label className="hm-kpi-label">Amount
             <input style={fieldStyle} type="number" min="0" step="0.01" required
               value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />

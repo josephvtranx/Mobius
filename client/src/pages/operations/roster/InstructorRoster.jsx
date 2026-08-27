@@ -22,6 +22,7 @@ function InstructorRoster() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState({
     key: 'name',
     direction: 'ascending'
@@ -422,14 +423,20 @@ function InstructorRoster() {
   if (loading) return <div className="rt-page"><div className="hm-loading">Loading instructor roster…</div></div>;
   if (error) return <div className="rt-page"><div className="hm-error">{error}</div></div>;
 
-  const sortedInstructors = getSortedData();
+  const needle = searchQuery.trim().toLowerCase();
+  const sortedInstructors = getSortedData().filter((i) =>
+    !needle || `${i.name ?? ''} ${i.email ?? ''} ${i.phone ?? ''}`.toLowerCase().includes(needle));
 
   return (
     <div className="rt-page">
-      <header className="hm-greeting">
-        <h1>Instructor roster</h1>
-        <p>Teaching staff, rates, hours and class load.</p>
-      </header>
+      {/* No in-page title — the topbar crumb already says "Instructor roster". */}
+      <div className="rt-filterbar">
+        <label className="rt-search">
+          <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+          <input type="text" placeholder="Filter by name or contact…" aria-label="Filter instructors"
+            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+        </label>
+      </div>
 
       <section className="rt-section">
         <div className="rt-grid rt-grid--instructor rt-head">

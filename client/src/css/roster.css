@@ -11,6 +11,21 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* Roster tables read as a cool NEUTRAL surface regardless of the role
+     shell (2026-08-20 direction: no orange wash here — white card, slate
+     ink, gray hairlines, like the reference mock). Overriding the shell
+     tokens in this scope retints every rt-* rule without touching the
+     sidebar/topbar chrome outside the page. */
+  --shell-ink: #24324a;
+  --shell-secondary: #45526b;
+  --shell-muted: #6b7587;
+  --shell-faint: #97a0b1;
+  --shell-border: #e6e9f0;
+  --shell-hairline: #e2e6ec;
+  --shell-wash: #f7f8fb;
+  --shell-card: #ffffff;
+  --shell-tint: #eceff5;
+  --shell-primary: #7d7d7d; /* active chips/buttons: the same gray as the day dots */
 }
 
 .rt-toolbar {
@@ -45,9 +60,11 @@
 
 .rt-section {
   background: var(--shell-card, #fff);
-  border: 1px solid var(--shell-border, #e3eeec);
+  /* No outer table border (2026-08-20 direction) — the card reads as a clean
+     white surface; light gray hairlines between rows do the separating.
+     No overflow:hidden: it would silently disable the sticky header below. */
+  border: none;
   border-radius: 16px;
-  overflow: hidden;
 }
 
 .rt-grid { display: grid; gap: 10px; }
@@ -57,22 +74,34 @@
 
 .rt-head {
   padding: 13px 16px;
-  border-bottom: 1px solid var(--shell-border, #e3eeec);
   background: var(--shell-wash, #f7fbfa);
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--shell-faint, #9db4b0);
+  /* Rides along under the sticky topbar while the rows scroll. */
+  position: sticky;
+  top: 70px;
+  z-index: 5;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid var(--shell-hairline, #e2e6ec);
 }
+/* The header carries the separator while stuck, so the first row drops its
+   top border (otherwise they'd double up at rest). */
+.rt-head + .rt-row,
+.rt-head + div > .rt-row { border-top: none; }
 
 .rt-row {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--shell-hairline, #eef5f3);
+  /* Top border, not bottom: every row sits in its own wrapper div (for the
+     expandable panel), so a bottom border + :last-child reset silently
+     removed the separator from EVERY row. Top borders need no reset — the
+     first one doubles as the line under the header. */
+  border-top: 1px solid var(--shell-hairline, #d2d8e2);
   align-items: center;
   transition: background .15s ease;
 }
-.rt-row:last-child { border-bottom: none; }
 .rt-row--clickable { cursor: pointer; }
 .rt-row--clickable:hover { background: var(--shell-wash, #f7fbfa); }
 
@@ -116,8 +145,10 @@
   font-size: 9px;
   font-weight: 600;
 }
-.rt-day--on { background: var(--shell-secondary, #4a635f); color: #fff; }
-.rt-day--off { background: var(--shell-hairline, #eef5f3); color: var(--shell-faint, #9db4b0); }
+/* Day dots per the reference: pure grays, no blue cast — active a solid
+   mid-gray, inactive a pale gray chip with gray text. */
+.rt-day--on { background: #7d7d7d; color: #fff; }
+.rt-day--off { background: #e4e4e4; color: #8b8b8b; }
 
 .rt-chevron { color: var(--shell-faint, #c9d8d5); font-size: 12px; justify-self: end; }
 
@@ -144,4 +175,98 @@
 
 @media (max-width: 900px) {
   .rt-page { padding: 28px 18px 48px; }
+}
+
+/* Scoped page search — a filter over the already-loaded list, deliberately
+   smaller than a hero search bar (the topbar owns global navigation). */
+.rt-filterbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rt-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--shell-border, #e3eeec);
+  background: #fff;
+  min-width: 230px;
+  margin-left: auto;
+}
+.rt-search i {
+  font-size: 12px;
+  color: var(--shell-faint, #9fb4b0);
+}
+.rt-search input {
+  border: none;
+  outline: none;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: inherit;
+  width: 100%;
+}
+
+/* Expanded row detail panel (Student roster: guardians + GRD-2 link form) —
+   a wash inset with labeled sections instead of bare inline text/inputs. */
+.rt-expand {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px 36px;
+  padding: 16px 20px 18px;
+  background: var(--shell-wash, #f7f8fb);
+  border-top: 1px solid var(--shell-hairline, #d2d8e2);
+}
+.rt-expand-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--shell-faint, #97a0b1);
+  margin-bottom: 8px;
+}
+.rt-person { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.rt-person-name { font-size: 13px; font-weight: 600; color: var(--shell-ink, #24324a); }
+.rt-person-sub { font-size: 11.5px; color: var(--shell-muted, #6b7587); margin-top: 1px; }
+.rt-input {
+  padding: 8px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--shell-border, #e6e9f0);
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--shell-ink, #24324a);
+}
+.rt-input:focus-visible { outline: 2px solid var(--shell-primary, #3d4a63); outline-offset: 1px; }
+.rt-btn-primary {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 9px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  /* The rail's gold (#ffc06e, .app-shell--orange --shell-rail-gradient) as
+     the primary action color, with the rail's dark-brown glyph ink — white
+     text would wash out on a gold this light. */
+  background: #ffc06e;
+  color: #6b4413;
+}
+.rt-btn-primary:hover:not(:disabled) { background: #f5b258; }
+.rt-btn-primary:disabled { opacity: .45; cursor: default; }
+
+
+/* Wide wizard modal (Add subject): the shared .modal caps at 560px — scoped
+   wide variant; fixed height, the step body scrolls inside. */
+.modal:has(.asw-root) { max-width: min(92vw, 780px); }
+.asw-root {
+  width: 100%;
+  height: min(80vh, 640px);
+  display: flex;
+  flex-direction: column;
 }

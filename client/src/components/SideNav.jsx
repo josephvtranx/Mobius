@@ -135,9 +135,12 @@ function SideNav() {
               <div key={item.path} className="shell-menu-group">
                 {item.children ? (
                   <>
+                    {/* Parent rows never take the active pill — the chevron and
+                        the active child's pill carry the state (highlighting the
+                        parent bolds the label and can wrap it oddly). */}
                     <button
                       type="button"
-                      className={`shell-menu-item ${isItemActive(item) ? 'active' : ''}`}
+                      className="shell-menu-item"
                       aria-expanded={openChildren === item.path}
                       onClick={() =>
                         setOpenChildren((prev) => (prev === item.path ? null : item.path))

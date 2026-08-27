@@ -23,7 +23,9 @@
     "env:setup": "node setup-dev.cjs",
     "install:all": "npm install && npm --prefix server install && npm --prefix client install",
     "test": "npm --prefix server test",
-    "lint": "eslint . --ext .js,.jsx"
+    "lint": "eslint . --ext .js,.jsx",
+    "sandbox": "bash scripts/sandbox/bootstrap.sh",
+    "test:sandbox": "node --test scripts/sandbox/test/*.test.mjs"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

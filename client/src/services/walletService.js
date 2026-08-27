@@ -4,6 +4,17 @@
 import api from './api';
 
 const walletService = {
+    // Staff console list: every student with balance + last ledger activity.
+    getAllWallets: async () => {
+        try {
+            const response = await api.get('/wallets');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching wallets:', error);
+            throw error;
+        }
+    },
+
     getWallet: async (studentId) => {
         try {
             const response = await api.get(`/wallets/${studentId}`);

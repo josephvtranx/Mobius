@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 
 let client; // lazy: dotenv may run after this module is evaluated
 function resend() {
+  if (process.env.MOBIUS_SANDBOX === '1') return null;
   if (client === undefined) {
     client = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
   }

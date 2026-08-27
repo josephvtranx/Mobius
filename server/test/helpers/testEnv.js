@@ -34,7 +34,7 @@ export const TEST_CODE = 'TEST01';
 export const SEED_USER = {
   email: 'staff@test.com',
   password: 'Password123!',
-  name: 'Seed Staff',
+  name: 'Joseph Tran',
   role: 'staff'
 };
 

@@ -26,6 +26,70 @@ async function loadStudent(db, id) {
 }
 
 // ---------------------------------------------------------------------------
+// POST / — staff creates a student (add-student wizard step 1). Guardian
+// linking is a SEPARATE call to the existing GRD-2 route below, so the
+// guardian model has exactly one implementation. Student email is optional:
+// the design sends credentials to the GUARDIAN, and minors often have no
+// email — without one the student gets a synthesized non-routable address
+// (users.email is NOT NULL UNIQUE) and no registry login until staff set a
+// real email later. With a real email, the student gets a temp-password
+// login exactly like signup's guardian path.
+// ---------------------------------------------------------------------------
+router.post('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const { name, email, grade, school, date_of_birth, gender } = req.body;
+  if (!name?.trim()) return res.status(400).json({ message: 'name is required' });
+  if (grade != null && !Number.isInteger(Number(grade))) {
+    return res.status(400).json({ message: 'grade must be a number' });
+  }
+
+  const realEmail = email?.trim() || null;
+  if (realEmail) {
+    const { rows: taken } = await req.db.query(`SELECT 1 FROM users WHERE email = $1`, [realEmail]);
+    if (taken.length || await directoryLookup(realEmail)) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+  }
+
+  const tempHash = await hashPassword(randomBytes(12).toString('base64url'));
+  const directoryEmails = [];
+  try {
+    const student = await withTransaction(req.db, async (client) => {
+      const placeholder = `student.${randomBytes(6).toString('hex')}@placeholder.invalid`;
+      const { rows: [user] } = await client.query(
+        `INSERT INTO users (password_hash, name, email, phone, role, is_active)
+         VALUES ($1,$2,$3,$4,'student',true) RETURNING user_id, name, email`,
+        [tempHash, name.trim(), realEmail ?? placeholder, req.body.phone ?? null]);
+
+      // Adulthood mirror of signup (KR adulthood = 19); staff-editable later.
+      let isAdult = false;
+      if (date_of_birth) {
+        const { rows: [ageRow] } = await client.query(
+          `SELECT date_part('year', age($1::date))::int AS years`, [date_of_birth]);
+        isAdult = ageRow.years >= 19;
+      }
+      await client.query(
+        `INSERT INTO students (student_id, status, date_of_birth, grade, gender, school, can_purchase)
+         VALUES ($1,'enrolled',$2,$3,$4,$5,$6)`,
+        [user.user_id, date_of_birth ?? null, grade ?? null, gender ?? null, school ?? null, isAdult]);
+
+      if (realEmail) {
+        await client.query(
+          `INSERT INTO notification_log (event_type, recipient_user_id, channel, subject_type, subject_id)
+           VALUES ('credentials_issued', $1, 'in_app', 'user', $2)`,
+          [user.user_id, String(user.user_id)]);
+        await directoryRegister(realEmail, tempHash, req.tenantCode);
+        directoryEmails.push(realEmail);
+      }
+      return user;
+    });
+    res.status(201).json({ student_id: student.user_id, name: student.name, email: realEmail });
+  } catch (err) {
+    for (const e of directoryEmails) await directoryRemove(e).catch(() => {});
+    throw err;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GET /:id/guardians — staff, the student, or a linked guardian
 // ---------------------------------------------------------------------------
 router.get('/:id/guardians', authenticateToken, async (req, res) => {

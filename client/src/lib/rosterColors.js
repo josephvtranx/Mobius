@@ -3,12 +3,14 @@
 // design's per-row tint palette (Mobius Staff.dc.html "## Roster"). Real
 // status values come from the API; only the color mapping is presentational.
 
+// Cool pastel set (2026-08-20 direction: mint / yellow / blue / lavender /
+// pink, like the reference roster mock — no orange in the tint rotation).
 const TINTS = [
-  { bg: '#fdeedd', fg: '#c26a24' },
-  { bg: '#eef1fb', fg: '#5b6bc0' },
+  { bg: '#e0f2ee', fg: '#25887a' },
+  { bg: '#fdf3cf', fg: '#9a7b16' },
+  { bg: '#e3effb', fg: '#3d7cc0' },
+  { bg: '#ece7fa', fg: '#7a5fc7' },
   { bg: '#fbeef1', fg: '#b95a76' },
-  { bg: '#e9f5ee', fg: '#2c8a5b' },
-  { bg: '#efe6fa', fg: '#8a4fc9' },
 ];
 
 // Deterministic per-name so a given person's avatar color doesn't shuffle
@@ -24,7 +26,7 @@ const TONE = {
   warning: { bg: '#fff4e0', fg: '#9c6a1d' },
   error: { bg: '#fdf1ef', fg: '#9c3a31' },
   info: { bg: '#eef1fb', fg: '#5b6bc0' },
-  neutral: { bg: '#f3ede6', fg: '#a08d7a' },
+  neutral: { bg: '#eef0f4', fg: '#7b8494' },
 };
 
 const STATUS_TONE_MAP = {

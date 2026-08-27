@@ -55,11 +55,11 @@ function ClassRoster() {
 
   return (
     <div className="rt-page">
+      {/* No in-page title — the topbar crumb already says "Class roster". */}
       <div className="rt-toolbar">
-        <header className="hm-greeting" style={{ marginRight: 'auto' }}>
-          <h1>Class roster</h1>
-          <p>Subject groups and the subjects classes are built from.</p>
-        </header>
+        <p style={{ margin: 0, marginRight: 'auto', fontSize: 13.5, color: 'var(--shell-muted, #64827e)' }}>
+          Subject groups and the subjects classes are built from.
+        </p>
         <button type="button" className="hm-btn primary" onClick={() => setShowGroupModal(true)}>
           <i className="fa-solid fa-plus" style={{ marginRight: 8 }}></i>New subject group
         </button>

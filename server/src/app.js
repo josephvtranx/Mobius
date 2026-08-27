@@ -1,6 +1,11 @@
 // Express app wiring, extracted from index.js so tests can import the app
 // without binding a port. index.js remains the runtime entrypoint.
 import express from 'express';
+// Route async errors to the error-handler middleware instead of crashing the
+// process — without this, ANY uncaught throw inside an async route handler is
+// an unhandled rejection and Node kills the server (observed live: a payment
+// POST with a malformed method_id took the whole process down).
+import 'express-async-errors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -18,6 +23,7 @@ import subjectRoutes from './routes/subjectRoutes.js';
 import subjectGroupsRouter from './routes/subjectGroups.js';
 import staffRoutes from './routes/staffRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import { uploadDir } from './middleware/upload.js';
 import registerInstitutionRouter from './routes/registerInstitution.js';
 import classRoutes from './routes/classRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
@@ -31,6 +37,8 @@ import reportRoutes from './routes/reportRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import payrollRoutes from './routes/payrollRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import packageRoutes from './routes/packageRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
 import staffTaskRoutes from './routes/staffTaskRoutes.js';
@@ -46,7 +54,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables
-dotenv.config();
+if (process.env.MOBIUS_SANDBOX !== '1') dotenv.config();
 
 const app = express();
 
@@ -73,12 +81,26 @@ const productionOrigins = [
   process.env.CORS_ORIGIN
 ].filter(Boolean);
 
-const allowedOrigins = isDevelopment ? developmentOrigins : productionOrigins;
+// The PGlite sandbox runs with NODE_ENV=test and needs the same loopback
+// origins as development. Keep the production allowlist unchanged.
+const allowedOrigins = (isDevelopment || process.env.NODE_ENV === 'test')
+  ? developmentOrigins : productionOrigins;
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests like server-side health checks or direct browser hits (no Origin header)
     if (!origin) return callback(null, true);
+
+    // Teammate sandboxes use OS-assigned ports. Accept only local browser
+    // origins here; do not broaden the production/development allowlists.
+    if (process.env.MOBIUS_SANDBOX === '1') {
+      try {
+        const url = new URL(origin);
+        if (url.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(url.hostname)
+            && url.origin === origin) return callback(null, true);
+      } catch { /* malformed origin */ }
+      return callback(new Error('Not allowed by CORS'));
+    }
 
     // Fast path: exact match
     if (allowedOrigins.includes(origin)) return callback(null, true);
@@ -145,17 +167,13 @@ app.use(async (req, _res, next) => {
   next();
 });
 
-// Serve static files from the uploads directory. NOTE: this must match
-// where multer actually writes — middleware/upload.js saves to
-// server/uploads (its own __dirname + '../../uploads'), i.e. one level
-// ABOVE src. This route's __dirname is server/src, so it needs '..'
-// to reach server/uploads. Without it every uploaded profile picture 404s.
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// Serve the same directory multer writes to; sandbox workers use disposable uploads.
+app.use('/uploads', express.static(uploadDir));
 
 // Logging middleware
 app.use((req, res, next) => {
     console.log(`${DateTime.utc().toISO()} - ${req.method} ${req.url}`);
-    if (req.method !== 'GET') {
+    if (req.method !== 'GET' && process.env.MOBIUS_SANDBOX !== '1') {
         console.log('Request body:', req.body);
     }
     next();
@@ -205,6 +223,8 @@ app.use('/api/reports', reportRoutes);                   // staff reports (spec 
 app.use('/api/rooms', roomRoutes);                       // room directory — the rooms table predates this API
 app.use('/api/payroll', payrollRoutes);                  // payroll/time_logs predate this API too
 app.use('/api/payments', paymentRoutes);                 // payments/payment_methods predate this API too
+app.use('/api/packages', packageRoutes);                 // credit packages: academy-defined credit bundles (2026-08-20)
+app.use('/api/settings', settingsRoutes);                // tenant settings read (staff) — knobs were server-only before
 app.use('/api/invoices', invoiceRoutes);                 // invoices/invoice_payments predate this API too
 app.use('/api/messages', messageRoutes);                 // real two-way messaging — new schema, no v1 precedent
 app.use('/api/staff-tasks', staffTaskRoutes);            // staff task inbox — generic list/resolve over staff_tasks

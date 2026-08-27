@@ -1,6 +1,6 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
-dotenv.config();
+if (process.env.MOBIUS_SANDBOX !== '1') dotenv.config();
 
 // PGSSLMODE=disable is set by the test harness (local PGlite socket, no TLS);
 // production (Azure) keeps the permissive-SSL default.

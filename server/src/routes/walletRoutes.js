@@ -16,6 +16,24 @@ const router = express.Router();
 const MANUAL_ENTRY_TYPES = new Set(['purchase', 'bonus', 'adjustment']);
 
 // ---------------------------------------------------------------------------
+// GET / — staff wallet console: every active student with balance and last
+// ledger activity in ONE query (the old UI was a pick-a-student dropdown
+// because only the per-student view existed). Committed/available math stays
+// on the per-student view — it's a lateral-join per enrollment and doesn't
+// belong in a 70-row list.
+// ---------------------------------------------------------------------------
+router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const { rows } = await req.db.query(
+    `SELECT s.student_id, u.name, COALESCE(w.balance, 0)::int AS balance,
+            (SELECT max(l.created_at) FROM credit_ledger l WHERE l.wallet_id = w.wallet_id) AS last_entry_at
+       FROM students s
+       JOIN users u ON u.user_id = s.student_id AND u.is_active = true
+       LEFT JOIN wallets w ON w.student_id = s.student_id
+      ORDER BY u.name`);
+  res.json(rows);
+});
+
+// ---------------------------------------------------------------------------
 // GET /:studentId — balance, committed (display-only, spec 04 §Committed),
 // available, recent ledger. Sequential pool reads; snapshot skew is fine for
 // a dashboard view, and "no wallet" stays balance 0 without creating a row

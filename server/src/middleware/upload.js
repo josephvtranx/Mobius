@@ -1,90 +1,48 @@
 import multer from 'multer';
-import { DateTime } from 'luxon';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// A sandbox must supply its own disposable directory; production retains the existing path.
+if (process.env.MOBIUS_SANDBOX === '1' && !process.env.MOBIUS_SANDBOX_UPLOAD_DIR) {
+  throw new Error('Sandbox upload directory is required');
+}
+export const uploadDir = process.env.MOBIUS_SANDBOX === '1'
+  ? path.resolve(process.env.MOBIUS_SANDBOX_UPLOAD_DIR)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../uploads');
+fs.mkdirSync(uploadDir, { recursive: true });
+const extensions = { 'image/jpeg': '.jpg', 'image/jpg': '.jpg', 'image/png': '.png', 'image/gif': '.gif' };
+const prefix = (tenantCode, userId) => `profile-${Buffer.from(tenantCode).toString('hex')}-${userId}-`;
 
-// Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Only remove a file belonging to the authenticated tenant/user. Unknown
+// historical names are retained rather than risking another tenant's media.
+export async function removeProfileFile(imageUrl, tenantCode, userId) {
+  if (!imageUrl?.startsWith('/uploads/') || !tenantCode) return;
+  const filename = imageUrl.slice('/uploads/'.length);
+  if (path.basename(filename) !== filename) return;
+  const current = filename.startsWith(prefix(tenantCode, userId));
+  const legacyPrefix = `${tenantCode}-profile-`;
+  const legacy = filename.startsWith(legacyPrefix)
+    && /^\d+-\d+\.(?:jpg|jpeg|png|gif)$/i.test(filename.slice(legacyPrefix.length));
+  if (!current && !legacy) return;
+  await fs.promises.unlink(path.join(uploadDir, filename)).catch((err) => {
+    if (err.code !== 'ENOENT') console.error('Profile file cleanup failed:', err.code);
+  });
 }
 
-// Configure storage with tenant-aware organization
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Optional: Create tenant-specific subdirectories
-    // const tenantDir = req.tenantCode ?
-    //   path.join(uploadDir, req.tenantCode) : uploadDir;
-    // if (!fs.existsSync(tenantDir)) {
-    //   fs.mkdirSync(tenantDir, { recursive: true });
-    // }
-    // cb(null, tenantDir);
-    
-    // For now, keep shared directory (simpler)
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename with tenant prefix for better organization
-    const tenantPrefix = req.tenantCode ? `${req.tenantCode}-` : ''; // D7: from the JWT claim, not a session
-    const uniqueSuffix = DateTime.now().toMillis() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${tenantPrefix}profile-${uniqueSuffix}${ext}`);
-  }
+  destination: uploadDir,
+  filename: (req, file, cb) => cb(null, `${prefix(req.tenantCode, req.user.user_id)}${randomUUID()}${extensions[file.mimetype]}`),
 });
-
-// File filter for validation
-const fileFilter = (req, file, cb) => {
-  // Check file type
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-  
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Invalid file type. Only JPEG, PNG, and GIF images are allowed.'), false);
-  }
-};
-
-// Configure multer
 const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 1 // Only allow 1 file
-  }
+  storage,
+  fileFilter: (_req, file, cb) => {
+    if (extensions[file.mimetype]) return cb(null, true);
+    const err = new Error('Only JPEG, PNG, and GIF images are allowed.');
+    err.status = 400;
+    cb(err);
+  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
 });
-
-// Utility function to clean up orphaned files
-export const cleanupOrphanedFiles = async (db) => {
-  try {
-    // Get all profile picture URLs from database
-    const result = await db.query('SELECT profile_pic_url FROM users WHERE profile_pic_url IS NOT NULL');
-    const dbFiles = result.rows.map(row => row.profile_pic_url);
-    
-    // Get all files in uploads directory
-    const files = fs.readdirSync(uploadDir);
-    
-    // Find orphaned files (files not referenced in database)
-    const orphanedFiles = files.filter(file => {
-      const filePath = `/uploads/${file}`;
-      return !dbFiles.includes(filePath);
-    });
-    
-    // Delete orphaned files
-    orphanedFiles.forEach(file => {
-      const filePath = path.join(uploadDir, file);
-      fs.unlinkSync(filePath);
-      console.log(`Deleted orphaned file: ${file}`);
-    });
-    
-    console.log(`Cleaned up ${orphanedFiles.length} orphaned files`);
-  } catch (error) {
-    console.error('Error cleaning up orphaned files:', error);
-  }
-};
-
-export default upload; 
+export default upload;
