@@ -9,15 +9,15 @@
    cd Mobius
    ```
 
-2. Unzip the **Mobius-Test-Kit.zip** Joseph sent you. Put the resulting **Mobius-Test-Kit** folder inside **Mobius**, next to `client` and `server`.
-
-3. Run this command, wait for **Ready**, and open the local link printed in the terminal:
+2. Run the launcher from the repository root:
 
    ```bash
-   bash Mobius-Test-Kit/start.sh
+   bash "Start Mobius.command"
    ```
 
-The first run installs everything automatically and also opens the browser. Accounts and scenarios are on the welcome page; all demo passwords are **Password123!**. No Node.js, PostgreSQL, Docker, or `.env` setup required. If the testing setup is already included in your checkout, `bash "Start Mobius.command"` also works without the kit.
+3. Wait for **Ready** and the browser to open. If it does not open, use the local link printed in the terminal.
+
+The first run installs everything automatically. Accounts and scenarios are on the welcome page; all demo passwords are **Password123!**. No separate test-kit ZIP, Node.js, PostgreSQL, Docker, or `.env` setup required.
 
 Keep the Terminal window open while testing. **Closing it or pressing Control+C discards your academy and uploaded photos.** Start the launcher again for fresh data. Closing only the browser tab does not stop it.
 
@@ -51,6 +51,7 @@ The generated academy uses relative dates and repeatable synthetic names; UUIDs,
 ## Troubleshooting
 
 - **Internet/install failure:** reconnect and launch again. A failed install is retried; a successful install is cached until manifests, lockfiles or runtime change. Use a trusted network that can access nodejs.org and registry.npmjs.org.
+- **Permission error mentioning `~/.npm`:** close the launcher, run `git pull --ff-only` from the repo root, then run `bash "Start Mobius.command"` again. The current launcher uses `.mobius-sandbox/npm-cache` instead of your existing npm cache. Do not use `sudo`, `--force`, or delete your personal cache.
 - **Already running:** use the existing Terminal window or close it before relaunching. The launcher never kills someone else’s server.
 - **Address changed:** ports are assigned automatically on each launch. Use the newly printed/opened URL instead of an old bookmark.
 - **Browser did not open:** copy the local URL printed in Terminal.
@@ -80,7 +81,7 @@ Reproduces after a fresh launch?
 - Launcher sources: `scripts/sandbox/`; frontend runner: `client/scripts/sandbox-server.mjs`; API worker/seeds: `server/scripts/dev/`.
 - Update runtime version and both archive hashes together in `bootstrap.sh`, verifying them against the official release checksums. Never disable verification.
 - Sandbox `.env` loading is disabled; child process environment is allowlisted; API/DB listeners bind only to 127.0.0.1. Upload directories and signing secrets are unique per run. Welcome routes are installed only by the sandbox Vite runner.
-- `.mobius-sandbox/` contains a process lock, dependency fingerprint, latest log and active session metadata. It is gitignored and contains no production credentials.
+- `.mobius-sandbox/` contains a private npm download/log cache, process lock, dependency fingerprint, latest log and active session metadata. It is gitignored and contains no production credentials. Package downloads remain cached between sessions; academy data and photos do not.
 - For a separate ZIP handoff, run `python3 scripts/sandbox/package-kit.py`. Share `dist/Mobius-Test-Kit.zip`; it contains a three-step guide, installer, checked application patch, and file manifest. It includes unpublished application changes needed to test the current version. It excludes environment files, uploads, dependencies and design bundles; it leaves your actual Git staging area untouched.
 - The kit targets the current local HEAD commit. Verify that it matches the GitHub clone revision before sharing; regenerate and retest the kit when the base or application changes. The installer rejects a different base and conflicting edits and is safe to rerun. It never resets, commits or pushes a tester's work.
 - Alternatively publish/commit the complete launcher and application changes; teammates can then run the root launcher directly without a kit.

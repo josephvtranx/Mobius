@@ -5,7 +5,7 @@ import { createWriteStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { cleanEnvironment, dependencyFingerprint, healthy, waitForReady } from './runtime.mjs';
+import { cleanEnvironment, dependencyFingerprint, npmInstallArgs, healthy, waitForReady } from './runtime.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const state = path.join(root, '.mobius-sandbox');
@@ -84,11 +84,10 @@ async function install() {
   const npm = path.resolve(path.dirname(process.execPath), '../lib/node_modules/npm/bin/npm-cli.js');
   for (const workspace of ['', 'server', 'client']) {
     console.log(`Installing ${workspace || 'shared'} dependencies… (first launch may take several minutes)`);
-    const child = childProcess([npm, 'ci', '--include=dev', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org',
-      `--userconfig=${path.join(state,'npm-user.ini')}`, `--globalconfig=${path.join(state,'npm-global.ini')}`], { cwd: path.join(root, workspace), env: { ...env, NODE_ENV: 'development' } });
+    const child = childProcess([npm, ...npmInstallArgs(state)], { cwd: path.join(root, workspace), env: { ...env, NODE_ENV: 'development' } });
     await new Promise((resolve,reject) => {
       child.once('error', reject);
-      child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Installing ${workspace || 'shared'} dependencies failed. Check internet access and the setup log.`)));
+      child.once('exit', code => code === 0 ? resolve() : reject(new Error(`Installing ${workspace || 'shared'} dependencies failed. See the setup log for the npm error.`)));
     });
   }
   await writeFile(path.join(state, 'dependencies'), fingerprint);

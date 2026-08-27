@@ -19,6 +19,14 @@ export async function dependencyFingerprint(root) {
   return hash.digest('hex');
 }
 
+export function npmInstallArgs(state) {
+  return ['ci', '--include=dev', '--no-audit', '--no-fund', '--registry=https://registry.npmjs.org',
+    // A tester's ~/.npm may contain files owned by another user. Keep all
+    // package downloads and npm logs in the sandbox's own writable cache.
+    `--cache=${path.join(state, 'npm-cache')}`,
+    `--userconfig=${path.join(state, 'npm-user.ini')}`, `--globalconfig=${path.join(state, 'npm-global.ini')}`];
+}
+
 export function waitForReady(child, timeoutMs = 120000) {
   return new Promise((resolve, reject) => {
     const finish = (error, value) => {
