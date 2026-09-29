@@ -154,9 +154,10 @@ await db.exec(`
     (3,'Physics'), (3,'Chemistry'), (3,'Biology'),
     (4,'SAT Math'), (4,'SAT Verbal');
   INSERT INTO rooms (name, capacity) VALUES
-    ('Room A', 4), ('Room B', 10), ('Room C', 8), ('Lab 1', 6), ('Seminar Hall', 16);
+    ('Room A', 4), ('Room B', 10), ('Room C', 8), ('Lab 1', 6), ('Seminar Hall', 16),
+    ('Room D', 12), ('Room E', 14), ('Quiet Room 1', 2), ('Quiet Room 2', 2), ('Science Lab', 20);
 `);
-const N_SUBJECTS = 11, N_ROOMS = 5;
+const N_SUBJECTS = 11, N_ROOMS = 10;
 
 // Each instructor teaches 2–4 subjects; Kim keeps Algebra/Geometry/Writing.
 const specialtyRows = [[2, 1], [2, 2], [2, 4]];
@@ -211,7 +212,7 @@ addClass({ type: 'group', subjectId: 1, iid: 2, roomId: 2, limit: 6, cost: 5,
   slots: [{ day: 'tue', hour: 16 }, { day: 'thu', hour: 16 }] });
 
 // ~19 more group classes + 5 one-on-ones, spread across instructors.
-const ROOM_CAP = { 1: 4, 2: 10, 3: 8, 4: 6, 5: 16 };
+const ROOM_CAP = { 1: 4, 2: 10, 3: 8, 4: 6, 5: 16, 6: 12, 7: 14, 8: 2, 9: 2, 10: 20 };
 for (let i = 0; i < 19; i++) {
   const iid = instructorIds[i % instructorIds.length];
   const subjectId = pick(specialtiesOf.get(iid));

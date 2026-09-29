@@ -18,9 +18,22 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
     if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
+  useEffect(() => {
+    if (!success) return undefined;
+    const timeout = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(timeout);
+  }, [success]);
+
   // Get current profile picture URL
   const currentProfilePic = currentUser?.profile_pic_url;
   const displayImageUrl = previewUrl || (currentProfilePic ? uploadService.getProfilePictureUrl(currentProfilePic) : null);
+  const initials = String(currentUser?.name || '')
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || '?';
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -74,7 +87,7 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
 
       const result = await uploadService.uploadProfilePicture(fileToUpload);
       
-      setSuccess('Profile picture uploaded successfully!');
+      setSuccess('Photo updated.');
       setSelectedFile(null);
       setPreviewUrl(null);
       
@@ -115,7 +128,7 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
     try {
       await uploadService.deleteProfilePicture();
       
-      setSuccess('Profile picture deleted successfully!');
+      setSuccess('Photo removed.');
       setPreviewUrl(null);
 
       // Call parent callback if provided
@@ -178,47 +191,66 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
         />
       )}
       
-      {/* Current Profile Picture */}
-      {displayImageUrl && (
+      <div className="profile-picture-main">
+        {/* Current Profile Picture */}
         <div className="current-picture">
-          <img 
-            src={displayImageUrl} 
-            alt="Profile" 
-            className="profile-preview"
-          />
+          {displayImageUrl ? (
+            <img
+              src={displayImageUrl}
+              alt="Profile"
+              className="profile-preview"
+            />
+          ) : (
+            <div className="profile-preview profile-preview--initials" aria-label="No profile photo">
+              {initials}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* File Input */}
-      <div className="file-input-container">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif"
-          disabled={isUploading}
-          onChange={handleFileSelect}
-          className="file-input"
-          id="profile-picture-input"
-        />
-        <label htmlFor="profile-picture-input" className="file-input-label">
-          {selectedFile ? 'Change File' : 'Choose File'}
-        </label>
-        {selectedFile && (
-          <span className="selected-file-name">
-            {selectedFile.name}
-          </span>
-        )}
+        <div className="profile-picture-actions">
+          {/* File Input */}
+          <div className="file-input-container">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif"
+              disabled={isUploading}
+              onChange={handleFileSelect}
+              className="file-input"
+              id="profile-picture-input"
+            />
+            <label htmlFor="profile-picture-input" className="file-input-label">
+              <i className="fa-solid fa-camera" />
+              {selectedFile ? 'Choose another' : currentProfilePic ? 'Change photo' : 'Add photo'}
+            </label>
+          </div>
+
+          {currentProfilePic && !selectedFile && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isUploading}
+              className="profile-delete-button"
+            >
+              <i className="fa-regular fa-trash-can" />
+              {isUploading ? 'Removing…' : 'Remove photo'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {selectedFile && <span className="selected-file-name">{selectedFile.name}</span>}
 
       {/* Error and Success Messages */}
       {error && <div className="hm-error">{error}</div>}
-      {success && <p style={{ color: 'var(--status-success)', fontSize: 13 }}>{success}</p>}
+      {success && <p className="profile-upload-status" role="status"><i className="fa-solid fa-check" />{success}</p>}
 
       {/* Action Buttons */}
       <div className="hm-actions">
         {selectedFile && (
           <>
             <button
+              type="button"
               onClick={handleUpload}
               disabled={isUploading}
               className="hm-btn primary"
@@ -226,6 +258,7 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
               {isUploading ? 'Uploading...' : 'Upload'}
             </button>
             <button
+              type="button"
               onClick={handleCancel}
               disabled={isUploading}
               className="hm-btn"
@@ -234,31 +267,15 @@ const ProfilePictureUpload = ({ onUploadSuccess, currentUser }) => {
             </button>
           </>
         )}
-
-        {currentProfilePic && !selectedFile && (
-          <button
-            onClick={handleDelete}
-            disabled={isUploading}
-            className="hm-btn"
-            style={{ color: 'var(--status-error)', borderColor: 'var(--status-error)' }}
-          >
-            {isUploading ? 'Deleting...' : 'Delete current picture'}
-          </button>
-        )}
       </div>
 
       {/* File Requirements */}
       <div className="file-requirements">
-        <p><strong>Requirements:</strong></p>
-        <ul>
-          <li>File types: JPEG, PNG, GIF</li>
-          <li>Maximum size: 5MB</li>
-          <li>Images will be cropped to a perfect circle</li>
-          <li>You can zoom and adjust the crop area</li>
-        </ul>
+        <i className="fa-solid fa-circle-info" />
+        <p>JPG, PNG or GIF up to 5 MB. You’ll crop the image before saving.</p>
       </div>
     </div>
   );
 };
 
-export default ProfilePictureUpload; 
+export default ProfilePictureUpload;

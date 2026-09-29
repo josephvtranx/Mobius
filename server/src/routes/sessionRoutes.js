@@ -47,6 +47,101 @@ const hasNoteContent = (note) =>
   note != null && typeof note === 'object' && NOTE_FIELDS.some(f => note[f]);
 
 // ---------------------------------------------------------------------------
+// Staff attendance log — read-only oversight of classes that have ended.
+// Instructors own the marking workflow; staff see the resulting record,
+// including who recorded it and whether the auto-completer supplied it.
+// ---------------------------------------------------------------------------
+router.get('/attendance-log', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const { from, to } = req.query;
+  try {
+    assertUtcIso(from);
+    assertUtcIso(to);
+  } catch {
+    return res.status(400).json({ message: 'from and to must be UTC ISO strings with Z suffix' });
+  }
+  if (DateTime.fromISO(to) <= DateTime.fromISO(from)) {
+    return res.status(400).json({ message: 'to must be after from' });
+  }
+
+  const { rows } = await req.db.query(
+    `WITH attendance_totals AS (
+       SELECT session_id,
+              count(*)::int AS recorded_count,
+              count(*) FILTER (WHERE status = 'present')::int AS present_count,
+              count(*) FILTER (WHERE status = 'absent_unexcused')::int AS absent_count,
+              count(*) FILTER (WHERE status = 'absent_excused')::int AS excused_count,
+              count(*) FILTER (WHERE status IN ('cancelled_in_window','cancelled_late','instructor_cancelled'))::int AS cancelled_count,
+              bool_and(auto_completed) AS auto_completed,
+              max(marked_at) AS last_marked_at
+         FROM session_attendance
+        GROUP BY session_id
+     ), markers AS (
+       SELECT sa.session_id, string_agg(DISTINCT u.name, ', ') AS recorded_by
+         FROM session_attendance sa
+         JOIN users u ON u.user_id = sa.marked_by
+        GROUP BY sa.session_id
+     ), roster_totals AS (
+       SELECT class_id, count(*) FILTER (WHERE status = 'active')::int AS enrolled_count
+         FROM enrollments
+        GROUP BY class_id
+     )
+     SELECT cs.session_id, cs.class_id, cs.starts_at, cs.ends_at, cs.status,
+            sub.name AS subject, instructor.name AS instructor, room.name AS room,
+            COALESCE(rt.enrolled_count, 0)::int AS enrolled_count,
+            COALESCE(at.recorded_count, 0)::int AS recorded_count,
+            COALESCE(at.present_count, 0)::int AS present_count,
+            COALESCE(at.absent_count, 0)::int AS absent_count,
+            COALESCE(at.excused_count, 0)::int AS excused_count,
+            COALESCE(at.cancelled_count, 0)::int AS cancelled_count,
+            COALESCE(at.auto_completed, false) AS auto_completed,
+            at.last_marked_at, markers.recorded_by
+       FROM class_sessions cs
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       JOIN users instructor ON instructor.user_id = cs.instructor_id
+       LEFT JOIN rooms room ON room.room_id = cs.room_id
+       LEFT JOIN attendance_totals at ON at.session_id = cs.session_id
+       LEFT JOIN markers ON markers.session_id = cs.session_id
+       LEFT JOIN roster_totals rt ON rt.class_id = cs.class_id
+      WHERE cs.starts_at >= $1 AND cs.starts_at < $2
+        AND cs.ends_at <= CURRENT_TIMESTAMP
+        AND cs.status IN ('scheduled', 'completed')
+      ORDER BY cs.starts_at DESC`,
+    [from, to]
+  );
+  res.json({ from, to, sessions: rows });
+});
+
+router.get('/:id/attendance-log', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const session = await loadSession(req.db, req.params.id);
+  if (!session) return res.status(404).json({ message: 'Session not found' });
+
+  const { rows: [summary] } = await req.db.query(
+    `SELECT cs.session_id, cs.class_id, cs.starts_at, cs.ends_at, cs.status,
+            sub.name AS subject, instructor.name AS instructor, room.name AS room
+       FROM class_sessions cs
+       JOIN classes c ON c.class_id = cs.class_id
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       JOIN users instructor ON instructor.user_id = cs.instructor_id
+       LEFT JOIN rooms room ON room.room_id = cs.room_id
+      WHERE cs.session_id = $1`,
+    [session.session_id]
+  );
+  const { rows: records } = await req.db.query(
+    `SELECT sa.student_id, student.name AS student, sa.status, sa.auto_completed,
+            sa.marked_at, sa.adjusted_from, marker.name AS marked_by,
+            marker.role AS marked_by_role
+       FROM session_attendance sa
+       JOIN users student ON student.user_id = sa.student_id
+       LEFT JOIN users marker ON marker.user_id = sa.marked_by
+      WHERE sa.session_id = $1
+      ORDER BY student.name`,
+    [session.session_id]
+  );
+  res.json({ session: summary, records });
+});
+
+// ---------------------------------------------------------------------------
 // POST /:id/attendance — bulk mark/correct: { marks: [{ student_id, status }] }
 // ---------------------------------------------------------------------------
 router.post('/:id/attendance', authenticateToken, async (req, res) => {

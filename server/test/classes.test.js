@@ -79,6 +79,20 @@ afterAll(async () => {
   await env?.stop();
 });
 
+describe('subject catalog', () => {
+  it('returns each subject group with its database subjects', async () => {
+    const res = await staff.agent.get('/api/subject-groups').set(staff.auth);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      expect.objectContaining({
+        name: 'Math',
+        subjects: [expect.objectContaining({ name: 'Algebra', group_id: 1 })]
+      })
+    ]);
+  });
+});
+
 describe('SCH-1 — staff creates a class', () => {
   it('creates a fixed-end weekly group class and materializes every session', async () => {
     const res = await staff.agent.post('/api/classes').set(staff.auth).send({
@@ -114,6 +128,28 @@ describe('SCH-1 — staff creates a class', () => {
     expect(res.body.warnings[0]).toContain('seats 2 of 8');
     expect(res.body.sessions_created).toBeGreaterThanOrEqual(16); // 8-week horizon, 2/wk
     classB = res.body.class;
+  });
+
+  it('lists the academy schedule for a bounded range and staff only', async () => {
+    const from = DateTime.fromISO(d('2026-08-03'), { zone: TZ }).startOf('day').toUTC().toISO();
+    const to = DateTime.fromISO(d('2026-08-10'), { zone: TZ }).startOf('day').toUTC().toISO();
+    const res = await staff.agent.get('/api/classes/schedule').set(staff.auth).query({ from, to });
+
+    expect(res.status).toBe(200);
+    expect(res.body.sessions.length).toBeGreaterThanOrEqual(4);
+    expect(res.body.sessions[0]).toMatchObject({
+      subject: 'Algebra',
+      instructor: 'Instructor',
+    });
+    expect(res.body.sessions[0]).toHaveProperty('student_ids');
+
+    const notStaff = await staff.agent.get('/api/classes/schedule')
+      .set({ Authorization: `Bearer ${tokenFor(3)}` }).query({ from, to });
+    expect(notStaff.status).toBe(403);
+
+    const invalid = await staff.agent.get('/api/classes/schedule')
+      .set(staff.auth).query({ from: d('2026-08-03'), to });
+    expect(invalid.status).toBe(400);
   });
 
   it('409s when the instructor is already booked (INV-3, racing writer loses)', async () => {
@@ -201,6 +237,27 @@ describe('SCH-2 — enrollment gate sequence (seat → room → credit, one tx)'
       .set(staff.auth).send({ student_id: 6 });
     expect(overflow.status).toBe(409);
     expect(overflow.body.code).toBe('CLASS_FULL');
+  });
+
+  it('lets staff raise capacity but not reduce it below the active roster', async () => {
+    const raised = await staff.agent.patch(`/api/classes/${classA.class_id}/capacity`)
+      .set(staff.auth).send({ student_limit: 4 });
+    expect(raised.status).toBe(200);
+    expect(raised.body.class.student_limit).toBe(4);
+    expect(raised.body.warnings).toEqual([]);
+
+    const tooLow = await staff.agent.patch(`/api/classes/${classA.class_id}/capacity`)
+      .set(staff.auth).send({ student_limit: 2 });
+    expect(tooLow.status).toBe(409);
+    expect(tooLow.body.code).toBe('LIMIT_BELOW_ROSTER');
+
+    const restored = await staff.agent.patch(`/api/classes/${classA.class_id}/capacity`)
+      .set(staff.auth).send({ student_limit: 3 });
+    expect(restored.status).toBe(200);
+
+    const notStaff = await staff.agent.patch(`/api/classes/${classA.class_id}/capacity`)
+      .set({ Authorization: `Bearer ${tokenFor(3)}` }).send({ student_limit: 4 });
+    expect(notStaff.status).toBe(403);
   });
 
   it('blocks on room capacity before credits (ROOM_CAPACITY, physical cap)', async () => {

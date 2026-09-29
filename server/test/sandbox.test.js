@@ -27,6 +27,13 @@ it('all documented demo accounts authenticate through the normal login flows', a
     expect(res.body.accessToken).toBeTruthy();
   }
 });
+it('seeds enough active rooms with varied capacities to exercise the scheduling view', async () => {
+  const { rows: rooms } = await env.tenantDb.query(
+    'SELECT name, capacity FROM rooms WHERE is_active = TRUE ORDER BY room_id');
+  expect(rooms.length).toBeGreaterThanOrEqual(10);
+  expect(rooms.some((room) => room.capacity === 2)).toBe(true);
+  expect(rooms.some((room) => room.capacity >= 20)).toBe(true);
+});
 it('every balance reconciles, deductions reference attendance, package grants match payments', async () => {
   const {rows: bad} = await env.tenantDb.query(`SELECT w.wallet_id FROM wallets w LEFT JOIN credit_ledger l USING (wallet_id)
     GROUP BY w.wallet_id,w.balance HAVING w.balance <> COALESCE(sum(l.amount),0)`);

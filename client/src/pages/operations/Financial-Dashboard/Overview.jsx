@@ -7,6 +7,7 @@
 // rather than invented. No in-page title — the topbar crumb says Overview.
 import { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
+import { Link } from 'react-router-dom';
 import reportService from '@/services/reportService';
 import classService from '@/services/classService';
 import studentService from '@/services/studentService';
@@ -14,6 +15,7 @@ import paymentService from '@/services/paymentService';
 import payrollService from '@/services/payrollService';
 import { money, FIN_COLORS, MonthBarChart, FinEmpty } from './finViz';
 import '@/css/home.css';
+import '@/css/finance-pages.css';
 
 const MONTHS_BACK = 6;
 const monthKey = (iso) => DateTime.fromISO(iso).toFormat('yyyy-LL');
@@ -66,36 +68,50 @@ function Overview() {
   const anyMoney = months.some((m) => m.values.revenue !== 0 || m.values.cost !== 0);
 
   return (
-    <div className="hm-page">
-      <div className="hm-kpis">
-        <div className="hm-kpi">
-          <span className="hm-kpi-value">{money(thisMonth.revenue)}</span>
-          <span className="hm-kpi-label">
+    <div className="hm-page fin-page">
+      <div className="fin-metrics">
+        <div className="fin-metric featured">
+          <span className="fin-metric-value">{money(thisMonth.revenue)}</span>
+          <span className="fin-metric-label">
             Revenue this month
             {revenueDelta != null && (
-              <span style={{ marginLeft: 6, fontWeight: 600, color: revenueDelta >= 0 ? '#2c8a5b' : '#a03634' }}>
-                <i className={`fa-solid fa-caret-${revenueDelta >= 0 ? 'up' : 'down'}`} style={{ marginRight: 3 }} />
+              <span className={`fin-delta ${revenueDelta >= 0 ? 'positive' : 'negative'}`}>
+                <i className={`fa-solid fa-caret-${revenueDelta >= 0 ? 'up' : 'down'}`} aria-hidden="true" />
                 {Math.abs(revenueDelta)}%
               </span>
             )}
           </span>
         </div>
-        <div className="hm-kpi">
-          <span className="hm-kpi-value" style={{ color: thisMonth.profit < 0 ? '#a03634' : undefined }}>{money(thisMonth.profit)}</span>
-          <span className="hm-kpi-label">Profit this month (vs payroll)</span>
+        <div className="fin-metric">
+          <span className={`fin-metric-value${thisMonth.profit < 0 ? ' negative' : ''}`}>{money(thisMonth.profit)}</span>
+          <span className="fin-metric-label">Profit vs payroll</span>
         </div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{data.students.length}</span><span className="hm-kpi-label">Active students</span></div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{activeClasses}</span><span className="hm-kpi-label">Active classes</span></div>
-        <div className={`hm-kpi ${delinquent ? 'alert' : ''}`}>
-          <span className="hm-kpi-value">{delinquent}</span><span className="hm-kpi-label">Delinquent wallets</span>
+        <div className="fin-metric">
+          <span className="fin-metric-value">{data.students.length}</span>
+          <span className="fin-metric-label">Active students</span>
         </div>
-        <div className="hm-kpi"><span className="hm-kpi-value">{pendingRequests}</span><span className="hm-kpi-label">Pending requests</span></div>
+        <div className="fin-metric">
+          <span className="fin-metric-value">{activeClasses}</span>
+          <span className="fin-metric-label">Active classes</span>
+        </div>
+        <div className={`fin-metric${delinquent ? ' alert' : ''}`}>
+          <span className="fin-metric-value">{delinquent}</span>
+          <span className="fin-metric-label">Delinquent wallets</span>
+        </div>
+        <div className="fin-metric">
+          <span className="fin-metric-value">{pendingRequests}</span>
+          <span className="fin-metric-label">Pending requests</span>
+        </div>
       </div>
 
       {anyMoney ? (
-        <div className="hm-card" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Revenue, cost &amp; profit</div>
-          <div style={{ fontSize: 12, color: '#7d6a5c', marginBottom: 14 }}>Last {MONTHS_BACK} months — hover a month for exact figures.</div>
+        <section className="fin-section fin-chart-section">
+          <header className="fin-section-head">
+            <div>
+              <h2>Revenue, cost &amp; profit</h2>
+              <p>Last {MONTHS_BACK} months · hover a month for exact figures</p>
+            </div>
+          </header>
           <MonthBarChart
             series={[
               { key: 'revenue', label: 'Revenue', color: FIN_COLORS.revenue },
@@ -104,14 +120,15 @@ function Overview() {
             ]}
             months={months}
           />
-        </div>
+        </section>
       ) : (
         <FinEmpty sub="Once tuition payments and payroll runs start flowing, they show up here." />
       )}
 
-      <div className="hm-card">
-        <p style={{ margin: 0, fontSize: 13.5, color: '#5c4632', lineHeight: 1.55 }}>
-          Revenue comes straight from <a className="hm-link" href="/operations/finance/payments">recorded payments</a>;
+      <div className="fin-note">
+        <i className="fa-solid fa-circle-info" aria-hidden="true" />
+        <p>
+          Revenue comes straight from <Link className="hm-link" to="/operations/finance/payments">recorded payments</Link>;
           cost is payroll only — operating expenses (rent, marketing, materials) have a schema but no entry screen yet,
           so profit here overstates true margin. Month splits use each payment's date and each payroll period's start.
         </p>

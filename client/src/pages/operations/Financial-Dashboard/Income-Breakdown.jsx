@@ -9,6 +9,7 @@ import paymentService from '@/services/paymentService';
 import { money, FIN_COLORS, MonthBarChart, FinEmpty } from './finViz';
 import '@/css/home.css';
 import '@/css/table.css';
+import '@/css/finance-pages.css';
 
 const MONTHS_BACK = 6;
 
@@ -44,44 +45,54 @@ function IncomeBreakdown() {
 
   if (total === 0) {
     return (
-      <div className="hm-page">
+      <div className="hm-page fin-page fin-breakdown-page">
         <FinEmpty sub={`No payments recorded in the last ${MONTHS_BACK} months — record one on the Payments page.`} />
       </div>
     );
   }
 
   return (
-    <div className="hm-page">
-      <div className="hm-card" style={{ padding: '18px 20px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Revenue by month</div>
-        <div style={{ fontSize: 12, color: '#7d6a5c', marginBottom: 14 }}>
-          Recorded payments, last {MONTHS_BACK} months · {money(total)} total
-        </div>
+    <div className="hm-page fin-page fin-breakdown-page">
+      <section className="fin-section fin-chart-section">
+        <header className="fin-section-head">
+          <div>
+            <h2>Revenue by month</h2>
+            <p>Recorded payments across the last {MONTHS_BACK} months.</p>
+          </div>
+          <div className="fin-section-total">
+            <span>Six-month total</span>
+            <strong>{money(total)}</strong>
+          </div>
+        </header>
         <MonthBarChart series={[{ key: 'revenue', label: 'Revenue', color: FIN_COLORS.revenue }]} months={months} />
-      </div>
+      </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20, alignItems: 'start' }}>
-        <div className="hm-card" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>By payment method</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="fin-breakdown-grid">
+        <section className="fin-breakdown-column">
+          <header className="fin-section-head">
+            <div><h2>By payment method</h2><p>Share of recorded revenue in this window.</p></div>
+          </header>
+          <div className="fin-method-list">
             {methods.map(([method, amount]) => (
-              <div key={method}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+              <div className="fin-method-row" key={method}>
+                <div className="fin-method-copy">
                   <span>{method}</span>
-                  <span style={{ fontWeight: 600 }}>{money(amount)}</span>
+                  <strong>{money(amount)}</strong>
                 </div>
-                <div style={{ height: 7, borderRadius: 999, background: '#f0e9e2', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', borderRadius: 999, width: `${Math.round((amount / total) * 100)}%`, background: FIN_COLORS.revenue }} />
+                <div className="fin-method-track" aria-hidden="true">
+                  <span style={{ width: `${Math.round((amount / total) * 100)}%`, background: FIN_COLORS.revenue }} />
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="hm-card" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Month by month</div>
-          <div className="hm-table-wrap">
-            <table className="hm-table">
+        <section className="fin-breakdown-column">
+          <header className="fin-section-head">
+            <div><h2>Month by month</h2><p>Exact totals from the payment ledger.</p></div>
+          </header>
+          <div className="hm-table-wrap fin-table-wrap">
+            <table className="hm-table fin-table">
               <thead><tr><th>Month</th><th>Revenue</th></tr></thead>
               <tbody>
                 {months.map((m) => (
@@ -93,13 +104,12 @@ function IncomeBreakdown() {
               </tfoot>
             </table>
           </div>
-        </div>
+        </section>
       </div>
 
-      <div className="hm-card">
-        <p style={{ margin: 0, fontSize: 13.5, color: '#5c4632', lineHeight: 1.55 }}>
-          Per-subject revenue isn't tracked — a payment records money received from a student, not which class it was for.
-        </p>
+      <div className="fin-note">
+        <i className="fa-solid fa-circle-info" aria-hidden="true" />
+        <p>Per-subject revenue isn't tracked — a payment records money received from a student, not which class it was for.</p>
       </div>
     </div>
   );

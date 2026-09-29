@@ -5,34 +5,55 @@
 // source — the class type (Group / One-on-one) fills that slot, and a status
 // chip joins it for non-active classes. The handoff's edit pencil is omitted:
 // no class-edit page exists yet, so the card's one action is Open class.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import classService from '@/services/classService';
+import subjectService from '@/services/subjectService';
 import { lookFor } from '@/lib/subjectLooks';
 import { scheduleLabel } from '@/lib/recurrenceLabel';
 import EnrollmentWizard from './EnrollmentWizard';
-
-const chipStyle = (active) => ({
-  padding: '8px 16px', borderRadius: 999, fontFamily: 'inherit', fontSize: 13,
-  fontWeight: 500, cursor: 'pointer',
-  border: `1px solid ${active ? '#c2703e' : '#ead9c8'}`,
-  background: active ? '#c2703e' : '#fff',
-  color: active ? '#fff' : '#5c4632',
-});
+import '@/css/my-classes.css';
 
 function ClassesList() {
   const [classes, setClasses] = useState(null);
+  const [subjectGroups, setSubjectGroups] = useState([]);
   const [error, setError] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [filter, setFilter] = useState('All');
+  const [filter, setFilter] = useState('all');
+  const [subjectMenuOpen, setSubjectMenuOpen] = useState(false);
   const [q, setQ] = useState('');
+  const subjectPickerRef = useRef(null);
 
-  const load = () => {
-    classService.getAllClasses()
-      .then(setClasses)
-      .catch((err) => setError(err.response?.data?.message || 'Failed to load classes'));
+  const load = async () => {
+    setError('');
+    try {
+      const classRows = await classService.getAllClasses();
+      const catalog = await subjectService.getAllSubjectGroups();
+      setClasses(classRows);
+      setSubjectGroups(catalog);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load classes');
+    }
   };
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const closeSubjectMenu = (event) => {
+      if (event.key === 'Escape') {
+        setSubjectMenuOpen(false);
+        return;
+      }
+      if (event.type === 'pointerdown' && !subjectPickerRef.current?.contains(event.target)) {
+        setSubjectMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', closeSubjectMenu);
+    document.addEventListener('keydown', closeSubjectMenu);
+    return () => {
+      document.removeEventListener('pointerdown', closeSubjectMenu);
+      document.removeEventListener('keydown', closeSubjectMenu);
+    };
+  }, []);
 
   if (error && !classes) {
     return (
@@ -45,10 +66,11 @@ function ClassesList() {
   }
   if (!classes) return <div className="hm-loading">Loading…</div>;
 
-  const subjects = [...new Set(classes.map((c) => c.subject))];
+  const subjects = subjectGroups.flatMap((group) => group.subjects || []);
   const needle = q.trim().toLowerCase();
+  const selectedSubject = subjects.find((subject) => String(subject.subject_id) === filter);
   const shown = classes
-    .filter((c) => filter === 'All' || c.subject === filter)
+    .filter((c) => filter === 'all' || String(c.subject_id) === filter)
     .filter((c) => !needle || `${c.subject} ${c.instructor}`.toLowerCase().includes(needle));
 
   return (
@@ -56,22 +78,88 @@ function ClassesList() {
       <EnrollmentWizard isOpen={wizardOpen} onClose={() => setWizardOpen(false)} onDone={load} />
       {error && <div className="hm-error" style={{ marginBottom: 14 }}>{error}</div>}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        {['All', ...subjects].map((s) => (
-          <button key={s} type="button" style={chipStyle(filter === s)} onClick={() => setFilter(s)}>{s}</button>
-        ))}
-        <label className="rt-search" style={{ height: 38 }}>
-          <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
-          <input type="text" placeholder="Filter classes…" aria-label="Filter classes"
-            value={q} onChange={(e) => setQ(e.target.value)} />
-        </label>
-        <div style={{ display: 'flex', gap: 9 }}>
-          <button type="button" className="hm-btn" style={{ height: 38 }} onClick={() => setWizardOpen(true)}>
-            <i className="fa-solid fa-user-plus" style={{ marginRight: 8 }} />Enroll student
-          </button>
-          <Link className="hm-btn primary" style={{ height: 38 }} to="/operations/classes/new">
-            <i className="fa-solid fa-plus" style={{ marginRight: 8 }} />New class
-          </Link>
+      <div className="cl-controls">
+        <div className="cl-control-row">
+          <div className="cl-subject-picker" ref={subjectPickerRef}>
+            <button
+              type="button"
+              className="cl-subject-trigger"
+              aria-label="Filter classes by subject"
+              aria-haspopup="listbox"
+              aria-expanded={subjectMenuOpen}
+              onClick={() => setSubjectMenuOpen((open) => !open)}
+            >
+              <i className="fa-solid fa-book-open" aria-hidden="true" />
+              <span>{selectedSubject?.name || 'All subjects'}</span>
+              <i className={`fa-solid fa-chevron-down cl-select-chevron${subjectMenuOpen ? ' open' : ''}`} aria-hidden="true" />
+            </button>
+            {subjectMenuOpen && (
+              <div className="cl-subject-menu" role="listbox" aria-label="Subjects">
+                <button
+                  type="button"
+                  className={`cl-subject-option${filter === 'all' ? ' selected' : ''}`}
+                  role="option"
+                  aria-selected={filter === 'all'}
+                  onClick={() => {
+                    setFilter('all');
+                    setSubjectMenuOpen(false);
+                  }}
+                >
+                  <span>All subjects</span>
+                  {filter === 'all' && <i className="fa-solid fa-check" aria-hidden="true" />}
+                </button>
+                {subjectGroups.map((group) => (
+                  <div className="cl-subject-group" role="group" aria-labelledby={`cl-subject-group-${group.group_id}`} key={group.group_id}>
+                    <div className="cl-subject-group-label" id={`cl-subject-group-${group.group_id}`}>{group.name}</div>
+                    {(group.subjects || []).map((subject) => {
+                      const subjectId = String(subject.subject_id);
+                      const selected = filter === subjectId;
+                      return (
+                        <button
+                          type="button"
+                          className={`cl-subject-option${selected ? ' selected' : ''}`}
+                          role="option"
+                          aria-selected={selected}
+                          key={subject.subject_id}
+                          onClick={() => {
+                            setFilter(subjectId);
+                            setSubjectMenuOpen(false);
+                          }}
+                        >
+                          <span>{subject.name}</span>
+                          {selected && <i className="fa-solid fa-check" aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="cl-result-count" aria-live="polite">
+            <strong>{shown.length}</strong>
+            {shown.length === classes.length ? ' classes' : ` of ${classes.length} classes`}
+          </p>
+          <label className="cl-search">
+            <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Search classes"
+              aria-label="Search classes"
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+            />
+          </label>
+          <div className="cl-actions">
+            <button type="button" className="hm-btn" onClick={() => setWizardOpen(true)}>
+              <i className="fa-solid fa-user-plus" aria-hidden="true" />
+              Enroll student
+            </button>
+            <Link className="hm-btn primary" to="/operations/classes/new">
+              <i className="fa-solid fa-plus" aria-hidden="true" />
+              New class
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -79,7 +167,7 @@ function ClassesList() {
         <div className="hm-empty" style={{ textAlign: 'center', padding: '64px 20px' }}>
           <i className="fa-solid fa-book-open" style={{ fontSize: 26, color: '#c4a98e' }} />
           <div style={{ fontSize: 15.5, fontWeight: 600, marginTop: 14 }}>
-            {classes.length === 0 ? 'No classes this term' : needle ? `No classes match "${q.trim()}"` : `No ${filter} classes`}
+            {classes.length === 0 ? 'No classes this term' : needle ? `No classes match "${q.trim()}"` : `No ${selectedSubject?.name || 'matching'} classes`}
           </div>
           <div style={{ fontSize: 13.5, color: '#7d6a5c', marginTop: 6 }}>
             {classes.length === 0 ? 'Create your first class — students can then request to join.' : 'Try another subject filter.'}

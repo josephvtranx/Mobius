@@ -1,19 +1,37 @@
 .profile-picture-upload {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.profile-picture-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
 .current-picture {
-  text-align: center;
+  flex-shrink: 0;
 }
 
 .profile-preview {
-  width: 120px;
-  height: 120px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid var(--shell-border, #e3eeec);
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 1px var(--shell-border), 0 12px 26px -18px rgba(51, 35, 26, .7);
+}
+
+.profile-preview--initials {
+  display: grid;
+  place-items: center;
+  background: var(--shell-tint);
+  color: var(--shell-primary);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.02em;
 }
 
 .file-input { display: none; }
@@ -22,44 +40,136 @@
   display: inline-flex;
   align-items: center;
   height: 40px;
-  padding: 0 18px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #fff;
-  background: var(--shell-primary, #2e9d8d);
-  border-radius: 10px;
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-secondary);
+  background: #fff;
+  border-radius: 9px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background-color 0.15s ease, transform .12s ease;
 }
-.file-input-label:hover { background: var(--shell-primary-hover, #268578); }
+.file-input-label:hover {
+  border-color: var(--shell-primary);
+  background: var(--shell-wash);
+  color: var(--shell-primary);
+}
+.file-input-label:active { transform: scale(.98); }
+
+.profile-picture-actions {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.profile-delete-button {
+  display: inline-flex;
+  min-height: 34px;
+  padding: 0 7px;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--shell-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.profile-delete-button:hover:not(:disabled) {
+  background: var(--status-error-bg);
+  color: var(--status-error);
+}
+
+.profile-delete-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
 
 .selected-file-name {
   display: block;
-  margin-top: 8px;
+  max-width: 280px;
   font-size: 12.5px;
   color: var(--shell-muted, #64827e);
   word-break: break-all;
 }
 
+.profile-upload-status {
+  display: inline-flex;
+  margin: 0;
+  padding: 6px 9px;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  background: #f2faf5;
+  color: var(--status-success);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.profile-upload-status i {
+  font-size: 10px;
+}
+
 .file-requirements {
-  background: var(--shell-wash, #f7fbfa);
-  padding: 14px 16px;
-  border-radius: 10px;
-  border-left: 3px solid var(--shell-primary, #2e9d8d);
+  display: flex;
+  width: 100%;
+  max-width: 310px;
+  padding-top: 12px;
+  align-items: flex-start;
+  gap: 8px;
+  border-top: 1px solid var(--shell-hairline);
+  color: var(--shell-muted);
 }
 
 .file-requirements p {
-  margin: 0 0 8px 0;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--shell-ink, #16303a);
-}
-
-.file-requirements ul {
   margin: 0;
-  padding-left: 18px;
-  color: var(--shell-muted, #64827e);
-  font-size: 12.5px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 
-.file-requirements li { margin-bottom: 4px; }
+.file-requirements i {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--shell-faint);
+  font-size: 11px;
+}
+
+.profile-picture-upload .hm-actions {
+  margin-top: 2px;
+}
+
+.profile-picture-upload .hm-error {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 980px) {
+  .profile-picture-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 680px) {
+  .profile-picture-main {
+    align-items: center;
+    flex-direction: row;
+    gap: 18px;
+  }
+}
+
+@media (max-width: 390px) {
+  .profile-picture-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

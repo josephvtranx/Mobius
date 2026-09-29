@@ -25,6 +25,8 @@ async function seed(status = 'open', details = {}) {
 const get = (path = '', token = staffToken) => request(env.app).get(`/api/staff-tasks${path}`).set('Authorization', `Bearer ${token}`);
 const resolve = (id, action, token = staffToken) => request(env.app).post(`/api/staff-tasks/${id}/resolve`)
   .set('Authorization', `Bearer ${token}`).send({ action });
+const reopen = (id, token = staffToken) => request(env.app).post(`/api/staff-tasks/${id}/reopen`)
+  .set('Authorization', `Bearer ${token}`);
 
 describe('staff task inbox', () => {
   it('requires staff for list, count and resolution', async () => {
@@ -33,9 +35,11 @@ describe('staff task inbox', () => {
     expect((await get('', studentToken)).status).toBe(403);
     expect((await get('/count', studentToken)).status).toBe(403);
     expect((await resolve(task.task_id, 'done', studentToken)).status).toBe(403);
+    expect((await reopen(task.task_id, studentToken)).status).toBe(403);
   });
   it('lists active tasks and provides separately filtered history', async () => {
     await seed(); await seed('in_progress'); await seed('done'); await seed('dismissed');
+    await env.tenantDb.exec(`UPDATE staff_tasks SET urgency = 'urgent' WHERE status = 'open'`);
     const active = await get();
     expect(active.status).toBe(200);
     expect(active.body.tasks).toHaveLength(2);
@@ -44,6 +48,10 @@ describe('staff task inbox', () => {
     const all = await get('?status=all');
     expect(all.body.total_count).toBe(4);
     expect(all.body.open_count).toBe(2);
+    expect(all.body.urgent_count).toBe(1);
+    expect(all.body.done_count).toBe(1);
+    expect(all.body.dismissed_count).toBe(1);
+    expect(all.body.all_count).toBe(4);
     expect((await get('?status=invalid')).status).toBe(400);
   });
   it('keeps accurate totals when the list reaches its display limit', async () => {
@@ -81,5 +89,17 @@ describe('staff task inbox', () => {
     expect((await resolve(task.task_id, 'dismissed')).status).toBe(200);
     expect((await get()).body.tasks).toHaveLength(0);
     expect((await get('?status=dismissed')).body.tasks[0].task_id).toBe(task.task_id);
+  });
+  it('reopens a closed task and clears its resolution metadata', async () => {
+    const task = await seed();
+    expect((await resolve(task.task_id, 'done')).status).toBe(200);
+    expect((await reopen(task.task_id)).status).toBe(200);
+    const { rows: [saved] } = await env.tenantDb.query('SELECT * FROM staff_tasks WHERE task_id=$1', [task.task_id]);
+    expect(saved.status).toBe('open');
+    expect(saved.resolved_by).toBeNull();
+    expect(saved.resolved_at).toBeNull();
+    expect((await reopen(task.task_id)).status).toBe(409);
+    expect((await reopen('bad-id')).status).toBe(400);
+    expect((await reopen('00000000-0000-0000-0000-000000000000')).status).toBe(404);
   });
 });

@@ -9,7 +9,7 @@
 // handoff's red confirm panel (future-only end date, or terminate now).
 // Server error codes render verbatim — the gate messages ARE the UX.
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import classService from '@/services/classService';
 import sessionServiceV2 from '@/services/sessionServiceV2';
 import studentService from '@/services/studentService';
@@ -45,6 +45,7 @@ const SESSION_PILL = {
 
 function ClassDetail() {
   const { classId } = useParams();
+  const [searchParams] = useSearchParams();
   const [cls, setCls] = useState(null);
   const [students, setStudents] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -58,6 +59,7 @@ function ClassDetail() {
   const [terminateOpen, setTerminateOpen] = useState(false);
   // Per-row cancel form: { sessionId, status, reason } while open, else null.
   const [cancel, setCancel] = useState(null);
+  const [capacity, setCapacity] = useState('');
   const [price, setPrice] = useState({ cost: '', effective: '' });
   const [schedule, setSchedule] = useState({
     byday: [{ day: 'mon', start: '16:00', end: '17:00' }], effective: ''
@@ -75,12 +77,19 @@ function ClassDetail() {
     roomService.getAllRooms().then(setRooms).catch(() => {});
   }, [load]);
 
+  useEffect(() => {
+    if (cls && searchParams.get('edit') === 'capacity') {
+      setCapacity(String(cls.student_limit));
+      setEditOpen(true);
+    }
+  }, [cls, searchParams]);
+
   const run = (fn, successText) => async () => {
     setError('');
     setNotice('');
     try {
       const result = await fn();
-      setNotice(successText ?? JSON.stringify(result));
+      setNotice(typeof successText === 'function' ? successText(result) : (successText ?? JSON.stringify(result)));
       load();
     } catch (err) {
       setError(err.response?.data?.message || 'Request failed');
@@ -122,6 +131,7 @@ function ClassDetail() {
   // Edit opens prefilled with the class's REAL pattern — never a default the
   // save would silently rewrite the schedule to.
   const openEdit = () => {
+    setCapacity(String(cls.student_limit));
     setPrice({ cost: '', effective: '' });
     setSchedule({
       byday: cls.recurrence_rule?.byday?.length
@@ -134,8 +144,8 @@ function ClassDetail() {
 
   return (
     <div className="hm-page">
-      <Link to="/operations/classes" className="hm-btn" style={{ height: 34, fontSize: 12.5, marginBottom: 16, display: 'inline-flex' }}>
-        <i className="fa-solid fa-arrow-left" style={{ marginRight: 7 }} />All classes
+      <Link to="/operations/classes" className="cd-back-link">
+        <i className="fa-solid fa-chevron-left" />All classes
       </Link>
 
       {error && <div className="hm-error" style={{ marginBottom: 14 }}>{error}</div>}
@@ -266,9 +276,8 @@ function ClassDetail() {
         {cls.sessions.map((s) => {
           const pill = SESSION_PILL[s.status] ?? { bg: '#f9e6e5', fg: '#a03634' };
           const cancelled = s.status.startsWith('cancelled');
-          // Server contract: attendance is markable once the session has
-          // started (scheduled) and reviewable/correctable after (completed).
-          const markable = (s.status === 'scheduled' && isoToLocal(s.starts_at) <= DateTime.now()) || s.status === 'completed';
+          const hasEnded = isoToLocal(s.ends_at) <= DateTime.now();
+          const hasAttendanceLog = s.status === 'completed';
           const cancelling = cancel?.sessionId === s.session_id;
           return (
             <div key={s.session_id} style={{ padding: '12px 20px', borderBottom: '1px solid #f5ebe1', opacity: cancelled ? 0.65 : 1 }}>
@@ -286,10 +295,13 @@ function ClassDetail() {
                   </span>
                 )}
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {markable && (
-                    <Link className="hm-link" style={{ fontSize: 12.5 }} to={`/operations/classes/${classId}/sessions/${s.session_id}/attendance`}>
-                      {s.status === 'completed' ? 'Review attendance' : 'Mark attendance'}
+                  {hasAttendanceLog && (
+                    <Link className="hm-link" style={{ fontSize: 12.5 }} to={`/operations/attendance?session=${s.session_id}`}>
+                      View attendance log
                     </Link>
+                  )}
+                  {hasEnded && s.status === 'scheduled' && (
+                    <span style={{ fontSize: 12, color: 'var(--status-warning)' }}>Awaiting instructor</span>
                   )}
                   {s.status === 'scheduled' && !cancelling && (
                     <button type="button" className="hm-btn" style={{ height: 30, fontSize: 12, color: '#9c3a31' }}
@@ -347,11 +359,56 @@ function ClassDetail() {
             </span>
             <div style={{ lineHeight: 1.3 }}>
               <div style={{ fontSize: 17, fontWeight: 600 }}>Edit {cls.subject}</div>
-              <div style={{ fontSize: 12.5, color: '#7d6a5c' }}>Changes are future-only — past sessions and billing never move.</div>
+              <div style={{ fontSize: 12.5, color: '#7d6a5c' }}>
+                Capacity applies immediately; price and schedule changes are future-only.
+              </div>
             </div>
           </div>
 
           <div style={{ display: 'grid', gap: 14 }}>
+            {cls.class_type === 'group' && (
+              <div id="capacity" style={editPanel}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+                  <span style={statLabel}>Capacity</span>
+                  <span style={{ fontSize: 12, color: '#7d6a5c' }}>
+                    {activeRoster.length} enrolled · currently {cls.student_limit} seats
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                  <label style={{ flex: 1 }}>
+                    <span style={fieldLabel}>Student limit</span>
+                    <input
+                      type="number"
+                      min={Math.max(2, activeRoster.length)}
+                      step="1"
+                      value={capacity}
+                      onChange={(event) => setCapacity(event.target.value)}
+                      style={fieldInput}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="hm-btn primary"
+                    style={{ height: 36, fontSize: 12.5, whiteSpace: 'nowrap' }}
+                    disabled={!Number.isInteger(Number(capacity))
+                      || Number(capacity) < Math.max(2, activeRoster.length)
+                      || Number(capacity) === cls.student_limit}
+                    onClick={run(
+                      () => classService.setCapacity(classId, Number(capacity)),
+                      (result) => result.warnings?.length
+                        ? `Class limit updated. ${result.warnings.join(' ')}`
+                        : 'Class limit updated.'
+                    )}
+                  >
+                    Update limit
+                  </button>
+                </div>
+                <div style={{ marginTop: 9, fontSize: 11.5, color: '#7d6a5c' }}>
+                  The limit cannot be lower than the active roster. If a room is too small, Mobius will warn you after saving.
+                </div>
+              </div>
+            )}
+
             <div style={editPanel}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
                 <span style={statLabel}>Price</span>

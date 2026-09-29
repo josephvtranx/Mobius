@@ -3,11 +3,30 @@ import { authenticateToken, authorizeRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET all subject groups
+// GET the subject catalog. Groups and their subjects are returned together so
+// roster, class filtering, and class creation all read the same DB-backed
+// hierarchy instead of reconstructing it from existing classes.
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const result = await req.db.query(
-      'SELECT * FROM subject_groups ORDER BY name'
+      `SELECT
+         sg.group_id,
+         sg.name,
+         sg.description,
+         COALESCE(
+           json_agg(
+             json_build_object(
+               'subject_id', s.subject_id,
+               'name', s.name,
+               'group_id', s.group_id
+             ) ORDER BY s.name
+           ) FILTER (WHERE s.subject_id IS NOT NULL),
+           '[]'::json
+         ) AS subjects
+       FROM subject_groups sg
+       LEFT JOIN subjects s ON s.group_id = sg.group_id
+       GROUP BY sg.group_id, sg.name, sg.description
+       ORDER BY sg.name`
     );
     res.json(result.rows);
   } catch (error) {
@@ -56,4 +75,4 @@ router.post('/', authenticateToken, authorizeRole('staff'), async (req, res) => 
   }
 });
 
-export default router; 
+export default router;

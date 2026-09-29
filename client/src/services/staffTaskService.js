@@ -30,6 +30,16 @@ const staffTaskService = {
             console.error('Error resolving task:', error);
             throw error;
         }
+    },
+
+    reopenTask: async (taskId) => {
+        try {
+            const response = await api.post(`/staff-tasks/${taskId}/reopen`);
+            return response.data;
+        } catch (error) {
+            console.error('Error reopening task:', error);
+            throw error;
+        }
     }
 };
 

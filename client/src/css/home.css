@@ -335,13 +335,9 @@
   color: var(--shell-ink, #16303a);
 }
 
-/* Hero + "Needs attention" + KPI footer, all one continuous card (design
-   handoff: staff/instructor/student Dashboard). Previously the hero-copy
-   and needs-attention panel were two separate bordered cards side by side,
-   and the KPIs were an entirely separate row of individually-bordered
-   tiles below — the design instead wants ONE white card whose top half is
-   the hero grid (no border/background of its own — the copy sits directly
-   on the card) and whose bottom half is a divided KPI strip. */
+/* Hero + "Needs attention" + KPI footer. Other role dashboards keep the
+   shared card treatment; the staff dashboard is flattened below so its
+   repeated daily-use content relies on spacing and rules instead of boxes. */
 .hm-hero-card {
   background: #fff;
   border: 1px solid var(--shell-border, #e3eeec);
@@ -388,6 +384,68 @@
 .hm-needs-btn.solid { background: #fff; color: var(--shell-ink); }
 .hm-needs-btn.ghost { background: rgba(255,255,255,0.14); color: #fff; }
 
+/* Staff dashboard: one emphasized action surface, everything else follows a
+   quieter editorial hierarchy. This avoids cards nested inside a hero card
+   and separate boxes around both operational lists. */
+.hm-page--staff .hm-hero-card {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hm-page--staff .hm-hero {
+  padding: 0 0 24px;
+}
+
+.hm-page--staff .hm-hero-kpis {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: clamp(28px, 4vw, 64px);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.hm-page--staff .hm-hero-kpi {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0;
+  border-right: 0;
+  text-align: left;
+}
+
+.hm-page--staff .hm-hero-kpi-value {
+  margin: 0;
+  font-size: 22px;
+}
+
+.hm-page--staff .hm-hero-kpi-label {
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+
+.hm-page--staff .hm-grid {
+  gap: 32px;
+}
+
+.hm-page--staff .hm-flat-section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.hm-page--staff .hm-grid > .hm-flat-section:last-child {
+  padding-left: 32px;
+  border-left: 1px solid var(--shell-border, #e3eeec);
+}
+
 /* Subject icon chip (Today's sessions) */
 .hm-icon-tint {
   width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
@@ -413,10 +471,75 @@
 .hm-request-text { font-size: 13.5px; color: var(--shell-ink); }
 .hm-request-age { margin-left: auto; font-size: 11.5px; color: var(--shell-faint); flex-shrink: 0; }
 .hm-request-actions { display: flex; gap: 8px; margin-top: 8px; margin-left: 42px; }
-.hm-request-actions button { height: 30px; padding: 0 14px; font-size: 12.5px; border-radius: 8px; cursor: pointer; }
+.hm-request-actions button,
+.hm-request-actions .review {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 30px;
+  text-decoration: none;
+  cursor: pointer;
+}
 .hm-request-actions .approve { background: var(--shell-primary); color: #fff; border: none; }
 .hm-request-actions .decline { background: var(--shell-card, #fff); color: var(--shell-secondary); border: 1px solid var(--shell-border); }
+.hm-request-actions .review { background: var(--status-warning-bg, #fff4e0); color: var(--status-warning, #9c6a1d); border: 1px solid #efd9ad; }
 
 @media (max-width: 1120px) {
   .hm-hero { grid-template-columns: 1fr; }
+
+  .hm-page--staff .hm-grid > .hm-flat-section:last-child {
+    padding-top: 24px;
+    padding-left: 0;
+    border-top: 1px solid var(--shell-border, #e3eeec);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .hm-page--staff .hm-hero-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    gap: 14px 28px;
+  }
+}
+
+/* Wide staff dashboards are an at-a-glance workspace. Keep the complete page
+   inside the app viewport; the schedule link carries the longer session list.
+   Narrow or short screens retain normal document scrolling. */
+@media (min-width: 1121px) and (min-height: 700px) {
+  .hm-page--staff {
+    box-sizing: border-box;
+    height: calc(100dvh - 73px);
+    padding-top: 28px;
+    padding-bottom: 18px;
+    gap: 16px;
+    overflow: hidden;
+  }
+
+  .hm-page--staff .hm-hero {
+    padding-bottom: 16px;
+  }
+
+  .hm-page--staff .hm-needs {
+    padding: 18px 20px;
+  }
+
+  .hm-page--staff .hm-needs-actions {
+    margin-top: 12px;
+  }
+
+  .hm-page--staff .hm-grid {
+    min-height: 0;
+  }
+
+  .hm-page--staff .hm-session-row {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .hm-page--staff .hm-icon-tint {
+    width: 36px;
+    height: 36px;
+  }
 }

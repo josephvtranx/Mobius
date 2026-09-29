@@ -124,6 +124,39 @@ describe('ACA-1 — attendance + notes in one pass', () => {
       .set(authAs(7)).send({ performance: 'nope' });
     expect(wrongInstructor.status).toBe(403);
   });
+
+  it('gives staff a read-only attendance log with marker attribution', async () => {
+    const from = T0.minus({ days: 1 }).toISO();
+    const to = T0.plus({ days: 1 }).toISO();
+    const list = await staff.agent.get('/api/sessions/attendance-log')
+      .set(staff.auth).query({ from, to });
+
+    expect(list.status).toBe(200);
+    const logged = list.body.sessions.find((session) => session.session_id === ses.sDone);
+    expect(logged).toMatchObject({
+      subject: 'Algebra',
+      instructor: 'Instructor',
+      recorded_count: 2,
+      present_count: 2,
+      auto_completed: false,
+      recorded_by: 'Instructor'
+    });
+
+    const detail = await staff.agent.get(`/api/sessions/${ses.sDone}/attendance-log`)
+      .set(staff.auth);
+    expect(detail.status).toBe(200);
+    expect(detail.body.records).toHaveLength(2);
+    expect(detail.body.records[0]).toMatchObject({
+      status: 'present',
+      marked_by: 'Instructor',
+      marked_by_role: 'instructor',
+      auto_completed: false
+    });
+
+    const instructorList = await staff.agent.get('/api/sessions/attendance-log')
+      .set(authAs(2)).query({ from, to });
+    expect(instructorList.status).toBe(403);
+  });
 });
 
 describe('INV-5 — versioned edits inside the window', () => {

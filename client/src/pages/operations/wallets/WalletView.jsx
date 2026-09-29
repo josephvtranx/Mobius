@@ -8,11 +8,13 @@
 // refund/deduction entries outright (attendance-driven only, INV-1) —
 // Top-up=purchase, Goodwill credit=bonus, Correction=adjustment.
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import walletService from '@/services/walletService';
 import Modal from '@/components/Modal';
 import { tintFor } from '@/lib/rosterColors';
 import { isoToLocal } from 'mobius-lms';
 import '@/css/roster.css';
+import '@/css/finance-pages.css';
 
 const REASON_CHIPS = [
   { entry_type: 'purchase', label: 'Top-up' },
@@ -33,6 +35,8 @@ const initialsOf = (name) =>
   String(name || '?').split(' ').map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
 function WalletView() {
+  const [searchParams] = useSearchParams();
+  const requestedStudentId = searchParams.get('student');
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -47,6 +51,21 @@ function WalletView() {
     walletService.getAllWallets().then(setRows)
       .catch((err) => setError(err.response?.data?.message || 'Failed to load wallets'));
   useEffect(() => { loadList(); }, []);
+  useEffect(() => {
+    if (!rows || !requestedStudentId) return;
+    const requested = rows.find((row) => String(row.student_id) === requestedStudentId);
+    if (!requested) return;
+    setFilter('All');
+    setQ(requested.name);
+    setOpenId(requested.student_id);
+    setDetail(null);
+    walletService.getWallet(requested.student_id).then(setDetail)
+      .catch((err) => setDetail({ error: err.response?.data?.message || 'Failed to load wallet' }));
+  }, [requestedStudentId, rows]);
+  useEffect(() => {
+    if (!openId || String(openId) !== requestedStudentId) return;
+    document.getElementById(`wallet-student-${openId}`)?.scrollIntoView({ block: 'center' });
+  }, [openId, requestedStudentId]);
 
   const loadDetail = (sid) =>
     walletService.getWallet(sid).then(setDetail)
@@ -94,16 +113,18 @@ function WalletView() {
     .filter((r) => !needle || r.name.toLowerCase().includes(needle));
 
   return (
-    <div className="rt-page">
-      <div className="rt-filterbar">
-        <div className="rt-filters">
+    <div className="rt-page wallet-page">
+      <div className="rt-filterbar wallet-toolbar">
+        <div className="wallet-filters" aria-label="Filter wallets by balance status">
           {['All', 'negative', 'low', 'healthy'].map((f) => (
-            <button key={f} type="button" className={`rt-filter ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+            <button key={f} type="button" className={`wallet-filter ${filter === f ? 'active' : ''}`}
+              aria-pressed={filter === f} onClick={() => setFilter(f)}>
               {f === 'All' ? `All (${rows.length})` : `${STATUS_META[f].label} (${counts[f]})`}
             </button>
           ))}
         </div>
-        <label className="rt-search">
+        <p className="wallet-result-count" aria-live="polite"><strong>{shown.length}</strong> wallets</p>
+        <label className="rt-search wallet-search">
           <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
           <input type="text" placeholder="Filter by student name…" aria-label="Filter wallets"
             value={q} onChange={(e) => setQ(e.target.value)} />
@@ -111,9 +132,9 @@ function WalletView() {
       </div>
 
       {error && <div className="hm-error">{error}</div>}
-      {notice && <div className="hm-card" style={{ color: 'var(--status-success, #2c8a5b)', padding: '10px 14px' }}>{notice}</div>}
+      {notice && <div className="fin-success"><i className="fa-solid fa-circle-check" aria-hidden="true" />{notice}</div>}
 
-      <section className="rt-section">
+      <section className="rt-section wallet-table">
         <div className="rt-grid rt-head" style={GRID}>
           <span>Student</span>
           <span style={{ textAlign: 'right' }}>Balance</span>
@@ -127,13 +148,13 @@ function WalletView() {
           const tint = tintFor(r.name);
           const open = openId === r.student_id;
           return (
-            <div key={r.student_id}>
+            <div key={r.student_id} id={`wallet-student-${r.student_id}`}>
               <div className="rt-grid rt-row rt-row--clickable" style={GRID} onClick={() => toggle(r.student_id)}>
                 <div className="rt-name-row">
                   <span className="rt-avatar" style={{ background: tint.bg, color: tint.fg }}>{initialsOf(r.name)}</span>
                   <span className="rt-name">{r.name}</span>
                 </div>
-                <span className="rt-cell-strong" style={{ textAlign: 'right', color: r.balance < 0 ? '#9c3a31' : undefined }}>
+                <span className="rt-cell-strong wallet-balance" style={{ textAlign: 'right', color: r.balance < 0 ? '#9c3a31' : undefined }}>
                   {r.balance} cr
                 </span>
                 <span className="rt-cell">
@@ -141,7 +162,7 @@ function WalletView() {
                 </span>
                 <span className="rt-pill" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
                 <span style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
-                  <button type="button" className="rt-btn-primary" style={{ height: 30, fontSize: 12 }}
+                  <button type="button" className="hm-btn wallet-adjust"
                     onClick={(e) => { e.stopPropagation(); openAdjust(r); }}>
                     Adjust
                   </button>
@@ -222,14 +243,12 @@ function WalletView() {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <div className="wallet-reasons">
               {REASON_CHIPS.map((c) => {
                 const on = entry.entry_type === c.entry_type;
                 return (
                   <button key={c.entry_type} type="button" onClick={() => setEntry((x) => ({ ...x, entry_type: c.entry_type }))}
-                    style={{ padding: '7px 14px', borderRadius: 999, fontFamily: 'inherit', fontSize: 12.5, fontWeight: 600,
-                      cursor: 'pointer', border: `1px solid ${on ? '#3d4a63' : '#e6e9f0'}`,
-                      background: on ? '#3d4a63' : '#fff', color: on ? '#fff' : '#45526b' }}>
+                    className={`wallet-reason${on ? ' active' : ''}`} aria-pressed={on}>
                     {c.label}
                   </button>
                 );

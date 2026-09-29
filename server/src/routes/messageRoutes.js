@@ -101,11 +101,14 @@ router.get('/contacts', authenticateToken, async (req, res) => {
 router.get('/announceable', authenticateToken, async (req, res) => {
   if (req.user.role !== 'staff' && req.user.role !== 'instructor') return res.json([]);
   const { rows } = await req.db.query(
-    `SELECT c.class_id, sub.name AS subject, c.class_type
-       FROM classes c JOIN subjects sub ON sub.subject_id = c.subject_id
+    `SELECT c.class_id, sub.name AS subject, c.class_type, c.starts_on,
+            instructor.name AS instructor
+       FROM classes c
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       JOIN users instructor ON instructor.user_id = c.instructor_id
       WHERE c.status = 'active' AND c.class_type = 'group'
         ${req.user.role === 'instructor' ? 'AND c.instructor_id = $1' : ''}
-      ORDER BY sub.name`,
+      ORDER BY sub.name, instructor.name, c.starts_on`,
     req.user.role === 'instructor' ? [req.user.user_id] : []);
   res.json(rows);
 });

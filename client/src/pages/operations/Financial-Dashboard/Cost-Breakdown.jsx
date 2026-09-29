@@ -9,6 +9,7 @@ import payrollService from '@/services/payrollService';
 import { money, FIN_COLORS, MonthBarChart, FinEmpty } from './finViz';
 import '@/css/home.css';
 import '@/css/table.css';
+import '@/css/finance-pages.css';
 
 const MONTHS_BACK = 6;
 
@@ -41,26 +42,38 @@ function CostBreakdown() {
 
   if (history.length === 0) {
     return (
-      <div className="hm-page">
+      <div className="hm-page fin-page fin-breakdown-page">
         <FinEmpty sub="No payroll runs yet — run one from the Payroll page and it shows up here." />
       </div>
     );
   }
 
   return (
-    <div className="hm-page">
-      <div className="hm-card" style={{ padding: '18px 20px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Payroll by month</div>
-        <div style={{ fontSize: 12, color: '#7d6a5c', marginBottom: 14 }}>
-          Last {MONTHS_BACK} months (by period start) · {money(sixMonthTotal)} total
-        </div>
+    <div className="hm-page fin-page fin-breakdown-page">
+      <section className="fin-section fin-chart-section">
+        <header className="fin-section-head">
+          <div>
+            <h2>Payroll by month</h2>
+            <p>Last {MONTHS_BACK} months, grouped by pay-period start.</p>
+          </div>
+          <div className="fin-section-total">
+            <span>Six-month total</span>
+            <strong>{money(sixMonthTotal)}</strong>
+          </div>
+        </header>
         <MonthBarChart series={[{ key: 'cost', label: 'Payroll', color: FIN_COLORS.cost }]} months={months} />
-      </div>
+      </section>
 
-      <div className="hm-card" style={{ padding: '18px 20px' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>By role — all time</div>
-        <div className="hm-table-wrap">
-          <table className="hm-table">
+      <section className="fin-section fin-role-section">
+        <header className="fin-section-head">
+          <div><h2>Payroll by role</h2><p>All recorded payroll runs.</p></div>
+          <div className="fin-section-total">
+            <span>All-time total</span>
+            <strong>{money(totalPayroll)}</strong>
+          </div>
+        </header>
+        <div className="hm-table-wrap fin-table-wrap">
+          <table className="hm-table fin-table">
             <thead><tr><th>Category</th><th>Total paid</th></tr></thead>
             <tbody>
               {[...byType.entries()].map(([type, total]) => (
@@ -72,13 +85,11 @@ function CostBreakdown() {
             </tfoot>
           </table>
         </div>
-      </div>
+      </section>
 
-      <div className="hm-card">
-        <p style={{ margin: 0, fontSize: 13.5, color: '#5c4632', lineHeight: 1.55 }}>
-          Operating expenses (rent, marketing, materials, etc.) aren't tracked here yet — there's a real table for them
-          but no entry screen. This shows payroll cost only, not full operating expense.
-        </p>
+      <div className="fin-note">
+        <i className="fa-solid fa-circle-info" aria-hidden="true" />
+        <p>Operating expenses (rent, marketing, materials, etc.) aren't tracked here yet — there's a real table for them but no entry screen. This shows payroll cost only, not full operating expense.</p>
       </div>
     </div>
   );

@@ -3,6 +3,27 @@
 import api from './api';
 
 const sessionServiceV2 = {
+    // Staff read-only oversight: ended sessions for a bounded local-day range.
+    getAttendanceLogs: async (from, to) => {
+        try {
+            const response = await api.get('/sessions/attendance-log', { params: { from, to } });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching attendance logs:', error);
+            throw error;
+        }
+    },
+
+    getAttendanceLog: async (sessionId) => {
+        try {
+            const response = await api.get(`/sessions/${sessionId}/attendance-log`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching attendance log:', error);
+            throw error;
+        }
+    },
+
     // marks: [{ student_id, status, note?: {performance, improvements, free_notes} }]
     // status ∈ present | absent_unexcused | absent_excused |
     //          cancelled_in_window | cancelled_late | instructor_cancelled

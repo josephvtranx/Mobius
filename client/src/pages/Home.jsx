@@ -142,7 +142,8 @@ function StaffHome({ user }) {
   const todayIso = now.toISODate();
   const todaySessions = allSessions
     .filter((s) => isoToLocal(s.starts_at).toISODate() === todayIso)
-    .sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+    .sort((a, b) => isoToLocal(a.starts_at).toMillis() - isoToLocal(b.starts_at).toMillis());
+  const sessionPreview = todaySessions.slice(0, 5);
   const roomsToday = new Set(todaySessions.map((s) => s.room_id).filter((r) => r != null));
   const sessionsThisWeek = allSessions.filter((s) => {
     const d = isoToLocal(s.starts_at);
@@ -160,12 +161,12 @@ function StaffHome({ user }) {
   const heroParts = [
     `${todaySessions.length} session${todaySessions.length === 1 ? '' : 's'} run today${roomsToday.size ? ` across ${roomsToday.size} room${roomsToday.size === 1 ? '' : 's'}` : ''}.`,
   ];
-  if (requests.length) heroParts.push(`${requests.length} student${requests.length === 1 ? '' : 's'} ${requests.length === 1 ? 'is' : 'are'} waiting on class requests.`);
+  if (requests.length) heroParts.push(`${requests.length} class request${requests.length === 1 ? '' : 's'} need${requests.length === 1 ? 's' : ''} review.`);
   if (clashDay) heroParts.push(`${clashDay} has a room clash to resolve.`);
   if (requests.length === 0 && !clashDay) heroParts.push('No room clashes this week.');
 
   return (
-    <div className="hm-page">
+    <div className="hm-page hm-page--staff">
       <div className="hm-hero-card">
         <div className="hm-hero">
           <div className="hm-hero-copy">
@@ -176,7 +177,7 @@ function StaffHome({ user }) {
           <div className="hm-needs">
             <div>
               <span className="hm-eyebrow">Needs attention</span>
-              <h2>{requests.length} open request{requests.length === 1 ? '' : 's'}{clashes.length ? ` · ${clashes.length} room clash${clashes.length === 1 ? '' : 'es'}` : ''}</h2>
+              <h2>{requests.length} open class request{requests.length === 1 ? '' : 's'}{clashes.length ? ` · ${clashes.length} room clash${clashes.length === 1 ? '' : 'es'}` : ''}</h2>
               <div className="hm-needs-meta">
                 <span><i className="fa-regular fa-clock"></i>{todaySessions.length} sessions today</span>
                 <span><i className="fa-solid fa-users"></i>{new Set(todaySessions.map((s) => s.instructor)).size} tutors on site</span>
@@ -198,10 +199,10 @@ function StaffHome({ user }) {
       </div>
 
       <div className="hm-grid">
-        <Card title="Today's sessions" action={<Link className="hm-link" to="/operations/scheduling">Full schedule</Link>}>
+        <Card className="hm-flat-section" title="Today's sessions" action={<Link className="hm-link" to="/operations/scheduling">View all {todaySessions.length}</Link>}>
           {todaySessions.length ? (
             <div>
-              {todaySessions.map((s) => {
+              {sessionPreview.map((s) => {
                 const tint = tintFor(s.subject);
                 const clashed = clashes.some(([a, b]) => a.session_id === s.session_id || b.session_id === s.session_id);
                 return (
@@ -223,7 +224,7 @@ function StaffHome({ user }) {
           ) : <Empty>No sessions today.</Empty>}
         </Card>
 
-        <Card title="Join requests" action={<Link className="hm-link" to="/operations/requests">Roster</Link>}>
+        <Card className="hm-flat-section" title="Class requests" action={<Link className="hm-link" to="/operations/requests">View all</Link>}>
           {requests.length ? (
             <div>
               {requests.slice(0, 4).map((r) => {
@@ -233,18 +234,26 @@ function StaffHome({ user }) {
                   <div key={r.request_id} className="hm-request-row">
                     <div className="hm-request-top">
                       <span className="hm-avatar-sm" style={{ background: tint.bg, color: tint.fg }}>{initials}</span>
-                      <span className="hm-request-text"><strong>{r.student_name}</strong> wants to join {r.subject}</span>
+                      <span className="hm-request-text">
+                        <strong>{r.student_name}</strong>{' '}
+                        {r.kind === 'leave' ? 'wants to leave' : r.is_waitlist ? 'is waiting for a seat in' : 'wants to join'}{' '}
+                        {r.subject}
+                      </span>
                       <span className="hm-request-age">{isoToLocal(r.created_at).toRelative()}</span>
                     </div>
                     <div className="hm-request-actions">
-                      <button type="button" className="approve" disabled={busyRequest === r.request_id} onClick={() => respond(r.request_id, 'approve')}>Approve</button>
+                      {r.is_waitlist ? (
+                        <Link className="review" to={`/operations/classes/${r.class_id}?edit=capacity`}>Review capacity</Link>
+                      ) : (
+                        <button type="button" className="approve" disabled={busyRequest === r.request_id} onClick={() => respond(r.request_id, 'approve')}>Approve</button>
+                      )}
                       <button type="button" className="decline" disabled={busyRequest === r.request_id} onClick={() => respond(r.request_id, 'reject')}>Decline</button>
                     </div>
                   </div>
                 );
               })}
             </div>
-          ) : <Empty>No pending membership requests.</Empty>}
+          ) : <Empty>No pending class requests.</Empty>}
         </Card>
       </div>
 
@@ -291,7 +300,8 @@ function InstructorHome({ user }) {
     const past = c.sessions.filter((s) => isoToLocal(s.starts_at) < now);
     return past.length > 0 && c.roster.some((r) => r.status === 'active');
   }).length;
-  const nextSession = [...data.sessions].sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at))[0];
+  const nextSession = [...data.sessions]
+    .sort((a, b) => isoToLocal(a.starts_at).toMillis() - isoToLocal(b.starts_at).toMillis())[0];
 
   const heroParts = [`${todaySessions.length} session${todaySessions.length === 1 ? '' : 's'} today`];
   if (needAttendanceNow) heroParts.push(`${needAttendanceNow} still need${needAttendanceNow === 1 ? 's' : ''} attendance`);

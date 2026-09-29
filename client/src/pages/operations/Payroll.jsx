@@ -7,11 +7,12 @@ import { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 import payrollService from '@/services/payrollService';
 import { isoToLocal } from 'mobius-lms';
-import '@/css/attendance.css';
+import '@/css/home.css';
 import '@/css/table.css';
+import '@/css/finance-pages.css';
 
 const money = (n) => `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => DateTime.now().toISODate();
 // pay_period_start/end (and the raw date-input start/end state) are plain
 // DATE values, not instants — format them directly rather than through
 // isoToLocal (which assumes a UTC instant and would shift the calendar date
@@ -64,34 +65,39 @@ function Payroll() {
   const excluded = preview?.filter((r) => r.excluded) ?? [];
 
   return (
-    <div className="at-page">
-      <h1 className="at-title">Payroll</h1>
+    <div className="hm-page payroll-page">
       {error && <div className="hm-error">{error}</div>}
 
-      <div className="hm-card" style={{ marginBottom: 16 }}>
-        <div className="hm-card-head"><h2>Run payroll</h2></div>
-        <div className="hm-actions" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <label className="hm-kpi-label">Period start
-            <input type="date" value={start} onChange={(e) => setStart(e.target.value)}
-              style={{ display: 'block', marginTop: 4, padding: 8, borderRadius: 8, border: '1px solid var(--shell-border)' }} />
-          </label>
-          <label className="hm-kpi-label">Period end
-            <input type="date" value={end} onChange={(e) => setEnd(e.target.value)}
-              style={{ display: 'block', marginTop: 4, padding: 8, borderRadius: 8, border: '1px solid var(--shell-border)' }} />
-          </label>
-          <button type="button" className="hm-btn" disabled={busy} onClick={doPreview}>Preview</button>
+      <section className="payroll-run">
+        <div className="payroll-run-copy">
+          <h2>Run payroll</h2>
+          <p>Choose a pay period, preview every eligible person, then review the totals before running payroll.</p>
         </div>
-      </div>
+        <div className="payroll-controls">
+          <label className="payroll-field">Period start
+            <input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          </label>
+          <label className="payroll-field">Period end
+            <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+          </label>
+          <button type="button" className="hm-btn primary" disabled={busy} onClick={doPreview}>
+            <i className="fa-solid fa-magnifying-glass" aria-hidden="true" />Preview
+          </button>
+        </div>
+      </section>
 
       {preview && (
-        <div className="hm-card" style={{ marginBottom: 16 }}>
-          <div className="hm-card-head">
-            <h2>Preview — {dateFmt(start, 'LLL d')} to {dateFmt(end)}</h2>
+        <section className="fin-section payroll-preview">
+          <header className="fin-section-head">
+            <div>
+              <h2>Payroll preview</h2>
+              <p>{dateFmt(start, 'LLL d')} to {dateFmt(end)} · {eligible.length} eligible</p>
+            </div>
             <button type="button" className="hm-btn primary" disabled={busy || eligible.length === 0} onClick={doRun}>
               {busy ? 'Running…' : `Run payroll (${eligible.length})`}
             </button>
-          </div>
-          <div className="hm-table-wrap">
+          </header>
+          <div className="hm-table-wrap payroll-table-wrap">
             <table className="hm-table">
               <thead><tr><th>Name</th><th>Basis</th><th>Hours</th><th>Rate</th><th>Total pay</th></tr></thead>
               <tbody>
@@ -109,27 +115,35 @@ function Payroll() {
             </table>
           </div>
           {excluded.length > 0 && (
-            <p className="at-subtitle" style={{ marginTop: 10 }}>
+            <p className="payroll-excluded">
               Not included: {excluded.map((r) => r.name).join(', ')} — {excluded[0].reason}
             </p>
           )}
-        </div>
+        </section>
       )}
 
       {runResult && (
-        <div className="hm-card" style={{ marginBottom: 16, color: 'var(--status-success)' }}>
-          <p>Paid {runResult.paid.length} {runResult.paid.length === 1 ? 'person' : 'people'} for this period.</p>
-          {runResult.skipped.length > 0 && (
-            <p style={{ color: 'var(--shell-muted)' }}>
-              Skipped: {runResult.skipped.map((s) => `${s.name} (${s.reason})`).join('; ')}
-            </p>
-          )}
+        <div className="fin-success payroll-result">
+          <i className="fa-solid fa-circle-check" aria-hidden="true" />
+          <div>
+            <p>Paid {runResult.paid.length} {runResult.paid.length === 1 ? 'person' : 'people'} for this period.</p>
+            {runResult.skipped.length > 0 && (
+              <p style={{ color: 'var(--shell-muted)' }}>
+                Skipped: {runResult.skipped.map((s) => `${s.name} (${s.reason})`).join('; ')}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="hm-card">
-        <div className="hm-card-head"><h2>History</h2></div>
-        <div className="hm-table-wrap">
+      <section className="fin-section payroll-history">
+        <header className="fin-section-head">
+          <div>
+            <h2>Payroll history</h2>
+            <p>{history?.length ?? 0} payroll records</p>
+          </div>
+        </header>
+        <div className="hm-table-wrap payroll-table-wrap">
           <table className="hm-table">
             <thead><tr><th>Name</th><th>Type</th><th>Period</th><th>Total pay</th><th>Paid on</th></tr></thead>
             <tbody>
@@ -146,7 +160,7 @@ function Payroll() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

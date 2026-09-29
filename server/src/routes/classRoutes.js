@@ -187,6 +187,55 @@ router.get('/membership-requests', authenticateToken, authorizeRole('staff'), as
   res.json(rows);
 });
 
+// Academy-wide calendar for the staff Scheduling page. This is deliberately
+// date-ranged: the initial week stays cheap, and the same endpoint supports
+// real previous/next-week navigation without loading every generated session.
+router.get('/schedule', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  const { from, to } = req.query;
+  try {
+    if (typeof from !== 'string' || typeof to !== 'string') throw new Error('Missing range');
+    assertUtcIso(from);
+    assertUtcIso(to);
+  } catch {
+    return res.status(400).json({ message: 'from/to must be UTC ISO strings with a Z suffix' });
+  }
+
+  const rangeStart = DateTime.fromISO(from);
+  const rangeEnd = DateTime.fromISO(to);
+  if (!rangeStart.isValid || !rangeEnd.isValid) {
+    return res.status(400).json({ message: 'from/to must be valid UTC ISO timestamps' });
+  }
+  if (rangeEnd <= rangeStart) {
+    return res.status(400).json({ message: 'to must be after from' });
+  }
+  if (rangeEnd.diff(rangeStart, 'days').days > 42) {
+    return res.status(400).json({ message: 'Schedule ranges cannot exceed 42 days' });
+  }
+
+  const { rows } = await req.db.query(
+    `SELECT cs.session_id, cs.class_id, cs.instructor_id, cs.starts_at, cs.ends_at,
+            cs.status, cs.room_id, c.class_type, sub.name AS subject,
+            instructor.name AS instructor, room.name AS room,
+            COALESCE(
+              array_agg(e.student_id) FILTER (WHERE e.status = 'active'),
+              ARRAY[]::integer[]
+            ) AS student_ids
+       FROM class_sessions cs
+       JOIN classes c ON c.class_id = cs.class_id AND c.status = 'active'
+       JOIN subjects sub ON sub.subject_id = c.subject_id
+       JOIN users instructor ON instructor.user_id = cs.instructor_id
+       LEFT JOIN rooms room ON room.room_id = cs.room_id
+       LEFT JOIN enrollments e ON e.class_id = c.class_id
+      WHERE cs.starts_at >= $1 AND cs.starts_at < $2
+        AND cs.status IN ('scheduled', 'reschedule_requested', 'completed')
+      GROUP BY cs.session_id, cs.class_id, cs.instructor_id, cs.starts_at, cs.ends_at,
+               cs.status, cs.room_id, c.class_type, sub.name, instructor.name, room.name
+      ORDER BY cs.starts_at`,
+    [from, to]
+  );
+  res.json({ from, to, sessions: rows });
+});
+
 router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
   const { rows } = await req.db.query(
     `SELECT c.*, s.name AS subject, u.name AS instructor,
@@ -310,6 +359,64 @@ router.post('/:id/enrollments', authenticateToken, authorizeRole('staff'), async
   if (!studentId) return res.status(400).json({ message: 'student_id is required' });
   const result = await enrollStudent(req.db, cls, studentId, req.user.user_id);
   res.status(result.status).json(result.body);
+});
+
+// Capacity is a class-level operational setting. One-on-one classes always
+// remain at one seat; group limits cannot be reduced below the live roster.
+// Room capacity remains a warning, matching class creation semantics.
+router.patch('/:id/capacity', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) return res.status(404).json({ message: 'Class not found' });
+  const requestedLimit = Number(req.body.student_limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1) {
+    return res.status(400).json({ message: 'student_limit must be a positive integer' });
+  }
+
+  try {
+    const result = await withTransaction(req.db, async (client) => {
+      const { rows: [cls] } = await client.query(
+        'SELECT * FROM classes WHERE class_id = $1 FOR UPDATE', [req.params.id]);
+      if (!cls) throw new HttpError(404, { message: 'Class not found' });
+      if (cls.class_type === 'one_on_one' && requestedLimit !== 1) {
+        throw new HttpError(400, { message: 'One-on-one classes must have a student limit of 1' });
+      }
+      if (cls.class_type === 'group' && requestedLimit < 2) {
+        throw new HttpError(400, { message: 'Group classes need a student limit of at least 2' });
+      }
+
+      const { rows: [roster] } = await client.query(
+        `SELECT count(*)::int AS active FROM enrollments
+          WHERE class_id = $1 AND status = 'active'`, [cls.class_id]);
+      if (requestedLimit < roster.active) {
+        throw new HttpError(409, {
+          code: 'LIMIT_BELOW_ROSTER',
+          message: `Student limit cannot be below the ${roster.active} currently enrolled students`
+        });
+      }
+
+      const { rows: roomWarnings } = await client.query(
+        `SELECT DISTINCT r.name, r.capacity
+           FROM class_sessions cs
+           JOIN rooms r ON r.room_id = cs.room_id
+          WHERE cs.class_id = $1 AND cs.status = 'scheduled'
+            AND cs.starts_at > CURRENT_TIMESTAMP AND r.capacity < $2
+          ORDER BY r.capacity`,
+        [cls.class_id, requestedLimit]
+      );
+      const { rows: [updated] } = await client.query(
+        `UPDATE classes SET student_limit = $2 WHERE class_id = $1 RETURNING *`,
+        [cls.class_id, requestedLimit]
+      );
+      return {
+        class: updated,
+        warnings: roomWarnings.map((room) =>
+          `Room "${room.name}" seats ${room.capacity} of ${requestedLimit}`)
+      };
+    });
+    res.json(result);
+  } catch (err) {
+    if (err instanceof HttpError) return res.status(err.status).json(err.body);
+    throw err;
+  }
 });
 
 // ---------------------------------------------------------------------------

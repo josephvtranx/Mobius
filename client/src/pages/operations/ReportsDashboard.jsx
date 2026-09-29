@@ -57,7 +57,7 @@ function ReportsDashboard() {
   const openTasks = operational?.pending_requests_aging.reduce((n, task) => n + task.open, 0);
 
   return <div className="hm-page rp-page">
-    <div className="rp-intro"><p>Track academic follow-through and the work that needs attention.</p><button className="hm-btn" disabled={loading} onClick={() => { loadDash(); loadNotes(); }}>Refresh reports</button></div>
+    <div className="rp-intro"><p>Track academic follow-through and the work that needs attention.</p><button className="hm-btn" disabled={loading} onClick={() => { loadDash(); loadNotes(); }}><i className="fa-solid fa-rotate" aria-hidden="true" />Refresh reports</button></div>
     <div className="rp-summary">
       <div><span>Note completion</span><strong>{totals ? pct(totals.marked ? totals.noted / totals.marked : null) : '—'}</strong><small>Trailing {days} days · student-sessions</small></div>
       <div><span>Missing notes</span><strong>{activeNotes ? activeNotes.missing.length : '—'}</strong><small>Attendance marked, note not yet written</small></div>

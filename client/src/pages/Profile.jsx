@@ -8,9 +8,9 @@ import ProfilePictureUpload from '@/components/ProfilePictureUpload';
 import authService from '@/services/authService';
 import guardianPortalService from '@/services/guardianPortalService';
 import '@/css/home.css';
+import '@/css/profile-settings.css';
 
 const PREF_MODES = ['all', 'billing_only', 'digest'];
-const inputStyle = { width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--shell-border)', marginBottom: 10 };
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -22,6 +22,7 @@ function Profile() {
   const [currentUser, setCurrentUser] = useState(null);
   const [children, setChildren] = useState(null);
   const [prefNotice, setPrefNotice] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     api.get('/users/profile')
@@ -62,14 +63,23 @@ function Profile() {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setIsSaving(true);
     try {
       const res = await api.patch('/users/profile', formData);
-      setUser(res.data.user || res.data);
+      const updated = res.data.user || res.data;
+      setUser(updated);
+      const cached = authService.getCurrentUser() || {};
+      const fresh = { ...cached, name: updated.name, profile_pic_url: updated.profile_pic_url };
+      setCurrentUser(fresh);
+      authService.setCurrentUser(fresh);
+      window.dispatchEvent(new CustomEvent('profile-updated'));
       setIsEditing(false);
       setSuccess('Profile updated.');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -77,42 +87,62 @@ function Profile() {
   if (!user) return <div className="hm-page"><div className="hm-error">{error || 'Failed to load profile'}</div></div>;
 
   return (
-    <div className="hm-page" style={{ maxWidth: 860 }}>
-      <header className="hm-greeting">
-        <h1>Settings</h1>
-        <p>Your personal account.</p>
-      </header>
-
-      {error && <div className="hm-error">{error}</div>}
-      {success && <div className="hm-card" style={{ color: 'var(--status-success)' }}>{success}</div>}
-
-      <section className="hm-card">
-        <div className="hm-card-head"><h2>Profile picture</h2></div>
-        <ProfilePictureUpload
-          currentUser={currentUser}
-          onUploadSuccess={(imageUrl) => setCurrentUser((prev) => ({ ...prev, profile_pic_url: imageUrl }))}
-        />
-      </section>
-
-      <section className="hm-card">
-        <div className="hm-card-head">
-          <h2>Personal</h2>
-          {!isEditing && <button type="button" className="hm-btn primary" onClick={() => setIsEditing(true)}><i className="fa-solid fa-pen" style={{ marginRight: 7 }}></i>Edit</button>}
+    <div className="settings-page">
+      {error && (
+        <div className="hm-error settings-notice" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError('')} aria-label="Dismiss error"><i className="fa-solid fa-xmark" /></button>
         </div>
+      )}
+      {success && <div className="settings-notice settings-notice--success"><i className="fa-solid fa-check" />{success}</div>}
+
+      <div className="settings-layout">
+        <section className="settings-photo">
+          <header className="settings-section-head">
+            <div>
+              <h2>Profile photo</h2>
+            </div>
+          </header>
+          <ProfilePictureUpload
+            currentUser={currentUser}
+            onUploadSuccess={(imageUrl) => setCurrentUser((prev) => ({ ...prev, profile_pic_url: imageUrl }))}
+          />
+        </section>
+
+        <section className="settings-personal">
+          <header className="settings-section-head settings-section-head--actions">
+            <div>
+              <h2>Account details</h2>
+            </div>
+            {!isEditing && (
+              <button type="button" className="settings-edit" onClick={() => setIsEditing(true)}>
+                <i className="fa-solid fa-pen" /> Edit details
+              </button>
+            )}
+          </header>
 
         {isEditing ? (
-          <form onSubmit={handleSubmit}>
-            <label className="hm-kpi-label">Name</label>
-            <input style={inputStyle} type="text" name="name" value={formData.name} onChange={handleChange} required />
-            <label className="hm-kpi-label">Email</label>
-            <input style={inputStyle} type="email" name="email" value={formData.email} onChange={handleChange} required />
-            <label className="hm-kpi-label">Phone</label>
-            <input style={inputStyle} type="tel" name="phone" value={formData.phone} onChange={handleChange} />
-            <div className="hm-actions">
-              <button type="submit" className="hm-btn primary">Save changes</button>
+          <form onSubmit={handleSubmit} className="settings-form">
+            <label>
+              <span>Full name</span>
+              <input type="text" name="name" value={formData.name} onChange={handleChange} required autoFocus />
+            </label>
+            <label>
+              <span>Email address</span>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+            </label>
+            <label>
+              <span>Phone number <small>Optional</small></span>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="Add a phone number" />
+            </label>
+            <div className="settings-form-actions">
+              <button type="submit" className="hm-btn primary" disabled={isSaving}>
+                {isSaving ? <><i className="fa-solid fa-spinner fa-spin" /> Saving…</> : 'Save changes'}
+              </button>
               <button
                 type="button"
                 className="hm-btn"
+                disabled={isSaving}
                 onClick={() => { setIsEditing(false); setFormData({ name: user.name, email: user.email, phone: user.phone || '' }); }}
               >
                 Cancel
@@ -120,49 +150,46 @@ function Profile() {
             </div>
           </form>
         ) : (
-          <div className="hm-divided">
-            <div className="hm-divided-row">
-              <i className="fa-solid fa-user"></i>
-              <span className="hm-divided-label">Full name</span>
-              <span className="hm-divided-value">{user.name}</span>
+          <div className="settings-detail-list">
+            <div className="settings-detail-row">
+              <span className="settings-detail-icon"><i className="fa-solid fa-user" /></span>
+              <span><small>Full name</small><strong>{user.name}</strong></span>
             </div>
-            <div className="hm-divided-row">
-              <i className="fa-solid fa-envelope"></i>
-              <span className="hm-divided-label">Email</span>
-              <span className="hm-divided-value">{user.email}</span>
+            <div className="settings-detail-row">
+              <span className="settings-detail-icon"><i className="fa-solid fa-envelope" /></span>
+              <span><small>Email address</small><strong>{user.email}</strong></span>
             </div>
-            <div className="hm-divided-row">
-              <i className="fa-solid fa-phone"></i>
-              <span className="hm-divided-label">Phone</span>
-              <span className="hm-divided-value">{user.phone || 'Not provided'}</span>
+            <div className="settings-detail-row">
+              <span className="settings-detail-icon"><i className="fa-solid fa-phone" /></span>
+              <span><small>Phone number</small><strong className={!user.phone ? 'is-muted' : ''}>{user.phone || 'Not provided'}</strong></span>
             </div>
-            <div className="hm-divided-row">
-              <i className="fa-solid fa-shield-halved"></i>
-              <span className="hm-divided-label">Role</span>
-              <span className="hm-divided-value" style={{ textTransform: 'capitalize' }}>{user.role}</span>
+            <div className="settings-detail-row">
+              <span className="settings-detail-icon"><i className="fa-solid fa-shield-halved" /></span>
+              <span><small>Account role</small><strong className="settings-role">{user.role}</strong></span>
             </div>
           </div>
         )}
-      </section>
+        </section>
+      </div>
 
       {currentUser?.role === 'guardian' && children && (
-        <section className="hm-card">
-          <div className="hm-card-head"><h2>Linked children</h2></div>
-          {prefNotice && <p style={{ color: 'var(--status-success)', fontSize: 13, marginBottom: 10 }}>{prefNotice}</p>}
+        <section className="settings-children">
+          <header className="settings-section-head">
+            <div><h2>Linked children</h2></div>
+          </header>
+          {prefNotice && <p className="settings-pref-notice">{prefNotice}</p>}
           {children.length ? (
-            <div className="hm-divided">
+            <div className="settings-detail-list">
               {children.map((c) => (
-                <div key={c.student_id} className="hm-divided-row">
-                  <i className="fa-solid fa-graduation-cap"></i>
-                  <span className="hm-divided-label" style={{ width: 'auto', flex: 1 }}>
+                <div key={c.student_id} className="settings-child-row">
+                  <span className="settings-detail-icon"><i className="fa-solid fa-graduation-cap" /></span>
+                  <strong>
                     {c.name}{c.is_primary ? ' (primary)' : ''}
-                  </span>
-                  <label style={{ fontSize: 12.5, color: 'var(--shell-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  </strong>
+                  <label>
                     Notifications
                     <select
                       defaultValue="all"
-                      className="hm-btn"
-                      style={{ height: 32, fontSize: 12.5 }}
                       onChange={(e) => setNotificationMode(c.student_id, e.target.value)}
                     >
                       {PREF_MODES.map((m) => <option key={m} value={m}>{m.replace('_', ' ')}</option>)}
@@ -171,7 +198,7 @@ function Profile() {
                 </div>
               ))}
             </div>
-          ) : <div className="hm-empty">No linked students yet.</div>}
+          ) : <div className="settings-empty">No linked students yet.</div>}
         </section>
       )}
     </div>

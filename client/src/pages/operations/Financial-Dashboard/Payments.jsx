@@ -2,11 +2,8 @@
 // payments/invoices/payment_methods already existed in the v2 schema with
 // zero endpoints against them — real now. This is a manual "record money
 // already received" ledger: no card collection, no payment links, no
-// processor. Recording a payment does NOT touch a student's wallet/credit
-// balance — there is no real dollars-per-credit rate anywhere in the schema
-// yet (ASSUMPTION[TOPUP] hasn't landed), so granting credits stays a
-// separate, already-real action on the Wallets page rather than an invented
-// conversion here.
+// processor. A payment linked to a configured package grants that package's
+// exact credits server-side; money-only payments do not change a wallet.
 import { useEffect, useState } from 'react';
 import { DateTime } from 'luxon';
 import paymentService from '@/services/paymentService';
@@ -15,13 +12,13 @@ import studentService from '@/services/studentService';
 import packageService from '@/services/packageService';
 import '@/css/home.css';
 import '@/css/table.css';
+import '@/css/finance-pages.css';
 
 const money = (n) => `$${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => DateTime.now().toISODate();
 // issued_at/due_date/payment_date are plain DATE columns, not instants.
 const dateFmt = (d) => (d ? DateTime.fromISO(d).toFormat('LLL d, yyyy') : '—');
 const STATUS_TONE = { paid: 'success', pending: 'info', overdue: 'error', canceled: 'warning' };
-const fieldStyle = { width: '100%', padding: 8, borderRadius: 8, border: '1px solid var(--shell-border)', marginTop: 4 };
 
 function Payments() {
   const [students, setStudents] = useState([]);
@@ -127,28 +124,31 @@ function Payments() {
   };
 
   return (
-    <div className="hm-page">
-      <header className="hm-greeting">
-        <h1>Payments</h1>
-        <p>Record money already received and track invoices. There's no online checkout here — no card collection, no payment links.</p>
-      </header>
+    <div className="hm-page fin-page payments-page">
+      <div className="fin-page-intro">
+        <p>Record money already received and track invoices. This is a manual ledger; there is no online checkout or card collection.</p>
+        <div className="fin-page-counts" aria-label="Payment record counts">
+          <span><strong>{invoices?.length ?? 0}</strong> invoices</span>
+          <span><strong>{payments?.length ?? 0}</strong> payments</span>
+        </div>
+      </div>
 
       {error && <div className="hm-error">{error}</div>}
-      {notice && <div className="hm-card" style={{ color: 'var(--status-success, #2c8a5b)' }}>{notice}</div>}
+      {notice && <div className="fin-success"><i className="fa-solid fa-circle-check" aria-hidden="true" />{notice}</div>}
 
-      <div className="hm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <form onSubmit={submitPayment} className="hm-card" style={{ display: 'grid', gap: 10 }}>
-          <div className="hm-card-head"><h2>Record a payment</h2></div>
-          <label className="hm-kpi-label">Student
-            <select style={fieldStyle} value={payForm.student_id} required
+      <div className="payment-entry-grid">
+        <form onSubmit={submitPayment} className="payment-form">
+          <header className="fin-section-head"><div><h2>Record a payment</h2><p>Optionally attach a credit package to grant its configured credits.</p></div></header>
+          <label className="fin-field">Student
+            <select value={payForm.student_id} required
               onChange={(e) => setPayForm((f) => ({ ...f, student_id: e.target.value }))}>
-              <option value="">— pick —</option>
+              <option value="">Choose a student</option>
               {students.map((s) => <option key={s.student_id} value={s.student_id}>{s.name}</option>)}
             </select>
           </label>
-          <label className="hm-kpi-label">Credit package
-            <select style={fieldStyle} value={payForm.package_id} onChange={(e) => pickPackage(e.target.value)}>
-              <option value="">— none (money only) —</option>
+          <label className="fin-field">Credit package
+            <select value={payForm.package_id} onChange={(e) => pickPackage(e.target.value)}>
+              <option value="">None — record money only</option>
               {packages.map((p) => (
                 <option key={p.package_id} value={p.package_id}>
                   {p.name} · {p.credits}{p.bonus_credits ? `+${p.bonus_credits}` : ''} cr · ${Number(p.price).toLocaleString()}
@@ -157,61 +157,63 @@ function Payments() {
             </select>
           </label>
           {payForm.package_id && (
-            <div style={{ fontSize: 12, color: 'var(--status-success, #2c8a5b)' }}>
-              Saving credits the student's wallet automatically.
-            </div>
+            <div className="payment-credit-note"><i className="fa-solid fa-circle-check" aria-hidden="true" />Saving will credit the student's wallet automatically.</div>
           )}
-          <label className="hm-kpi-label">Amount
-            <input style={fieldStyle} type="number" min="0" step="0.01" required
+          <div className="payment-form-row">
+          <label className="fin-field">Amount
+            <input type="number" min="0" step="0.01" required
               value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
           </label>
-          <label className="hm-kpi-label">Date received
-            <input style={fieldStyle} type="date" required
+          <label className="fin-field">Date received
+            <input type="date" required
               value={payForm.payment_date} onChange={(e) => setPayForm((f) => ({ ...f, payment_date: e.target.value }))} />
           </label>
-          <label className="hm-kpi-label">Method
-            <select style={fieldStyle} value={payForm.method_id}
+          </div>
+          <label className="fin-field">Method
+            <select value={payForm.method_id}
               onChange={(e) => setPayForm((f) => ({ ...f, method_id: e.target.value }))}>
-              <option value="">— unspecified —</option>
+              <option value="">Unspecified</option>
               {methods.map((m) => <option key={m.method_id} value={m.method_id}>{m.method_name}</option>)}
             </select>
           </label>
-          <label className="hm-kpi-label">Note
-            <input style={fieldStyle} type="text" value={payForm.description}
+          <label className="fin-field">Note
+            <input type="text" placeholder="Optional payment note" value={payForm.description}
               onChange={(e) => setPayForm((f) => ({ ...f, description: e.target.value }))} />
           </label>
-          <button type="submit" className="hm-btn primary" disabled={busy}>Record payment</button>
+          <div className="payment-form-actions"><button type="submit" className="hm-btn primary" disabled={busy}>Record payment</button></div>
         </form>
 
-        <form onSubmit={submitInvoice} className="hm-card" style={{ display: 'grid', gap: 10 }}>
-          <div className="hm-card-head"><h2>Create an invoice</h2></div>
-          <label className="hm-kpi-label">Student
-            <select style={fieldStyle} value={invForm.student_id} required
+        <form onSubmit={submitInvoice} className="payment-form payment-form--invoice">
+          <header className="fin-section-head"><div><h2>Create an invoice</h2><p>Track an amount due and record payment when it arrives.</p></div></header>
+          <label className="fin-field">Student
+            <select value={invForm.student_id} required
               onChange={(e) => setInvForm((f) => ({ ...f, student_id: e.target.value }))}>
-              <option value="">— pick —</option>
+              <option value="">Choose a student</option>
               {students.map((s) => <option key={s.student_id} value={s.student_id}>{s.name}</option>)}
             </select>
           </label>
-          <label className="hm-kpi-label">Total amount
-            <input style={fieldStyle} type="number" min="0" step="0.01" required
+          <div className="payment-form-row">
+          <label className="fin-field">Total amount
+            <input type="number" min="0" step="0.01" required
               value={invForm.total_amount} onChange={(e) => setInvForm((f) => ({ ...f, total_amount: e.target.value }))} />
           </label>
-          <label className="hm-kpi-label">Due date
-            <input style={fieldStyle} type="date"
+          <label className="fin-field">Due date
+            <input type="date"
               value={invForm.due_date} onChange={(e) => setInvForm((f) => ({ ...f, due_date: e.target.value }))} />
           </label>
-          <label className="hm-kpi-label">Description
-            <input style={fieldStyle} type="text" value={invForm.description}
+          </div>
+          <label className="fin-field">Description
+            <input type="text" placeholder="Optional invoice description" value={invForm.description}
               onChange={(e) => setInvForm((f) => ({ ...f, description: e.target.value }))} />
           </label>
-          <button type="submit" className="hm-btn primary" disabled={busy}>Create invoice</button>
+          <div className="payment-form-actions"><button type="submit" className="hm-btn primary" disabled={busy}>Create invoice</button></div>
         </form>
       </div>
 
-      <div className="hm-card" style={{ marginTop: 16 }}>
-        <div className="hm-card-head"><h2>Invoices</h2></div>
-        <div className="hm-table-wrap">
-          <table className="hm-table">
+      <section className="fin-section payment-ledger-section">
+        <header className="fin-section-head"><div><h2>Invoices</h2><p>{invoices?.length ?? 0} records</p></div></header>
+        <div className="hm-table-wrap fin-table-wrap">
+          <table className="hm-table fin-table">
             <thead><tr><th>Student</th><th>Amount</th><th>Paid</th><th>Due</th><th>Status</th><th></th></tr></thead>
             <tbody>
               {(invoices ?? []).map((inv) => (
@@ -224,8 +226,8 @@ function Payments() {
                   <td>
                     {inv.status === 'pending' && payingInvoice?.invoice_id !== inv.invoice_id && (
                       <>
-                        <button type="button" className="hm-btn" onClick={() => startPayInvoice(inv)}>Record payment</button>{' '}
-                        <button type="button" className="hm-btn" onClick={() => cancelInvoice(inv.invoice_id)}>Cancel</button>
+                        <button type="button" className="hm-btn payment-row-action" onClick={() => startPayInvoice(inv)}>Record payment</button>{' '}
+                        <button type="button" className="hm-btn payment-row-action payment-row-action--danger" onClick={() => cancelInvoice(inv.invoice_id)}>Cancel</button>
                       </>
                     )}
                   </td>
@@ -237,35 +239,35 @@ function Payments() {
         </div>
 
         {payingInvoice && (
-          <div className="hm-card" style={{ marginTop: 12, display: 'grid', gap: 10, maxWidth: 320 }}>
-            <div className="hm-card-head"><h2>Record payment — invoice #{payingInvoice.invoice_id}</h2></div>
-            <label className="hm-kpi-label">Amount
-              <input style={fieldStyle} type="number" min="0" step="0.01" value={payingInvoice.amount}
+          <div className="invoice-payment-editor">
+            <header><h3>Record payment</h3><p>Invoice #{payingInvoice.invoice_id}</p></header>
+            <label className="fin-field">Amount
+              <input type="number" min="0" step="0.01" value={payingInvoice.amount}
                 onChange={(e) => setPayingInvoice((p) => ({ ...p, amount: e.target.value }))} />
             </label>
-            <label className="hm-kpi-label">Date received
-              <input style={fieldStyle} type="date" value={payingInvoice.payment_date}
+            <label className="fin-field">Date received
+              <input type="date" value={payingInvoice.payment_date}
                 onChange={(e) => setPayingInvoice((p) => ({ ...p, payment_date: e.target.value }))} />
             </label>
-            <label className="hm-kpi-label">Method
-              <select style={fieldStyle} value={payingInvoice.method_id}
+            <label className="fin-field">Method
+              <select value={payingInvoice.method_id}
                 onChange={(e) => setPayingInvoice((p) => ({ ...p, method_id: e.target.value }))}>
-                <option value="">— unspecified —</option>
+                <option value="">Unspecified</option>
                 {methods.map((m) => <option key={m.method_id} value={m.method_id}>{m.method_name}</option>)}
               </select>
             </label>
-            <div>
+            <div className="invoice-payment-actions">
               <button type="button" className="hm-btn primary" disabled={busy} onClick={submitInvoicePayment}>Confirm</button>{' '}
               <button type="button" className="hm-btn" onClick={() => setPayingInvoice(null)}>Cancel</button>
             </div>
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="hm-card" style={{ marginTop: 16 }}>
-        <div className="hm-card-head"><h2>Recent payments</h2></div>
-        <div className="hm-table-wrap">
-          <table className="hm-table">
+      <section className="fin-section payment-ledger-section">
+        <header className="fin-section-head"><div><h2>Recent payments</h2><p>{payments?.length ?? 0} records</p></div></header>
+        <div className="hm-table-wrap fin-table-wrap">
+          <table className="hm-table fin-table">
             <thead><tr><th>Student</th><th>Amount</th><th>Date</th><th>Method</th><th>Note</th></tr></thead>
             <tbody>
               {(payments ?? []).map((p) => (
@@ -281,7 +283,7 @@ function Payments() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

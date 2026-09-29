@@ -82,11 +82,10 @@ export function MonthBarChart({ series, months, height = 170 }) {
 // The handoff's finance empty state, shared by the three dashboard pages.
 export function FinEmpty({ sub }) {
   return (
-    <div className="hm-empty" style={{ textAlign: 'center', padding: '64px 20px', background: '#fff',
-      border: '1px solid #f0e3d8', borderRadius: 16 }}>
-      <i className="fa-solid fa-coins" style={{ fontSize: 26, color: '#c4a98e' }} />
-      <div style={{ fontSize: 15.5, fontWeight: 600, marginTop: 14 }}>No financial data yet</div>
-      <div style={{ fontSize: 13.5, color: '#7d6a5c', marginTop: 6 }}>{sub}</div>
+    <div className="hm-empty fin-empty">
+      <i className="fa-solid fa-coins" aria-hidden="true" />
+      <div>No financial data yet</div>
+      <p>{sub}</p>
     </div>
   );
 }

@@ -23,9 +23,11 @@ const LIST_SQL = `
          t.details, t.status, t.created_at, t.resolved_at,
          c.class_id, session.session_id,
          su.name AS student_name,
-         sub.name AS subject
+         sub.name AS subject,
+         resolver.name AS resolved_by_name
     FROM staff_tasks t
     LEFT JOIN users su ON su.user_id::text = t.details->>'student_id'
+    LEFT JOIN users resolver ON resolver.user_id = t.resolved_by
     LEFT JOIN class_sessions session ON session.session_id::text = COALESCE(
       t.details->>'session_id', CASE WHEN t.subject_type IN ('session','class_session') THEN t.subject_id END)
     LEFT JOIN classes c ON c.class_id::text = COALESCE(
@@ -48,7 +50,12 @@ router.get('/', authenticateToken, authorizeRole('staff'), async (req, res) => {
   const { rows } = await req.db.query(LIST_SQL, [statuses]);
   const { rows: [counts] } = await req.db.query(
     `SELECT count(*) FILTER (WHERE status IN ('open','in_progress'))::int AS open_count,
-            count(*) FILTER (WHERE status = ANY($1))::int AS total_count FROM staff_tasks`, [statuses]);
+            count(*) FILTER (WHERE status IN ('open','in_progress') AND urgency = 'urgent')::int AS urgent_count,
+            count(*) FILTER (WHERE status = 'done')::int AS done_count,
+            count(*) FILTER (WHERE status = 'dismissed')::int AS dismissed_count,
+            count(*)::int AS all_count,
+            count(*) FILTER (WHERE status = ANY($1))::int AS total_count
+       FROM staff_tasks`, [statuses]);
   res.json({ tasks: rows, ...counts });
 });
 
@@ -75,6 +82,28 @@ router.post('/:id/resolve', authenticateToken, authorizeRole('staff'), async (re
       WHERE task_id = $3 AND status IN ('open','in_progress')
       RETURNING task_id, status, resolved_at`,
     [action, req.user.user_id, req.params.id]);
+  if (!updated) {
+    const { rows: [task] } = await req.db.query(
+      `SELECT status FROM staff_tasks WHERE task_id = $1`, [req.params.id]);
+    return res.status(task ? 409 : 404).json({
+      message: task ? `Task is already ${task.status}. Refresh the inbox.` : 'Task not found'
+    });
+  }
+  res.json(updated);
+});
+
+// POST /:id/reopen — recover a task that was closed accidentally. Reopening
+// only changes the inbox state; the related business record remains untouched.
+router.post('/:id/reopen', authenticateToken, authorizeRole('staff'), async (req, res) => {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid task id' });
+  }
+  const { rows: [updated] } = await req.db.query(
+    `UPDATE staff_tasks
+        SET status = 'open', resolved_by = NULL, resolved_at = NULL
+      WHERE task_id = $1 AND status IN ('done','dismissed')
+      RETURNING task_id, status`,
+    [req.params.id]);
   if (!updated) {
     const { rows: [task] } = await req.db.query(
       `SELECT status FROM staff_tasks WHERE task_id = $1`, [req.params.id]);

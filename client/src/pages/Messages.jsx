@@ -12,6 +12,7 @@ import messageService from '@/services/messageService';
 import Modal from '@/components/Modal';
 import '@/css/attendance.css';
 import '@/css/home.css';
+import '@/css/messages.css';
 
 const CONVERSATIONS_POLL_MS = 15000;
 const MESSAGES_POLL_MS = 5000;
@@ -40,8 +41,7 @@ function Avatar({ conv, size = 40 }) {
   const isClass = conv.kind === 'class';
   const t = isClass ? TINTS[0] : tintOf(conv.other_name);
   return (
-    <span style={{ width: size, height: size, borderRadius: 11, flexShrink: 0, background: t.bg, color: t.fg,
-      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600 }}>
+    <span className="msg-avatar" style={{ width: size, height: size, background: t.bg, color: t.fg }}>
       {isClass ? <i className="fa-solid fa-bullhorn" style={{ fontSize: 14 }} /> : initialsOf(conv.other_name)}
     </span>
   );
@@ -52,6 +52,31 @@ function subtitleOf(conv) {
   if (conv.kind === 'class') return conv.can_post ? 'Class announcements · you can post' : 'Class announcements';
   if (conv.oversight) return `${conv.child_name}'s conversation · read-only`;
   return conv.other_role ? conv.other_role.charAt(0).toUpperCase() + conv.other_role.slice(1) : '';
+}
+
+function displayNameOf(conv) {
+  if (!conv) return '';
+  return conv.kind === 'class'
+    ? conv.other_name.replace(/\s*·\s*announcements$/i, '')
+    : conv.other_name;
+}
+
+function dayLabel(iso) {
+  const day = DateTime.fromISO(iso);
+  const today = DateTime.now();
+  if (day.hasSame(today, 'day')) return 'Today';
+  if (day.hasSame(today.minus({ days: 1 }), 'day')) return 'Yesterday';
+  return day.toFormat('cccc, LLL d');
+}
+
+function classContext(classItem) {
+  const details = [];
+  if (classItem.instructor) details.push(classItem.instructor);
+  if (classItem.starts_on) {
+    const start = DateTime.fromISO(classItem.starts_on);
+    if (start.isValid) details.push(`Starts ${start.toFormat('LLL d')}`);
+  }
+  return details.join(' · ') || 'Class announcements';
 }
 
 function Messages() {
@@ -65,7 +90,10 @@ function Messages() {
   const [composing, setComposing] = useState(false);
   const [contacts, setContacts] = useState(null);
   const [announceable, setAnnounceable] = useState([]);
+  const [composeQuery, setComposeQuery] = useState('');
+  const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
+  const didAutoSelect = useRef(false);
 
   const loadConversations = () => messageService.getConversations().then(setConversations).catch(
     (err) => setError(err.response?.data?.message || 'Failed to load messages'));
@@ -75,6 +103,13 @@ function Messages() {
     const t = setInterval(loadConversations, CONVERSATIONS_POLL_MS);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    if (!didAutoSelect.current && conversations?.length) {
+      didAutoSelect.current = true;
+      setActiveId(conversations[0].conversation_id);
+    }
+  }, [conversations]);
 
   const loadThread = (id) => messageService.getMessages(id).then((data) => {
     setThread(data);
@@ -86,7 +121,6 @@ function Messages() {
     loadThread(activeId);
     const t = setInterval(() => loadThread(activeId), MESSAGES_POLL_MS);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
   useEffect(() => {
@@ -98,26 +132,35 @@ function Messages() {
   const send = async (e) => {
     e.preventDefault();
     const body = draft.trim();
-    if (!body) return;
-    setDraft('');
+    if (!body || sending) return;
+    setSending(true);
     try {
       await messageService.sendMessage(activeId, body);
+      setDraft('');
       loadThread(activeId);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
 
   const startNewMessage = () => {
+    setComposeQuery('');
     setComposing(true);
     if (!contacts) messageService.getContacts().then(setContacts).catch(() => setContacts([]));
     messageService.getAnnounceable().then(setAnnounceable).catch(() => {});
   };
 
+  const closeComposer = () => {
+    setComposing(false);
+    setComposeQuery('');
+  };
+
   const pickContact = async (userId) => {
     try {
       const conv = await messageService.startConversation(userId);
-      setComposing(false);
+      closeComposer();
       loadConversations();
       openConversation(conv.conversation_id);
     } catch (err) {
@@ -128,7 +171,7 @@ function Messages() {
   const pickClass = async (classId) => {
     try {
       const conv = await messageService.startClassThread(classId);
-      setComposing(false);
+      closeComposer();
       loadConversations();
       openConversation(conv.conversation_id);
     } catch (err) {
@@ -140,152 +183,240 @@ function Messages() {
   const shown = (conversations ?? []).filter((c) =>
     !query.trim() || `${c.other_name} ${c.child_name ?? ''}`.toLowerCase().includes(query.trim().toLowerCase()));
   const canPost = thread?.can_post;
+  const unreadCount = (conversations ?? []).filter((c) => c.unread).length;
+  const normalizedComposeQuery = composeQuery.trim().toLowerCase();
+  const shownContacts = (contacts ?? []).filter((contact) =>
+    !normalizedComposeQuery || `${contact.name} ${contact.role}`.toLowerCase().includes(normalizedComposeQuery));
+  const shownClasses = announceable.filter((classItem) =>
+    !normalizedComposeQuery
+      || `${classItem.subject} ${classItem.instructor ?? ''}`.toLowerCase().includes(normalizedComposeQuery));
 
   return (
-    <div className="at-page" style={{ display: 'flex', flexDirection: 'column', maxWidth: 1160, width: '100%', margin: '0 auto' }}>
-      {error && <div className="hm-error" style={{ marginBottom: 12 }}>{error}</div>}
+    <div className="msg-page">
+      {error && (
+        <div className="hm-error msg-error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError('')} aria-label="Dismiss error">
+            <i className="fa-solid fa-xmark" />
+          </button>
+        </div>
+      )}
 
-      <div className="hm-card" style={{ padding: 0, overflow: 'hidden', display: 'grid',
-        gridTemplateColumns: '320px 1fr', height: 'calc(100vh - 150px)', minHeight: 560 }}>
-        {/* Thread rail */}
-        <div style={{ borderRight: '1px solid #e3eeec', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ display: 'flex', gap: 8, margin: 12 }}>
-            <label style={{ flex: 1, padding: '0 14px', height: 42, display: 'flex', alignItems: 'center', gap: 9,
-              background: '#fff', borderRadius: 11, border: '1px solid #e3eeec' }}>
-              <i className="fa-solid fa-magnifying-glass" style={{ color: '#9fb4b0', fontSize: 12 }} />
-              <input placeholder="Search messages" value={query} onChange={(e) => setQuery(e.target.value)}
-                style={{ border: 'none', outline: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13, width: '100%' }} />
-            </label>
-            <button type="button" className="hm-btn primary" onClick={startNewMessage} title="New message"
-              style={{ width: 42, height: 42, padding: 0, justifyContent: 'center', flexShrink: 0 }}>
-              <i className="fa-solid fa-pen-to-square" />
+      <section className={`msg-shell${activeId ? ' is-thread-open' : ''}`} aria-label="Messages workspace">
+        <aside className="msg-rail">
+          <div className="msg-rail-header">
+            <div className="msg-rail-title">
+              <h1>Inbox</h1>
+              {unreadCount > 0 && <span>{unreadCount} new</span>}
+            </div>
+            <button type="button" className="msg-compose" onClick={startNewMessage} title="New message" aria-label="New message">
+              <i className="fa-solid fa-pen-to-square" /><span>New</span>
             </button>
           </div>
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {conversations === null && <p style={{ padding: 16, fontSize: 13, color: '#64827e' }}>Loading…</p>}
-            {conversations?.length === 0 && (
-              <p style={{ padding: 16, fontSize: 13, color: '#64827e' }}>No conversations yet — start one with the pen button.</p>
-            )}
-            {shown.map((c) => (
-              <button key={c.conversation_id} type="button" onClick={() => openConversation(c.conversation_id)}
-                style={{ width: '100%', textAlign: 'left', border: 'none',
-                  background: c.conversation_id === activeId ? '#f2faf8' : 'transparent',
-                  borderBottom: '1px solid #eef5f3', padding: '14px 16px', cursor: 'pointer',
-                  display: 'flex', gap: 12, fontFamily: 'inherit' }}>
-                <Avatar conv={c} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {c.other_name}
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9fb4b0', flexShrink: 0 }}>{timeLabel(c.last_message_at)}</span>
-                  </div>
-                  <div style={{ fontSize: 12.5, color: '#64827e', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {c.oversight && (
-                      <span style={{ fontSize: 10.5, fontWeight: 600, color: '#5b6bc0', background: '#eef1fb',
-                        borderRadius: 999, padding: '1px 7px', marginRight: 6 }}>via {c.child_name}</span>
-                    )}
-                    {c.last_message_body || 'No messages yet'}
-                  </div>
-                </div>
-                {c.unread && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2e9d8d', flexShrink: 0, marginTop: 6 }} />}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Conversation pane */}
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+          <label className="msg-search">
+            <i className="fa-solid fa-magnifying-glass" />
+            <input
+              aria-label="Search conversations"
+              placeholder="Search conversations"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery('')} aria-label="Clear search">
+                <i className="fa-solid fa-xmark" />
+              </button>
+            )}
+          </label>
+
+          <div className="msg-thread-list" aria-label="Conversations">
+            {conversations === null && <div className="msg-list-state">Loading conversations…</div>}
+            {conversations?.length === 0 && (
+              <div className="msg-list-state msg-list-state--empty">
+                <i className="fa-regular fa-comments" />
+                <strong>No conversations yet</strong>
+                <span>Start a message to connect with someone at your academy.</span>
+              </div>
+            )}
+            {conversations?.length > 0 && shown.length === 0 && (
+              <div className="msg-list-state msg-list-state--empty">
+                <i className="fa-solid fa-magnifying-glass" />
+                <strong>No matches</strong>
+                <span>Try a different name or class.</span>
+              </div>
+            )}
+            {shown.map((c) => {
+              const isActive = c.conversation_id === activeId;
+              return (
+                <button
+                  key={c.conversation_id}
+                  type="button"
+                  className={`msg-thread${isActive ? ' is-active' : ''}${c.unread ? ' is-unread' : ''}`}
+                  onClick={() => openConversation(c.conversation_id)}
+                  aria-pressed={isActive}
+                >
+                  <Avatar conv={c} />
+                  <span className="msg-thread-copy">
+                    <span className="msg-thread-line">
+                      <strong>{displayNameOf(c)}</strong>
+                      <time>{timeLabel(c.last_message_at)}</time>
+                    </span>
+                    <span className="msg-thread-preview">
+                      {c.oversight && <span className="msg-oversight">via {c.child_name}</span>}
+                      {c.last_message_body || 'No messages yet'}
+                    </span>
+                  </span>
+                  {c.unread && <span className="msg-unread-dot" aria-label="Unread" />}
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <div className="msg-conversation">
           {!activeId && (
-            <div style={{ margin: 'auto', fontSize: 13.5, color: '#64827e' }}>Select a conversation, or start a new one.</div>
+            <div className="msg-empty-pane">
+              <span><i className="fa-regular fa-comments" /></span>
+              <h2>Your conversations</h2>
+              <p>Select a conversation or start a new message.</p>
+              <button type="button" className="hm-btn primary" onClick={startNewMessage}>
+                <i className="fa-solid fa-pen-to-square" /> New message
+              </button>
+            </div>
           )}
           {activeId && active && (
             <>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid #eef5f3', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <header className="msg-conversation-header">
+                <button type="button" className="msg-back" onClick={() => setActiveId(null)} aria-label="Back to conversations">
+                  <i className="fa-solid fa-arrow-left" />
+                </button>
                 <Avatar conv={active} />
                 <div>
-                  <div style={{ fontSize: 14.5, fontWeight: 600 }}>{active.other_name}</div>
-                  <div style={{ fontSize: 12, color: '#64827e' }}>{subtitleOf(active)}</div>
+                  <h2>{displayNameOf(active)}</h2>
+                  <p>{subtitleOf(active)}</p>
                 </div>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: 14, background: '#fbfdfc' }}>
-                {thread === null && <p style={{ fontSize: 13, color: '#64827e' }}>Loading…</p>}
+              </header>
+
+              <div className="msg-message-list" aria-live="polite">
+                {thread === null && <div className="msg-message-state">Loading messages…</div>}
                 {thread?.messages?.length === 0 && (
-                  <p style={{ margin: 'auto', fontSize: 13, color: '#9fb4b0' }}>
-                    {active.kind === 'class' ? 'No announcements yet.' : 'Say hello.'}
-                  </p>
+                  <div className="msg-message-state msg-message-state--empty">
+                    <i className={active.kind === 'class' ? 'fa-solid fa-bullhorn' : 'fa-regular fa-comment'} />
+                    <strong>{active.kind === 'class' ? 'No announcements yet' : 'Start the conversation'}</strong>
+                    <span>{active.kind === 'class' ? 'The first announcement will appear here.' : 'Send a message below to say hello.'}</span>
+                  </div>
                 )}
-                {thread?.messages?.map((m) => {
+                {thread?.messages?.map((m, index) => {
                   const mine = m.sender_id === me?.user_id;
                   const showSender = !mine && (active.kind === 'class' || active.oversight);
+                  const previous = thread.messages[index - 1];
+                  const showDay = !previous
+                    || DateTime.fromISO(previous.created_at).toISODate() !== DateTime.fromISO(m.created_at).toISODate();
                   return (
-                    <div key={m.message_id} style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
-                      <div style={{ maxWidth: '70%', padding: '11px 14px', borderRadius: 14, fontSize: 13.5, lineHeight: 1.5,
-                        background: mine ? '#2e9d8d' : '#fff', color: mine ? '#fff' : '#16303a',
-                        border: mine ? 'none' : '1px solid #e3eeec' }}>
-                        {showSender && <div style={{ fontSize: 11, fontWeight: 600, color: '#2e9d8d', marginBottom: 3 }}>{m.sender_name}</div>}
-                        {m.body}
-                        <div style={{ fontSize: 10, marginTop: 5, color: mine ? 'rgba(255,255,255,.7)' : '#9fb4b0' }}>{timeLabel(m.created_at)}</div>
+                    <div key={m.message_id} className="msg-message-entry">
+                      {showDay && <div className="msg-day"><span>{dayLabel(m.created_at)}</span></div>}
+                      <div className={`msg-message-row${mine ? ' is-mine' : ''}`}>
+                        {!mine && <Avatar conv={{ other_name: m.sender_name || displayNameOf(active) }} size={30} />}
+                        <div className="msg-message-content">
+                          <div className="msg-message-meta">
+                            {showSender && <strong>{m.sender_name}</strong>}
+                            <time>{timeLabel(m.created_at)}</time>
+                          </div>
+                          <div className="msg-bubble"><p>{m.body}</p></div>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
                 <div ref={bottomRef} />
               </div>
+
               {canPost ? (
-                <form onSubmit={send} style={{ padding: '14px 18px', borderTop: '1px solid #eef5f3', display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 9, background: '#f4f9f8',
-                    border: '1px solid #e3eeec', borderRadius: 11, padding: '0 14px', height: 44 }}>
-                    <input value={draft} onChange={(e) => setDraft(e.target.value)}
+                <form onSubmit={send} className="msg-composer">
+                  <label>
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
                       placeholder={active.kind === 'class' ? 'Write an announcement…' : 'Write a message…'}
-                      style={{ border: 'none', outline: 'none', background: 'none', fontFamily: 'inherit', fontSize: 13.5, width: '100%' }} />
+                      aria-label={active.kind === 'class' ? 'Write an announcement' : 'Write a message'}
+                    />
                   </label>
-                  <button type="submit" className="hm-btn primary" style={{ width: 44, height: 44, padding: 0, justifyContent: 'center' }}>
-                    <i className="fa-solid fa-paper-plane" />
+                  <button
+                    type="submit"
+                    className="msg-send"
+                    disabled={sending || !draft.trim()}
+                    aria-label={sending ? 'Sending message' : 'Send message'}
+                    title="Send message"
+                  >
+                    <i className={sending ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-paper-plane'} />
                   </button>
                 </form>
               ) : thread && (
-                <div style={{ padding: '13px 18px', borderTop: '1px solid #eef5f3', fontSize: 12.5, color: '#64827e',
-                  display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <i className="fa-solid fa-eye" style={{ color: '#9fb4b0' }} />
-                  {active.oversight
+                <div className="msg-readonly">
+                  <i className="fa-solid fa-eye" />
+                  <span>{active.oversight
                     ? `You're viewing ${active.child_name}'s messages — read-only.`
-                    : 'Announcements are posted by your tutor and academy staff.'}
+                    : 'Announcements are posted by your tutor and academy staff.'}</span>
                 </div>
               )}
             </>
           )}
         </div>
-      </div>
+      </section>
 
-      <Modal isOpen={composing} onClose={() => setComposing(false)}>
-        <div className="modal-header"><h2>New message</h2></div>
-        <div className="modal-body">
+      <Modal isOpen={composing} onClose={closeComposer}>
+        <div className="modal-header msg-modal-header">
+          <div><span className="msg-eyebrow">Start a conversation</span><h2>New message</h2></div>
+          <button type="button" onClick={closeComposer} aria-label="Close"><i className="fa-solid fa-xmark" /></button>
+        </div>
+        <div className="modal-body msg-modal-body">
+          <label className="msg-modal-search">
+            <i className="fa-solid fa-magnifying-glass" />
+            <input
+              value={composeQuery}
+              onChange={(e) => setComposeQuery(e.target.value)}
+              placeholder="Search people or classes"
+              aria-label="Search people or classes"
+              autoFocus
+            />
+            {composeQuery && (
+              <button type="button" onClick={() => setComposeQuery('')} aria-label="Clear search">
+                <i className="fa-solid fa-xmark" />
+              </button>
+            )}
+          </label>
           {contacts === null && <p>Loading…</p>}
           {contacts?.length === 0 && announceable.length === 0 && <p>No one available to message yet.</p>}
-          {contacts?.map((c) => (
+          {contacts !== null && contacts.length > 0 && <div className="msg-modal-section">People · {shownContacts.length}</div>}
+          {shownContacts.map((c) => (
             <button key={c.user_id} type="button" onClick={() => pickContact(c.user_id)}
-              className="hm-btn" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', marginBottom: 6 }}>
+              className="msg-contact">
               <Avatar conv={{ other_name: c.name }} size={30} />
-              {c.name} <span className="hm-kpi-label" style={{ textTransform: 'capitalize' }}>· {c.role}</span>
+              <span><strong>{c.name}</strong><small>{c.role}</small></span>
+              <i className="fa-solid fa-chevron-right" />
             </button>
           ))}
-          {announceable.length > 0 && (
+          {shownClasses.length > 0 && (
             <>
-              <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: '#9fb4b0', margin: '14px 0 8px' }}>
-                Announce to a class
-              </div>
-              {announceable.map((k) => (
+              <div className="msg-modal-section">Classes · {shownClasses.length}</div>
+              {shownClasses.map((k) => (
                 <button key={k.class_id} type="button" onClick={() => pickClass(k.class_id)}
-                  className="hm-btn" style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', marginBottom: 6 }}>
-                  <span style={{ width: 30, height: 30, borderRadius: 9, background: '#e6f3f0', color: '#2e9d8d',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  className="msg-contact">
+                  <span className="msg-class-icon">
                     <i className="fa-solid fa-bullhorn" style={{ fontSize: 12 }} />
                   </span>
-                  {k.subject} <span className="hm-kpi-label">· announcements</span>
+                  <span><strong>{k.subject}</strong><small>{classContext(k)}</small></span>
+                  <i className="fa-solid fa-chevron-right" />
                 </button>
               ))}
             </>
+          )}
+          {contacts !== null && shownContacts.length === 0 && shownClasses.length === 0 && (
+            <div className="msg-modal-empty">
+              <i className="fa-solid fa-magnifying-glass" />
+              <strong>No matches</strong>
+              <span>Try another name, role, or class.</span>
+            </div>
           )}
         </div>
       </Modal>

@@ -4,12 +4,11 @@
 // Design: handoff README "Take attendance" — four-state marking grid,
 // mark-all shortcuts, progress readout, live consequence line, and a
 // Write-feedback follow-up. The real backend only supports three marks an
-// instructor/staff can choose here (present / absent_unexcused /
-// absent_excused) — there's no "late" status in the schema, so that state
-// from the prototype isn't offered. Instructors may only set present/absent
-// (INSTRUCTOR_SETTABLE, sessionRoutes.js); excused is staff-only.
+// instructor can choose here (present / absent_unexcused) — there's no "late"
+// status in the schema, so that state from the prototype isn't offered. Staff
+// are redirected to the read-only attendance log instead of this editor.
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import classService from '@/services/classService';
 import sessionServiceV2 from '@/services/sessionServiceV2';
 import authService from '@/services/authService';
@@ -26,9 +25,7 @@ const NOTE_FIELDS = ['performance', 'improvements', 'free_notes'];
 function SessionAttendance() {
   const { classId, sessionId } = useParams();
   const role = authService.getCurrentUser()?.role;
-  const allowedStatuses = role === 'staff'
-    ? ['present', 'absent_unexcused', 'absent_excused']
-    : ['present', 'absent_unexcused'];
+  const allowedStatuses = ['present', 'absent_unexcused'];
 
   const [cls, setCls] = useState(null);
   const [marks, setMarks] = useState({});   // student_id -> { status, note, noteOpen }
@@ -103,6 +100,10 @@ function SessionAttendance() {
       setSaving(false);
     }
   };
+
+  if (role === 'staff') {
+    return <Navigate to={`/operations/attendance?session=${sessionId}`} replace />;
+  }
 
   if (!cls) return <div className="at-page">{error ? <div className="hm-error">{error}</div> : 'Loading…'}</div>;
 

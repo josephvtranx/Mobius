@@ -16,6 +16,17 @@ const classService = {
         }
     },
 
+    // staff academy calendar, bounded by UTC ISO-Z timestamps
+    getSchedule: async (from, to) => {
+        try {
+            const response = await api.get('/classes/schedule', { params: { from, to } });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching academy schedule:', error);
+            throw error;
+        }
+    },
+
     // detail: class + sessions + roster
     getClass: async (classId) => {
         try {
@@ -57,6 +68,18 @@ const classService = {
             return response.data;
         } catch (error) {
             console.error('Error enrolling student:', error);
+            throw error;
+        }
+    },
+
+    setCapacity: async (classId, studentLimit) => {
+        try {
+            const response = await api.patch(`/classes/${classId}/capacity`, {
+                student_limit: studentLimit
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error updating class capacity:', error);
             throw error;
         }
     },

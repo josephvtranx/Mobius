@@ -1,5 +1,178 @@
 /* My classes / Feedback — small additions on top of home.css's hm-* cards */
 
+/* Staff class-list controls. Subjects come from the DB-backed class roster
+   and stay compact inside one grouped picker. */
+.cl-controls {
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--shell-hairline, #f5ebe1);
+}
+
+.cl-subject-picker {
+  position: relative;
+  width: 220px;
+  flex: 0 0 220px;
+  z-index: 4;
+}
+.cl-subject-trigger {
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--shell-border, #ead9c8);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--shell-secondary, #5c4632);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.cl-subject-trigger:hover {
+  border-color: var(--shell-faint, #c4a98e);
+  background: #fffcf9;
+}
+.cl-subject-trigger:focus-visible,
+.cl-subject-trigger[aria-expanded="true"] {
+  border-color: var(--shell-primary, #d9772e);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--shell-primary) 13%, transparent);
+}
+.cl-subject-trigger > i:first-child {
+  color: var(--shell-faint, #c4a98e);
+  font-size: 12px;
+}
+.cl-subject-trigger span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cl-select-chevron {
+  color: var(--shell-faint, #c4a98e);
+  font-size: 9px;
+  transition: transform .15s ease;
+}
+.cl-select-chevron.open { transform: rotate(180deg); }
+.cl-subject-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  width: 100%;
+  max-height: min(390px, calc(100vh - 190px));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--shell-border, #ead9c8);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(77, 50, 29, .14), 0 3px 8px rgba(77, 50, 29, .08);
+}
+.cl-subject-option {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--shell-secondary, #5c4632);
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.cl-subject-option:hover,
+.cl-subject-option:focus-visible {
+  outline: none;
+  background: #fff5eb;
+}
+.cl-subject-option.selected {
+  background: #fff1e3;
+  color: var(--shell-primary-dark, #a9561d);
+  font-weight: 600;
+}
+.cl-subject-option i {
+  color: var(--shell-primary, #d9772e);
+  font-size: 10px;
+}
+.cl-subject-group {
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 1px solid var(--shell-hairline, #f5ebe1);
+}
+.cl-subject-group-label {
+  padding: 6px 10px 4px;
+  color: var(--shell-faint, #a98b72);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.cl-control-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cl-result-count {
+  margin: 0 auto 0 1px;
+  color: var(--shell-muted, #7d6a5c);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cl-result-count strong { color: var(--shell-ink, #33231a); }
+.cl-search {
+  width: min(280px, 28vw);
+  height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  border: 1px solid var(--shell-border, #f0e3d8);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--shell-faint, #c4a98e);
+}
+.cl-search:focus-within {
+  border-color: var(--shell-primary, #d9772e);
+  outline: 2px solid color-mix(in srgb, var(--shell-primary) 14%, transparent);
+}
+.cl-search i { font-size: 12px; }
+.cl-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--shell-ink, #33231a);
+  font-family: inherit;
+  font-size: 13px;
+}
+.cl-search input::placeholder { color: var(--shell-faint, #c4a98e); }
+.cl-actions { display: flex; gap: 9px; flex-shrink: 0; }
+.cl-actions .hm-btn { height: 38px; }
+.cl-actions .hm-btn i { margin-right: 8px; }
+
+@media (max-width: 900px) {
+  .cl-control-row { flex-wrap: wrap; }
+  .cl-search { width: min(100%, 320px); }
+}
+
+@media (max-width: 620px) {
+  .cl-subject-picker { width: 100%; flex-basis: 100%; }
+  .cl-result-count { flex-basis: 100%; }
+  .cl-search { width: 100%; }
+  .cl-actions { width: 100%; }
+  .cl-actions .hm-btn { flex: 1; justify-content: center; }
+}
+
 .mc-list {
   display: flex;
   flex-direction: column;
@@ -55,6 +228,30 @@
 /* Staff class detail: sessions left, roster + weekly schedule stacked right —
    integrates the tall sessions card instead of orphaning it full-width below
    (and the right column no longer strands dead space under the schedule). */
+.cd-back-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  width: fit-content;
+  gap: 7px;
+  margin: 0 0 14px 2px;
+  padding: 2px 0;
+  color: var(--shell-muted, #64827e);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 28px;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.cd-back-link i {
+  font-size: 10px;
+}
+
+.cd-back-link:hover {
+  color: var(--shell-primary, #2e9d8d);
+}
+
 .cd-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
